@@ -1,0 +1,52 @@
+courseData: [
+    {
+        sectionTitle: "Bắt đầu",
+        sectionContents: [
+            {
+                videoTitle: "Chào mừng bạn",
+                videoDescription: "hello",
+                videoUrl: "...",
+                videoLength: "10",
+                videoLinks: [
+                    {
+                        linkTitle: "Hướng dẫn tải VSCode",
+                        linkUrl: "http://install/vscode"
+                    }
+                ],
+                questions: [CommentSchema]
+            },
+            {
+                videoTitle: "Nội dung khóa học",
+                videoDescription: "hi",
+                videoUrl: "...",
+                videoLength: "10",
+                videoLinks: [
+                    {
+                        linkTitle: "Hướng dẫn tải các thư viện cần thiết",
+                        linkUrl: "http://install/lib"
+                    }
+                ],
+                questions: [CommentSchema]
+            },
+        ]
+    }, 
+    {
+        sectionTitle: "Làm quen với HTML",
+        sectionContents: [
+            {
+                videoTitle: "Vai trò của HTML",
+                videoDescription: "html",
+                videoUrl: "...",
+                videoLength: "...",
+                videoLinks: [
+                    {
+                        linkTitle: "...",
+                        linkUrl: "..."
+                    }
+                ],
+                questions: [CommentSchema]
+            }
+        ]
+    },
+    {}
+]

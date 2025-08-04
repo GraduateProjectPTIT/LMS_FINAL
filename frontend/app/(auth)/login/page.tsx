@@ -1,0 +1,14 @@
+import React from 'react'
+
+import Login from "@/components/auth/login";
+
+const LoginPage = () => {
+
+    return (
+        <div className='flex justify-center items-center w-full py-[20px] md:py-[60px]'>
+            <Login />
+        </div>
+    )
+}
+
+export default LoginPage
