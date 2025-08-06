@@ -26,15 +26,19 @@ import cloudinary, {
 } from "cloudinary";
 import multer from "multer";
 import { Readable } from "stream";
+import {
+  IActivationRequest,
+  IActivationToken,
+  ILoginRequest,
+  IRegistrationBody,
+  ISocialAuthBody,
+  IUpdatePassword,
+} from "../types/auth.types";
+import { IUpdateUserInfo } from "../types/user.types";
 
 // Set up multer storage configuration to store files in memory
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage }).single("avatar"); // 'avatar' is the key used to upload file
-
-interface IActivationToken {
-  token: string;
-  activationCode: string;
-}
 
 export const createActivationToken = (user: any): IActivationToken => {
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -52,14 +56,6 @@ export const createActivationToken = (user: any): IActivationToken => {
 
   return { token, activationCode };
 };
-
-interface IRegistrationBody {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  avatar?: string;
-}
 
 export const register = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -114,11 +110,6 @@ export const register = CatchAsyncError(
   }
 );
 
-interface IActivationRequest {
-  activation_token: string;
-  activation_code: string;
-}
-
 export const activateUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -156,11 +147,6 @@ export const activateUser = CatchAsyncError(
     }
   }
 );
-
-interface ILoginRequest {
-  email: string;
-  password: string;
-}
 
 export const login = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -283,12 +269,6 @@ export const getUserInfo = CatchAsyncError(
   }
 );
 
-interface ISocialAuthBody {
-  email: string;
-  name: string;
-  avatar: string;
-}
-
 export const socialAuth = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -321,11 +301,6 @@ export const socialAuth = CatchAsyncError(
     }
   }
 );
-
-interface IUpdateUserInfo {
-  name?: string;
-  email?: string;
-}
 
 export const updateUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -363,11 +338,6 @@ export const updateUserInfo = CatchAsyncError(
     }
   }
 );
-
-interface IUpdatePassword {
-  oldPassword: string;
-  newPassword: string;
-}
 
 export const updatePassword = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
