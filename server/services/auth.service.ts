@@ -12,7 +12,7 @@ import {
   IActivationToken,
   IRegistrationBody,
   ISocialAuthBody,
-  IUpdatePasswordService,
+  IUpdatePassword,
   ILoginRequest,
 } from "../types/auth.types";
 import { IUser } from "../types/user.types";
@@ -146,17 +146,17 @@ export const updateAccessTokenService = async (token: string) => {
 };
 
 // --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---
-export const updatePasswordService = async (data: IUpdatePasswordService) => {
-  const { userId, oldPassword, newPassword } = data;
-  const user = await userModel.findById(userId).select("+password");
-  if (!user) {
-    throw new ErrorHandler("Invalid user", 400);
-  }
-  const isPasswordMatch = await user.comparePassword(oldPassword);
-  if (!isPasswordMatch) {
-    throw new ErrorHandler("Invalid old password", 400);
-  }
-  user.password = newPassword;
-  await user.save();
-  await redis.set(userId, JSON.stringify(user));
-};
+// export const updatePasswordService = async (data: IUpdatePassword) => {
+//   const { userId, oldPassword, newPassword } = data;
+//   const user = await userModel.findById(userId).select("+password");
+//   if (!user) {
+//     throw new ErrorHandler("Invalid user", 400);
+//   }
+//   const isPasswordMatch = await user.comparePassword(oldPassword);
+//   if (!isPasswordMatch) {
+//     throw new ErrorHandler("Invalid old password", 400);
+//   }
+//   user.password = newPassword;
+//   await user.save();
+//   await redis.set(userId, JSON.stringify(user));
+// };
