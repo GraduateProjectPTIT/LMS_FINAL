@@ -16,25 +16,30 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage }).single("avatar");
 
 // Các route cho người dùng thông thường (đã đăng nhập)
-userRouter.get("/me", isAuthenticated, getUserInfo);
-userRouter.put("/update-info", isAuthenticated, updateUserInfo);
-userRouter.put("/update-avatar", isAuthenticated, upload, updateProfilePicture);
+userRouter.get("/user/me", isAuthenticated, getUserInfo);
+userRouter.put("/user/update-info", isAuthenticated, updateUserInfo);
+userRouter.put(
+  "/user/update-avatar",
+  isAuthenticated,
+  upload,
+  updateProfilePicture
+);
 
 // Các route cho quản trị viên (Admin)
 userRouter.get(
-  "/get-all-users",
+  "/user/get-all-users",
   isAuthenticated,
   authorizeRoles("admin"),
   getAllUsers
 );
 userRouter.put(
-  "/update-user-role",
+  "/user/update-user-role",
   isAuthenticated,
   authorizeRoles("admin"),
   updateUserRole
 );
 userRouter.delete(
-  "/delete-user/:id",
+  "/user/delete-user/:id",
   isAuthenticated,
   authorizeRoles("admin"),
   deleteUser

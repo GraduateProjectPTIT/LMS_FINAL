@@ -8,10 +8,14 @@ import {
   logoutUserService,
   updateAccessTokenService,
   socialAuthService,
-  updatePasswordService,
 } from "../services/auth.service";
 import { ILoginRequest, IUpdatePassword } from "../types/auth.types";
-import { sendTokenResponse } from "../utils/jwt"; // Import hàm tiện ích mới
+import {
+  accessTokenOptions,
+  refreshTokenOptions,
+  sendToken,
+} from "../utils/jwt"; // Import hàm tiện ích mới
+import ErrorHandler from "../utils/ErrorHandler";
 
 // --- ĐĂNG KÝ ---
 export const register = CatchAsyncError(
@@ -34,27 +38,30 @@ export const activateUser = CatchAsyncError(
 // --- ĐĂNG NHẬP ---
 export const login = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user, accessToken, refreshToken } = await loginUserService(
-      req.body as ILoginRequest
-    );
-    sendTokenResponse(res, 200, user, accessToken, refreshToken);
+    // 1. Lấy user đã được xác thực từ service
+    const user = await loginUserService(req.body as ILoginRequest); // 2. Gọi sendToken để tạo token, set cookie và gửi response //    Hàm này sẽ làm tất cả công việc còn lại
+
+    sendToken(user, 200, res);
   }
 );
-
 // --- ĐĂNG NHẬP QUA MẠNG XÃ HỘI ---
 export const socialAuth = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const { user, accessToken, refreshToken } = await socialAuthService(
       req.body
     );
-    sendTokenResponse(res, 200, user, accessToken, refreshToken);
+    sendToken(user, 200, res);
   }
 );
 
 // --- ĐĂNG XUẤT ---
 export const logout = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const message = await logoutUserService(res, req.user?._id);
+    if (!req.user?._id) {
+      return next(new ErrorHandler("User not authenticated", 401));
+    }
+    const message = await logoutUserService(res, req.user._id.toString());
+
     res.status(200).json({ success: true, message });
   }
 );
@@ -65,19 +72,26 @@ export const updateAccessToken = CatchAsyncError(
     const { user, accessToken, refreshToken } = await updateAccessTokenService(
       req.cookies.refresh_token
     );
-    // Gửi lại response với token mới
-    sendTokenResponse(res, 200, user, accessToken, refreshToken);
+
+    // Trực tiếp set cookie và gửi response tại đây
+    res.cookie("access_token", accessToken, accessTokenOptions);
+    res.cookie("refresh_token", refreshToken, refreshTokenOptions);
+
+    res.status(200).json({
+      success: true,
+      accessToken,
+    });
   }
 );
 
 // --- CẬP NHẬT MẬT KHẨU ---
-export const updatePassword = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { oldPassword, newPassword } = req.body as IUpdatePassword;
-    const userId = req.user?._id;
-    await updatePasswordService({ userId, oldPassword, newPassword });
-    res
-      .status(200)
-      .json({ success: true, message: "Password updated successfully" });
-  }
-);
+// export const updatePassword = CatchAsyncError(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { oldPassword, newPassword } = req.body as IUpdatePassword;
+//     const userId = req.user?._id;
+//     await updatePasswordService({ userId, oldPassword, newPassword });
+//     res
+//       .status(200)
+//       .json({ success: true, message: "Password updated successfully" });
+//   }
+// );

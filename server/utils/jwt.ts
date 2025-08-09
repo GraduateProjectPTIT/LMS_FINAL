@@ -1,6 +1,6 @@
 require("dotenv").config();
 import { Response } from "express";
-import { IUser } from "../types/user.types"; // Import từ file types
+import { IUser } from "../models/user.model";
 import { redis } from "./redis";
 import { ITokenOptions } from "../types/auth.types";
 import jwt from "jsonwebtoken";
@@ -20,6 +20,7 @@ export const accessTokenOptions: ITokenOptions = {
   expires: new Date(Date.now() + accessTokenExpire * 1000), // Sửa lại công thức
   maxAge: accessTokenExpire * 1000, // Sửa lại công thức
   httpOnly: true,
+  secure: false,
   sameSite: "lax",
 };
 
@@ -27,6 +28,7 @@ export const refreshTokenOptions: ITokenOptions = {
   expires: new Date(Date.now() + refreshTokenExpire * 1000), // Sửa lại công thức
   maxAge: refreshTokenExpire * 1000, // Sửa lại công thức
   httpOnly: true,
+  secure: false,
   sameSite: "lax",
 };
 
@@ -43,17 +45,8 @@ export const generateRefreshToken = (user: IUser): string => {
 };
 
 export const sendToken = (user: IUser, statusCode: number, res: Response) => {
-  // Gọi đúng hàm generate... từ chính file này
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
-
-  // upload session to redis
-  redis.set(user._id as string, JSON.stringify(user));
-
-  // only set secure to true in production
-  if (process.env.NODE_ENV === "production") {
-    accessTokenOptions.secure = true;
-  }
 
   res.cookie("access_token", accessToken, accessTokenOptions);
   res.cookie("refresh_token", refreshToken, refreshTokenOptions);

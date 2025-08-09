@@ -7,20 +7,19 @@ import {
   logout,
   updateAccessToken,
   socialAuth,
-  updatePassword,
+  // updatePassword,
 } from "../controllers/auth.controller";
 import { isAuthenticated } from "../middleware/auth"; // Giả sử bạn có middleware này
 
 const authRouter = express.Router();
 
-authRouter.post("/register", register);
-authRouter.post("/activate-user", activateUser);
-authRouter.post("/login", login);
-authRouter.post("/social-auth", socialAuth);
+authRouter.post("/auth/register", register);
+authRouter.post("/auth/activate", activateUser);
+authRouter.post("/auth/login", login);
 
 // Các route này yêu cầu người dùng phải đăng nhập
-authRouter.get("/logout", isAuthenticated, logout);
-authRouter.get("/refresh-token", isAuthenticated, updateAccessToken);
-authRouter.put("/update-password", isAuthenticated, updatePassword);
+authRouter.post("/auth/logout", isAuthenticated, logout);
+authRouter.get("/auth/refresh_token", isAuthenticated, updateAccessToken);
+// authRouter.put("/auth/update-password", isAuthenticated, updatePassword);
 
 export default authRouter;

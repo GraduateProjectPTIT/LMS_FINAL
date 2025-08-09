@@ -12,10 +12,9 @@ import {
   IActivationToken,
   IRegistrationBody,
   ISocialAuthBody,
-  IUpdatePassword,
+  IUpdatePassword, // IUpdatePasswordService was renamed to IUpdatePassword
   ILoginRequest,
 } from "../types/auth.types";
-import { IUser } from "../types/user.types";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
@@ -43,11 +42,10 @@ export const registerUserService = async (body: IRegistrationBody) => {
     activationCode: activationTokenData.activationCode,
   };
 
-  await ejs.renderFile(
-    path.join(__dirname, "../mails/activation-mail.ejs"),
-    data
-  );
+  // Render email template (không cần chờ)
+  ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data);
   try {
+    // Gửi email kích hoạt
     await sendMail({
       email,
       subject: "Activate your account",
@@ -94,11 +92,9 @@ export const loginUserService = async (body: ILoginRequest) => {
   const user = await userModel.findOne({ email }).select("+password");
   if (!user || !(await user.comparePassword(password))) {
     throw new ErrorHandler("Invalid email or password", 400);
-  }
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-  await redis.set(user._id.toString(), JSON.stringify(user));
-  return { user, accessToken, refreshToken };
+  } // ✔️ Thay đổi: Chỉ trả về user, không tạo token ở đây nữa
+
+  return user;
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
@@ -106,15 +102,20 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
   const { email, name, avatar } = body;
   let user = await userModel.findOne({ email });
   if (!user) {
+    // Lưu ý: Cần xử lý trường hợp model yêu cầu password
     user = await userModel.create({
       email,
       name,
       avatar: { public_id: "", url: avatar },
+      // password sẽ được hash tự động nếu model có giá trị default hoặc xử lý pre-save
     });
   }
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+
+  // [REDIS] Tương tự như đăng nhập, lưu session của người dùng vào Redis.
   await redis.set(user._id.toString(), JSON.stringify(user));
+
   return { user, accessToken, refreshToken };
 };
 
@@ -122,7 +123,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
 export const logoutUserService = async (res: Response, userId: string) => {
   res.cookie("access_token", "", { maxAge: 1 });
   res.cookie("refresh_token", "", { maxAge: 1 });
-  await redis.del(userId);
+
   return "Logged out successfully";
 };
 
@@ -135,13 +136,16 @@ export const updateAccessTokenService = async (token: string) => {
     token,
     process.env.REFRESH_TOKEN as string
   ) as JwtPayload;
-  const userJson = await redis.get(decoded.id);
-  if (!userJson) {
+
+  const user = await userModel.findById(decoded.id);
+
+  if (!user) {
     throw new ErrorHandler("User not found, please login again", 400);
   }
-  const user = JSON.parse(userJson) as IUser;
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
+
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+
   return { user, accessToken, refreshToken };
 };
 
@@ -158,5 +162,7 @@ export const updateAccessTokenService = async (token: string) => {
 //   }
 //   user.password = newPassword;
 //   await user.save();
+
+//   // [REDIS] Sau khi cập nhật thông tin quan trọng, cập nhật lại cache trong Redis.
 //   await redis.set(userId, JSON.stringify(user));
 // };
