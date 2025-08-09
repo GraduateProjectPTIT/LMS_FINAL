@@ -229,43 +229,36 @@ const Personal = ({ user }: PersonalProps) => {
                                 <Input
                                     id="name"
                                     {...register("name")}
-                                    defaultValue={user?.name || "John Doe"}
+                                    defaultValue={user?.name}
+                                    placeholder='Enter name'
                                     disabled={!isEditing}
                                     className="border-gray-300 dark:border-slate-600 w-full"
                                 />
                             </div>
 
+                            {/* email */}
                             <div className="space-y-2">
-                                <Label htmlFor="bio">Bio</Label>
-                                <textarea
-                                    id="bio"
-                                    rows={3}
-                                    defaultValue={user?.bio || "Frontend developer with 5 years of experience in building responsive web applications."}
+                                <Label htmlFor="email">Email Address</Label>
+                                <Input
+                                    id="email"
+                                    {...register("email")}
+                                    defaultValue={user?.email}
+                                    placeholder='Enter email'
                                     disabled={!isEditing}
-                                    className="w-full rounded-md border border-gray-300 dark:border-slate-600 p-2 bg-transparent"
+                                    className="border-gray-300 dark:border-slate-600"
                                 />
                             </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* email */}
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input
-                                id="email"
-                                {...register("email")}
-                                defaultValue={user?.email || "john.doe@example.com"}
-                                disabled={!isEditing}
-                                className="border-gray-300 dark:border-slate-600"
-                            />
-                        </div>
                         {/* phone number */}
                         <div className="space-y-2">
                             <Label htmlFor="phone">Phone Number</Label>
                             <Input
                                 id="phone"
-                                defaultValue={user?.phone || "+1 (555) 123-4567"}
+                                defaultValue={user?.phone}
+                                placeholder='Enter phone number'
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
@@ -277,7 +270,8 @@ const Personal = ({ user }: PersonalProps) => {
                             <Label htmlFor="country">Country</Label>
                             <Input
                                 id="country"
-                                defaultValue={user?.country || "United States"}
+                                defaultValue={user?.country}
+                                placeholder='Enter country'
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
@@ -286,7 +280,8 @@ const Personal = ({ user }: PersonalProps) => {
                             <Label htmlFor="city">City</Label>
                             <Input
                                 id="city"
-                                defaultValue={user?.city || "New York"}
+                                defaultValue={user?.city}
+                                placeholder='Enter city'
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
@@ -295,7 +290,8 @@ const Personal = ({ user }: PersonalProps) => {
                             <Label htmlFor="zipCode">Zip Code</Label>
                             <Input
                                 id="zipCode"
-                                defaultValue={user?.zipCode || "10001"}
+                                defaultValue={user?.zipCode}
+                                placeholder='Enter zip code'
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />

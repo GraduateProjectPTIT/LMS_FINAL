@@ -114,7 +114,7 @@ const TestimonialColumn = (props: { className?: string; testimonial: typeof test
 
 const Testimonials = () => {
   return (
-    <section className="light-mode dark:dark-mode">
+    <section className="theme-mode dark:theme-mode">
       <div className="container">
         <div className="max-w-[540px] mt-5 mx-auto">
           <h2 className="section-title">What our users say</h2>

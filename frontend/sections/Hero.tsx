@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import ArrowRight from "@/assets/arrow-right.svg"
 import { Input } from "@/components/ui/input"
 
-
 const Hero = () => {
 
     const [loading, setLoading] = useState(false);

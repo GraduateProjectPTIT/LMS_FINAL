@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { CourseInfoProps, BenefitsProps, PrerequisitesProps, CourseDataProps } from "@/type"
-import EditCourse from '@/components/admin/course/edit/EditCourse'
+import EditCourse from '@/components/tutor/course/edit/EditCourse'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search } from 'lucide-react'

@@ -95,7 +95,7 @@ const SignUp = () => {
 
 
     return (
-        <div className='w-[400px] md:w-[1000px] h-[550px] p-5 flex justify-center items-center gap-[50px] border dark:border-slate-500 rounded-[10px] shadow-lg '>
+        <div className='w-[400px] md:w-[1000px] h-[600px] p-5 flex justify-center items-center gap-[50px] border dark:border-slate-500 rounded-[10px] shadow-lg '>
 
             <div className='hidden md:block'>
                 <Image

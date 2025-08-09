@@ -47,7 +47,7 @@
 /* Dark Mode (Only works when `.dark` class is applied to <html>) */
 .dark {
   --text-color: white;
-  --bg-color: #212121;
+  --bg-color: #161b22;
   --border-color: #2c3848;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -95,6 +95,11 @@ body {
   }
 
   .dark-mode {
+    color: var(--text-color);
+    background-color: var(--bg-color);
+  }
+
+  .theme-mode {
     color: var(--text-color);
     background-color: var(--bg-color);
   }

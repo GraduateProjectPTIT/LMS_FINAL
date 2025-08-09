@@ -1,9 +1,9 @@
 import React from 'react'
 
-const DataOrdersPage = () => {
+const AdminDataOrdersPage = () => {
     return (
-        <div>DataOrdersPage</div>
+        <div>AdminDataOrdersPage</div>
     )
 }
 
-export default DataOrdersPage
+export default AdminDataOrdersPage

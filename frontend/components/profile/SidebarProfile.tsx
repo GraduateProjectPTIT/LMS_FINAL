@@ -69,7 +69,7 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
     }
 
     return (
-        <section className='flex flex-col w-full md:w-[280px] gap-[30px] h-full md:h-screen md:max-h-[1200px] light-mode dark:dark-mode p-2 md:p-6 border max-md:border-none border-gray-300 dark:border-slate-700 border-r-0 rounded-l-[24px] '>
+        <section className='flex flex-col w-full md:w-[280px] gap-[30px] h-full md:h-screen md:max-h-[1200px] theme-mode dark:theme-mode p-2 md:p-6 border max-md:border-none border-gray-300 dark:border-slate-700 border-r-0 rounded-l-[24px] '>
 
             <h2 className='text-xl md:text-2xl font-bold'>Profile Management</h2>
 
@@ -80,9 +80,9 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        <Button
-                            className={`w-full h-[50px] flex items-center justify-start gap-3 text-base font-medium rounded-xl transition-all duration-200 cursor-pointer ${activeSection === item.value
-                                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md"
+                        <button
+                            className={`w-full h-[50px] flex items-center justify-start gap-3 pl-4 text-base font-medium rounded-xl transition-all duration-200 cursor-pointer ${activeSection === item.value
+                                ? "bg-blue-500 dark:bg-blue-800 text-white shadow-md"
                                 : "bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300"
                                 }`}
                             onClick={() => handleClick(item.value)}
@@ -91,7 +91,7 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
                                 {item.icon}
                             </span>
                             {item.label}
-                        </Button>
+                        </button>
                     </motion.div>
                 ))}
             </div>
@@ -100,8 +100,8 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
                 <motion.div
                     whileTap={{ scale: 0.98 }}
                 >
-                    <Button
-                        className={`w-full h-[50px] flex items-center justify-between gap-3 text-base font-medium rounded-xl transition-all duration-200 cursor-pointer bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md`}
+                    <button
+                        className={`w-full h-[50px] flex items-center justify-between gap-3 px-4 text-base font-medium rounded-xl transition-all duration-200 cursor-pointer bg-blue-500 dark:bg-blue-800 text-white shadow-md`}
                         onClick={toggleDropdown}
                     >
                         <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
                             <RiArrowUpSLine className="ml-2 text-xl" /> :
                             <RiArrowDownSLine className="ml-2 text-xl" />
                         }
-                    </Button>
+                    </button>
                 </motion.div>
 
                 <AnimatePresence>

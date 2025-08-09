@@ -18,24 +18,24 @@ const sectionData = {
         // Statistics
         {
             title: "Statistics",
-            url: "/admin/statistics",
+            url: "/tutor/statistics",
             icon: ChartNoAxesCombined,
             isOpen: false,
             items: [
                 {
-                    title: "Users Analytics",
-                    url: "/admin/statistics/users",
-                    value: "users_analytic",
-                },
-                {
                     title: "Courses Analytics",
-                    url: "/admin/statistics/courses",
+                    url: "/tutor/statistics/courses",
                     value: "courses_analytic",
                 },
                 {
+                    title: "Students Analytics",
+                    url: "/tutor/statistics/students",
+                    value: "students_analytic",
+                },
+                {
                     title: "Revenue Analytics",
-                    url: "/admin/statistics/revenues",
-                    value: "revenue_analytic",
+                    url: "/tutor/statistics/revenues",
+                    value: "revenues_analytic",
                 },
             ],
         },
@@ -47,42 +47,36 @@ const sectionData = {
             isOpen: false,
             items: [
                 {
-                    title: "Users Data",
-                    url: "/admin/data/users",
-                    value: "users_data",
-                },
-                {
                     title: "Courses Data",
-                    url: "/admin/data/courses",
+                    url: "/tutor/data/courses",
                     value: "courses_data",
                 },
                 {
+                    title: "Students Data",
+                    url: "/tutor/data/students",
+                    value: "students_data",
+                },
+                {
                     title: "Orders Data",
-                    url: "/admin/data/orders",
+                    url: "/tutor/data/orders",
                     value: "orders_data",
                 },
             ],
         },
         {
-            title: "Customization",
-            url: "/admin/customizations",
-            icon: SlidersHorizontal,
-            isOpen: false,
+            title: "Courses",
+            url: "/admin/courses",
+            icon: TvMinimalPlay,
             items: [
                 {
-                    title: "Hero",
-                    url: "/admin/customizations/hero",
-                    value: "hero",
+                    title: "Create Course",
+                    url: "/tutor/courses/create_course",
+                    value: "create_course",
                 },
                 {
-                    title: "FAQ",
-                    url: "/admin/customizations/faq",
-                    value: "faq",
-                },
-                {
-                    title: "Categories",
-                    url: "/admin/customizations/categories",
-                    value: "categories",
+                    title: "Edit Courses",
+                    url: "/tutor/courses/edit_course/",
+                    value: "edit_course",
                 },
             ],
         },

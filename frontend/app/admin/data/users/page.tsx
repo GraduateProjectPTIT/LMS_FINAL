@@ -1,7 +1,7 @@
 import UserData from '@/components/admin/data/UserData'
 import React from 'react'
 
-const DataUsersPage = () => {
+const AdminDataUsersPage = () => {
     return (
         <div className='flex-1 h-screen max-h-[1473px] p-[20px]'>
             <UserData />
@@ -9,4 +9,4 @@ const DataUsersPage = () => {
     )
 }
 
-export default DataUsersPage
+export default AdminDataUsersPage

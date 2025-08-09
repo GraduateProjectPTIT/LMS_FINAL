@@ -97,17 +97,15 @@ const CoursePagination = ({
                                     ...
                                 </span>
                             ) : (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
+                                <button
                                     onClick={() => onPageChange(page as number)}
-                                    className={`h-8 min-w-[32px] px-2 text-sm transition-all ${currentPage === page
-                                        ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
-                                        : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
+                                    className={`h-8 rounded-[10px] min-w-[32px] px-2 text-sm transition-all hover:cursor-pointer ${currentPage === page
+                                        ? 'bg-slate-300 dark:bg-slate-300 text-white dark:text-slate-900 shadow-sm'
+                                        : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
                                         }`}
                                 >
                                     {page}
-                                </Button>
+                                </button>
                             )}
                         </React.Fragment>
                     ))}

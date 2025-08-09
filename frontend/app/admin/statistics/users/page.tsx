@@ -1,9 +1,9 @@
 import React from 'react'
 
-const StatisticsUsersPage = () => {
+const AdminStatisticsUsersPage = () => {
     return (
-        <div>StatisticsUsersPage</div>
+        <div>AdminStatisticsUsersPage</div>
     )
 }
 
-export default StatisticsUsersPage
+export default AdminStatisticsUsersPage
