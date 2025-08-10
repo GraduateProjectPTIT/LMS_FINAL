@@ -1,6 +1,6 @@
 import { Schema, model, Document } from "mongoose";
 
-interface FaqItem extends Document {
+interface Faq extends Document {
     question: string;
     answer: string;
 }
@@ -13,7 +13,7 @@ interface BannerImage extends Document {
 }
 interface Layout extends Document {
     type: string;
-    faq: FaqItem[];
+    faq: Faq[];
     url: string;
     categories: Category[];
     banner: {
@@ -22,7 +22,7 @@ interface Layout extends Document {
         subTitle: string;
     }
 }
-const faqSchema = new Schema<FaqItem>({
+const faqSchema = new Schema<Faq>({
     question: { type: String },
     answer: { type: String },
 })

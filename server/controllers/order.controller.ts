@@ -12,114 +12,311 @@ import NotificationModel from "../models/notification.model";
 import { getAllCoursesService } from "../services/course.service";
 import { redis } from "../utils/redis";
 import mongoose from "mongoose";
+import stripe from "../utils/stripe";
 require("dotenv").config();
 
-export const createOrder = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+export const createOrder = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { courseId, payment_info } = req.body as IOrder;
+      const { courseId, payment_info } = req.body as IOrder;
 
-        const userId = req.user?._id
-        const user = await userModel.findById(req.user?._id);
+      const userId = req.user?._id;
+      const user = await userModel.findById(req.user?._id);
 
-        const courseExistsInUser = user?.courses.some(
-            (course: any) => course.courseId.toString() === courseId
+      const courseExistsInUser = user?.courses.some(
+        (course: any) => course.courseId.toString() === courseId
+      );
+
+      if (courseExistsInUser) {
+        return next(
+          new ErrorHandler("You have already purchased this course", 400)
         );
+      }
 
-        if (courseExistsInUser) {
-            return next(
-                new ErrorHandler("You have already purchased this course", 400)
-            );
+      const course: ICourse | null = await CourseModel.findById(courseId);
+
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+
+      const data: any = {
+        courseId: (course._id as string).toString(),
+        userId: (user?._id as string).toString(),
+        payment_info,
+      };
+
+      const mailData = {
+        order: {
+          _id: courseId.slice(0, 6),
+          name: course.name,
+          price: course.price,
+          date: new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        },
+      };
+
+      const html = await ejs.renderFile(
+        path.join(__dirname, "../mails/order-confirmation.ejs"),
+        { order: mailData }
+      );
+
+      try {
+        if (user) {
+          await sendMail({
+            email: user.email,
+            subject: "Order Confirmation",
+            template: "order-confirmation.ejs",
+            data: mailData,
+          });
         }
-
-        const course: ICourse | null = await CourseModel.findById(courseId);
-
-        if (!course) {
-            return next(new ErrorHandler("Course not found", 404));
-        }
-
-        const data: any = {
-            courseId: (course._id as string).toString(),
-            userId: (user?._id as string).toString(),
-            payment_info,
-        };
-
-        const mailData = {
-            order: {
-                _id: courseId.slice(0, 6),
-                name: course.name,
-                price: course.price,
-                date: new Date().toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                }),
-            },
-        };
-
-        const html = await ejs.renderFile(
-            path.join(__dirname, "../mails/order-confirmation.ejs"),
-            { order: mailData }
-        );
-
-        try {
-            if (user) {
-                await sendMail({
-                    email: user.email,
-                    subject: "Order Confirmation",
-                    template: "order-confirmation.ejs",
-                    data: mailData,
-                });
-            }
-        } catch (error: any) {
-            return next(new ErrorHandler(error.message, 500));
-        }
-
-        user?.courses.push({ courseId: courseId });
-
-        await user?.save();
-
-        await redis.set(userId as string, JSON.stringify(user));
-
-        await NotificationModel.create({
-            user: user?._id,
-            title: "New Order",
-            message: `You have a new order from ${course?.name}`,
-        });
-
-        course.purchased += 1;
-
-        await course.save();
-
-        newOrder(data, res, next);
-    } catch (error: any) {
+      } catch (error: any) {
         return next(new ErrorHandler(error.message, 500));
-    }
-})
+      }
 
-export const getAdminOrders = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        getAllOrdersService(res);
+      user?.courses.push({ courseId: courseId });
+
+      await user?.save();
+
+      // await redis.set(userId as string, JSON.stringify(user));
+
+      await NotificationModel.create({
+        user: user?._id,
+        title: "New Order",
+        message: `You have a new order from ${course?.name}`,
+      });
+
+      course.purchased += 1;
+
+      await course.save();
+
+      newOrder(data, res, next);
     } catch (error: any) {
-        return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 500));
     }
-})
+  }
+);
 
-export const getUserOrders = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+export const getAdminOrders = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.user?._id;
-
-        const userOrders = await OrderModel.find({ userId });
-
-        if (userOrders.length === 0) {
-            return res.json({ "message": "No orders found" })
-        }
-
-        res.status(200).json({
-            success: true,
-            orders: userOrders
-        });
-
+      getAllOrdersService(res);
     } catch (error: any) {
-        return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 400));
     }
-})
+  }
+);
+
+export const getUserOrders = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+
+      const userOrders = await OrderModel.find({ userId });
+
+      if (userOrders.length === 0) {
+        return res.json({ message: "No orders found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        orders: userOrders,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const createStripeCheckoutSession = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId } = req.body;
+      const userId = req.user?._id;
+      const user = await userModel.findById(userId);
+
+      console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+      console.log("CourseId:", courseId);
+      console.log("UserId:", userId);
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      const course: ICourse | null = await CourseModel.findById(courseId);
+
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+
+      const courseExistsInUser = user.courses.some(
+        (userCourse: any) => userCourse.courseId.toString() === courseId
+      );
+
+      if (courseExistsInUser) {
+        return next(
+          new ErrorHandler("You have already purchased this course", 400)
+        );
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: course.name,
+                description: course.description,
+                images: course.thumbnail?.url ? [course.thumbnail.url] : [],
+              },
+              unit_amount: Math.round(course.price * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        customer_email: user.email,
+        metadata: {
+          courseId: courseId,
+          userId: userId?.toString() || "",
+        },
+        success_url: `${process.env.ORIGIN || 'http://localhost:3000'}/course-enroll/${courseId}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.ORIGIN || 'http://localhost:3000'}/courses?canceled=true`,
+      });
+
+      res.status(200).json({
+        success: true,
+        url: session.url,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const stripeWebhook = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    console.log("Webhook received!");
+    console.log("Headers:", req.headers);
+    console.log("Body length:", req.body?.length);
+    
+    const sig = req.headers["stripe-signature"] as string;
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
+
+    console.log("Stripe signature:", sig ? "Present" : "Missing");
+    console.log("Webhook secret:", endpointSecret ? "Present" : "Missing");
+
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      console.log("Webhook event type:", event.type);
+    } catch (err: any) {
+      console.error("Webhook verification failed:", err.message);
+      return next(new ErrorHandler(`Webhook Error: ${err.message}`, 400));
+    }
+
+    switch (event.type) {
+      case "checkout.session.completed":
+        const session = event.data.object as any;
+        
+        await handleSuccessfulPayment(session);
+        break;
+      
+      case "payment_intent.payment_failed":
+        const paymentIntent = event.data.object as any;
+        console.log("Payment failed:", paymentIntent.id);
+        break;
+      
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.status(200).json({ received: true });
+  }
+);
+
+export const handleSuccessfulPayment = async (session: any) => {
+  try {
+    console.log("Processing successful payment...");
+    console.log("Session metadata:", session.metadata);
+    
+    const { courseId, userId } = session.metadata;
+    
+    console.log("CourseId:", courseId);
+    console.log("UserId:", userId);
+    
+    const user = await userModel.findById(userId as string);
+    const course = await CourseModel.findById(courseId as string);
+
+    if (!user || !course) {
+      console.error("User or course not found");
+      return;
+    }
+
+    const courseExistsInUser = user.courses.some(
+      (userCourse: any) => userCourse.courseId.toString() === courseId
+    );
+
+    if (courseExistsInUser) {
+      console.log("User already has this course");
+      return;
+    }
+
+    user.courses.push({ courseId: courseId });
+    await user.save();
+
+    const orderData = {
+      courseId: courseId,
+      userId: userId,
+      payment_info: {
+        id: session.payment_intent,
+        status: session.payment_status,
+        amount: session.amount_total / 100,
+        currency: session.currency,
+      },
+    };
+
+    await OrderModel.create(orderData);
+
+    course.purchased += 1;
+    await course.save();
+
+    const mailData = {
+      order: {
+        _id: courseId.slice(0, 6),
+        name: course.name,
+        price: course.price,
+        date: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+      },
+    };
+
+    try {
+      await sendMail({
+        email: user.email,
+        subject: "Order Confirmation",
+        template: "order-confirmation.ejs",
+        data: mailData,
+      });
+    } catch (error: any) {
+      console.error("Email sending failed:", error.message);
+    }
+
+    await NotificationModel.create({
+      user: userId,
+      title: "New Order",
+      message: `You have successfully purchased ${course.name}`,
+    });
+
+    console.log("Payment processed successfully");
+  } catch (error: any) {
+    console.error("Error processing payment:", error.message);
+  }
+};

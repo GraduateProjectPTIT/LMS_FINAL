@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 import { IUser } from "./user.model";
+import { IBenefit } from "./benefit.model";
+import { IPrerequisite } from "./prerequisite.model";
 
 export interface ICourse extends Document {
     name: string;
@@ -14,8 +16,8 @@ export interface ICourse extends Document {
     tags: string;
     level: string;
     demoUrl: string;
-    benefits: { title: string }[];
-    prerequisites: { title: string }[];
+    benefits: IBenefit[];
+    prerequisites: IPrerequisite[];
     reviews: ICourseReview[];
     courseData: ICourseSection[];
     ratings?: number;
@@ -23,29 +25,29 @@ export interface ICourse extends Document {
 }
 
 interface ICourseReview extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId; // Đổi từ user thành userId
     rating: number;
     comment: string;
     replies: IReviewReply[];
 }
 
 interface IReviewReply extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId; // Đổi từ user thành userId
     answer: string;
 }
 
 interface ICourseSection extends Document {
     sectionTitle: string;
-    sectionContents: ICourseContent[];
+    sectionContents: ICourseLecture[];
 }
 
-interface ICourseContent extends Document {
+interface ICourseLecture extends Document {
     videoTitle: string;
     videoDescription: string;
     videoUrl: string;
     videoLength: number;
     videoLinks: ILink[];
-    questions: ILectureQuestion[];
+    lectureQuestions: ILectureQuestion[];
 }
 
 interface ILink extends Document {
@@ -54,13 +56,13 @@ interface ILink extends Document {
 }
 
 interface ILectureQuestion extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId; // Đổi từ user thành userId
     question: string;
     replies: IQuestionReply[];
 }
 
 interface IQuestionReply extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId; // Đổi từ user thành userId
     answer: string;
 }
 
@@ -68,7 +70,7 @@ interface IQuestionReply extends Document {
 
 const questionReplySchema = new Schema<IQuestionReply>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true }, // Đổi từ user thành userId
         answer: { type: String, required: true },
     },
     { timestamps: true }
@@ -76,7 +78,7 @@ const questionReplySchema = new Schema<IQuestionReply>(
 
 const lectureQuestionSchema = new Schema<ILectureQuestion>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true }, // Đổi từ user thành userId
         question: { type: String, required: true },
         replies: [questionReplySchema], // this is only for lecture questions
     },
@@ -85,7 +87,7 @@ const lectureQuestionSchema = new Schema<ILectureQuestion>(
 
 const reviewReplySchema = new Schema<IReviewReply>(
     {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         answer: { type: String, required: true },
     },
     { timestamps: true }
@@ -93,7 +95,7 @@ const reviewReplySchema = new Schema<IReviewReply>(
 
 const courseReviewSchema = new Schema<ICourseReview>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         rating: { type: Number, default: 0 },
         comment: { type: String },
         replies: [reviewReplySchema],
@@ -106,13 +108,13 @@ const linkSchema = new Schema<ILink>({
     url: String,
 });
 
-const courseLectureSchema = new Schema<ICourseContent>({
+const courseLectureSchema = new Schema<ICourseLecture>({
     videoTitle: { type: String, required: true },
     videoDescription: { type: String, required: true },
     videoUrl: { type: String, required: true },
     videoLength: { type: Number, required: true },
     videoLinks: [linkSchema],
-    questions: [lectureQuestionSchema],
+    lectureQuestions: [lectureQuestionSchema],
 });
 
 const courseSectionSchema = new Schema<ICourseSection>({
@@ -161,8 +163,8 @@ const courseSchema = new Schema<ICourse>(
             type: String,
             required: true,
         },
-        benefits: [{ title: String }],
-        prerequisites: [{ title: String }],
+        benefits: [{ type: Schema.Types.ObjectId, ref: "Benefit" }],
+        prerequisites: [{ type: Schema.Types.ObjectId, ref: "Prerequisite" }],
         reviews: [courseReviewSchema],
         courseData: [courseSectionSchema],
         ratings: {
