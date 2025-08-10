@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import { Response } from "express";
-import userModel from "../models/user.model";
+import userModel, { IUser } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -14,6 +14,8 @@ import {
   ISocialAuthBody,
   IUpdatePassword, // IUpdatePasswordService was renamed to IUpdatePassword
   ILoginRequest,
+  IResetPasswordToken,
+  IResetPasswordPayload,
 } from "../types/auth.types";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
@@ -26,6 +28,113 @@ const createActivationToken = (user: IRegistrationBody): IActivationToken => {
     { expiresIn: "5m" }
   );
   return { token, activationCode };
+};
+
+// --- RESET PASSWORD ---
+
+export const createResetPasswordToken = (user: IUser): IResetPasswordToken => {
+  // Tạo mã code 4 chữ số ngẫu nhiên
+  const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+  // Tạo JWT, chỉ chứa ID của user và mã code
+  const token = jwt.sign(
+    {
+      user: { id: user._id }, // Chỉ cần lưu ID để xác định user
+      resetCode,
+    },
+    process.env.RESET_PASSWORD_SECRET as Secret, // !! Dùng một SECRET KEY khác để tăng bảo mật
+    { expiresIn: "10m" } // Đặt thời gian hết hạn
+  );
+
+  return { token, resetCode };
+};
+
+export const forgotPasswordService = async (email: string) => {
+  const user = await userModel.findOne({ email });
+  // 1. Kiểm tra User
+  // !! Khác với register: nếu không tìm thấy user, ta không báo lỗi
+  // mà âm thầm trả về thành công để tránh kẻ xấu dò email.
+  if (!user) {
+    return {
+      success: true,
+      message: `If an account with email: ${email} exists, you will receive a reset code.`,
+    };
+  }
+
+  // 2. Tạo token và mã code reset
+  const resetTokenData = createResetPasswordToken(user);
+  const resetCode = resetTokenData.resetCode;
+  const resetToken = resetTokenData.token;
+
+  // 3. Chuẩn bị dữ liệu cho email template
+  const data = {
+    user: { name: user.name }, // Lấy tên user từ DB
+    resetCode: resetCode,
+  };
+
+  const templatePath = path.join(__dirname, "../mails/reset-password-mail.ejs");
+
+  // 4. Render và gửi email (logic giống hệt của bạn)
+  // Bạn sẽ cần tạo một file template mới là `reset-password-mail.ejs`
+  await ejs.renderFile(templatePath, data);
+
+  try {
+    await sendMail({
+      email,
+      subject: "Reset your password",
+      template: "reset-password-mail.ejs", // Dùng template mới
+      data,
+    });
+
+    // 5. Trả về token và thông báo thành công
+    // Trả về token tương tự như luồng register
+    return {
+      success: true,
+      message: `Please check your email: ${email} for your password reset code!`,
+      resetToken: resetToken, // Trả về JWT chứa thông tin reset
+    };
+  } catch (error: any) {
+    throw new ErrorHandler(error.message, 400);
+  }
+};
+
+export const resetPasswordService = async (
+  token: string,
+  resetCode: string,
+  newPassword: string
+): Promise<{ message: string }> => {
+  let decoded: IResetPasswordPayload;
+
+  try {
+    // 1. Giải mã JWT. Nếu token không hợp lệ hoặc hết hạn, nó sẽ tự động throw lỗi
+    decoded = jwt.verify(
+      token,
+      process.env.RESET_PASSWORD_SECRET as Secret
+    ) as IResetPasswordPayload;
+  } catch (error) {
+    throw new ErrorHandler(
+      "Invalid or expired token. Please request a new one.",
+      400
+    );
+  }
+
+  // 2. So sánh mã reset từ JWT với mã người dùng nhập
+  if (decoded.resetCode !== resetCode) {
+    throw new ErrorHandler("Invalid reset code.", 400);
+  }
+
+  // 3. Tìm người dùng bằng ID từ trong JWT
+  const user = await userModel.findById(decoded.user.id);
+
+  if (!user) {
+    throw new ErrorHandler("User not found.", 404);
+  }
+
+  // 4. Cập nhật mật khẩu mới và lưu
+  user.password = newPassword;
+  await user.save();
+
+  return { message: "Password has been reset successfully." };
 };
 
 // --- NGHIỆP VỤ ĐĂNG KÝ ---

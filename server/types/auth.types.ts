@@ -1,11 +1,21 @@
 // src/types/auth.types.ts
 
-import { Types } from "mongoose";
-
 // Dùng trong quá trình tạo token kích hoạt
 export interface IActivationToken {
   token: string;
   activationCode: string;
+}
+
+export interface IResetPasswordPayload {
+  user: {
+    id: string; // Chỉ cần lưu ID là đủ
+  };
+  resetCode: string; // Mã reset người dùng sẽ nhập
+}
+
+export interface IResetPasswordToken {
+  token: string;
+  resetCode: string;
 }
 
 export interface ITokenOptions {

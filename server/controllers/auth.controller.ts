@@ -8,6 +8,8 @@ import {
   logoutUserService,
   updateAccessTokenService,
   socialAuthService,
+  forgotPasswordService,
+  resetPasswordService,
 } from "../services/auth.service";
 import { ILoginRequest, IUpdatePassword } from "../types/auth.types";
 import {
@@ -16,6 +18,7 @@ import {
   sendToken,
 } from "../utils/jwt"; // Import hàm tiện ích mới
 import ErrorHandler from "../utils/ErrorHandler";
+import { IUser } from "../models/user.model";
 
 // --- ĐĂNG KÝ ---
 export const register = CatchAsyncError(
@@ -79,5 +82,40 @@ export const updateAccessToken = CatchAsyncError(
       success: true,
       accessToken,
     });
+  }
+);
+
+export const forgotPassword = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+    console.log("Request Body:", req.body);
+
+    if (!email) {
+      return next(new ErrorHandler("Please provide an email", 400));
+    }
+    const result = await forgotPasswordService(email);
+    res.status(200).json(result);
+  }
+);
+
+// ✅ Controller `resetPassword` được cập nhật
+export const resetPassword = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+    // Lấy thêm `resetCode` từ body
+    const { password, resetCode } = req.body;
+
+    if (!password || !resetCode) {
+      return next(
+        new ErrorHandler(
+          "Please provide a new password and the reset code",
+          400
+        )
+      );
+    }
+
+    const result = await resetPasswordService(token, resetCode, password);
+
+    res.status(200).json({ success: true, message: result.message });
   }
 );
