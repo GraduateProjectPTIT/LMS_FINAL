@@ -4,6 +4,7 @@ import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { redis } from "../utils/redis";
 import { IUpdateUserInfo } from "../types/user.types";
+import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -104,4 +105,22 @@ export const deleteUserService = async (id: string) => {
   }
   await user.deleteOne();
   await redis.del(id);
+};
+
+// --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---
+export const updatePasswordService = async (data: IUpdatePasswordParams) => {
+  const { userId, oldPassword, newPassword } = data;
+
+  const user = await userModel.findById(userId).select("+password");
+  if (!user) {
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  const isPasswordMatch = await user.comparePassword(oldPassword);
+  if (!isPasswordMatch) {
+    throw new ErrorHandler("Invalid old password", 400);
+  }
+
+  user.password = newPassword;
+  await user.save();
 };

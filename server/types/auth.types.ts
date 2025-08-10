@@ -1,5 +1,7 @@
 // src/types/auth.types.ts
 
+import { Types } from "mongoose";
+
 // Dùng trong quá trình tạo token kích hoạt
 export interface IActivationToken {
   token: string;
@@ -45,4 +47,8 @@ export interface ISocialAuthBody {
 export interface IUpdatePassword {
   oldPassword: string;
   newPassword: string;
+}
+
+export interface IUpdatePasswordParams extends IUpdatePassword {
+  userId: string;
 }

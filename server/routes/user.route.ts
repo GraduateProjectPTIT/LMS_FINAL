@@ -7,6 +7,7 @@ import {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  updatePassword,
 } from "../controllers/user.controller";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth"; // Giả sử bạn có middleware
 import multer from "multer";
@@ -24,6 +25,7 @@ userRouter.put(
   upload,
   updateProfilePicture
 );
+userRouter.put("/user/update_password", isAuthenticated, updatePassword);
 
 // Các route cho quản trị viên (Admin)
 userRouter.get(

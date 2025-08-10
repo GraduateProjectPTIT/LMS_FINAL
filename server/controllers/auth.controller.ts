@@ -81,15 +81,3 @@ export const updateAccessToken = CatchAsyncError(
     });
   }
 );
-
-// --- CẬP NHẬT MẬT KHẨU ---
-// export const updatePassword = CatchAsyncError(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { oldPassword, newPassword } = req.body as IUpdatePassword;
-//     const userId = req.user?._id;
-//     await updatePasswordService({ userId, oldPassword, newPassword });
-//     res
-//       .status(200)
-//       .json({ success: true, message: "Password updated successfully" });
-//   }
-// );

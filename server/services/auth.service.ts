@@ -164,21 +164,3 @@ export const updateAccessTokenService = async (token: string) => {
 
   return { user, accessToken, refreshToken };
 };
-
-// --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---
-// export const updatePasswordService = async (data: IUpdatePassword) => {
-//   const { userId, oldPassword, newPassword } = data;
-//   const user = await userModel.findById(userId).select("+password");
-//   if (!user) {
-//     throw new ErrorHandler("Invalid user", 400);
-//   }
-//   const isPasswordMatch = await user.comparePassword(oldPassword);
-//   if (!isPasswordMatch) {
-//     throw new ErrorHandler("Invalid old password", 400);
-//   }
-//   user.password = newPassword;
-//   await user.save();
-
-//   // [REDIS] Sau khi cập nhật thông tin quan trọng, cập nhật lại cache trong Redis.
-//   await redis.set(userId, JSON.stringify(user));
-// };

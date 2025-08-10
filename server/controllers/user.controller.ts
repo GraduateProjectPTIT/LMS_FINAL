@@ -8,12 +8,45 @@ import {
   getAllUsersService,
   updateUserRoleService,
   deleteUserService,
+  updatePasswordService,
 } from "../services/user.service";
+import ErrorHandler from "../utils/ErrorHandler";
+import { IUpdatePassword } from "../types/auth.types";
+
+// --- CẬP NHẬT MẬT KHẨU ---
+export const updatePassword = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { oldPassword, newPassword } = req.body as IUpdatePassword;
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    // Gọi service với các tham số đã được xác thực
+    await updatePasswordService({
+      userId: userId.toString(),
+      oldPassword,
+      newPassword,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  }
+);
 
 // --- LẤY THÔNG TIN USER ---
 export const getUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await getUserById(req.user?._id);
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    const user = await getUserById(userId.toString());
     res.status(200).json({ success: true, user });
   }
 );
@@ -21,7 +54,14 @@ export const getUserInfo = CatchAsyncError(
 // --- CẬP NHẬT THÔNG TIN ---
 export const updateUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await updateUserInfoService(req.user?._id, req.body);
+    const userId = req.user?._id;
+
+    // ✅ Bắt buộc phải có bước kiểm tra này
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    const user = await updateUserInfoService(userId.toString(), req.body);
     res.status(200).json({ success: true, user });
   }
 );
@@ -29,7 +69,14 @@ export const updateUserInfo = CatchAsyncError(
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
 export const updateProfilePicture = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await updateProfilePictureService(req.user?._id, req.file);
+    const userId = req.user?._id;
+
+    // ✅ Bắt buộc phải có bước kiểm tra này
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    const user = await updateProfilePictureService(userId.toString(), req.file);
     res.status(200).json({ success: true, user });
   }
 );

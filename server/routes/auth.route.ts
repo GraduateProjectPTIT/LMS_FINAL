@@ -7,7 +7,6 @@ import {
   logout,
   updateAccessToken,
   socialAuth,
-  // updatePassword,
 } from "../controllers/auth.controller";
 import { isAuthenticated } from "../middleware/auth"; // Giả sử bạn có middleware này
 
@@ -21,6 +20,5 @@ authRouter.post("/auth/social_auth", socialAuth);
 // Các route này yêu cầu người dùng phải đăng nhập
 authRouter.post("/auth/logout", isAuthenticated, logout);
 authRouter.get("/auth/refresh_token", isAuthenticated, updateAccessToken);
-// authRouter.put("/auth/update-password", isAuthenticated, updatePassword);
 
 export default authRouter;
