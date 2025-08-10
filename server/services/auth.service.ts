@@ -102,19 +102,31 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
   const { email, name, avatar } = body;
   let user = await userModel.findOne({ email });
   if (!user) {
-    // Lưu ý: Cần xử lý trường hợp model yêu cầu password
+    // Kịch bản 1: Người dùng mới
     user = await userModel.create({
       email,
       name,
-      avatar: { public_id: "", url: avatar },
-      // password sẽ được hash tự động nếu model có giá trị default hoặc xử lý pre-save
+      avatar: {
+        public_id: "default_id", // Hoặc một ID mặc định nếu bạn muốn
+        url: avatar,
+      },
     });
+  } else {
+    // Kịch bản 2: Người dùng đã tồn tại -> Kiểm tra và cập nhật avatar
+    if (user.avatar?.url !== avatar) {
+      user.avatar = {
+        // Giữ lại public_id cũ để có thể xóa ảnh cũ trên Cloudinary nếu cần
+        public_id: user.avatar?.public_id || "",
+        url: avatar, // Cập nhật url mới
+      };
+      await user.save(); // Đừng quên lưu lại thay đổi
+    }
   }
+
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  // [REDIS] Tương tự như đăng nhập, lưu session của người dùng vào Redis.
-  await redis.set(user._id.toString(), JSON.stringify(user));
+  // await redis.set(user._id.toString(), JSON.stringify(user));
 
   return { user, accessToken, refreshToken };
 };

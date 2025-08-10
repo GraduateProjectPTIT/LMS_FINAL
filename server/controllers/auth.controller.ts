@@ -47,9 +47,7 @@ export const login = CatchAsyncError(
 // --- ĐĂNG NHẬP QUA MẠNG XÃ HỘI ---
 export const socialAuth = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user, accessToken, refreshToken } = await socialAuthService(
-      req.body
-    );
+    const { user } = await socialAuthService(req.body);
     sendToken(user, 200, res);
   }
 );
