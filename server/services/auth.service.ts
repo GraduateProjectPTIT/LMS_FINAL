@@ -30,10 +30,14 @@ const createActivationToken = (user: IRegistrationBody): IActivationToken => {
 
 // --- NGHIỆP VỤ ĐĂNG KÝ ---
 export const registerUserService = async (body: IRegistrationBody) => {
-  const { name, email, password } = body;
+  const { name, email, password, confirmPassword } = body;
   const isEmailExist = await userModel.findOne({ email });
   if (isEmailExist) {
     throw new ErrorHandler("Email already exists", 400);
+  }
+
+  if (password !== confirmPassword) {
+    throw new ErrorHandler("Passwords do not match", 400);
   }
 
   const activationTokenData = createActivationToken({ name, email, password });
@@ -80,7 +84,7 @@ export const activateUserService = async (body: IActivationRequest) => {
     throw new ErrorHandler("Email already exists", 400);
   }
 
-  await userModel.create({ name, email, password });
+  await userModel.create({ name, email, password, isVerified: true });
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP ---
