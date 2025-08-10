@@ -8,54 +8,38 @@ import path from "path";
 import ejs from "ejs";
 import sendMail from "../utils/sendMail";
 import CourseModel from "../models/course.model";
-import BenefitModel from "../models/benefit.model";
-import PrerequisiteModel from "../models/prerequisite.model";
+
 import { redis } from "../utils/redis";
 import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
 
 // upload course
-export const uploadCourse = CatchAsyncError(
+export const createCourseController = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = req.body;
       console.log("Received data:", JSON.stringify(data, null, 2));
       
-      const thumbnail = data.thumbnail;
-      console.log("Thumbnail:", thumbnail);
+      // If thumbnail exists, upload to Cloudinary
+      if (data.thumbnail && typeof data.thumbnail === 'string' && (data.thumbnail.startsWith('data:') || data.thumbnail.startsWith('http'))) {
+        console.log("Uploading thumbnail to Cloudinary...");
+        try {
+          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
+            folder: "courses",
+            width: 500,
+            height: 300,
+            crop: "fill",
+          });
 
-      if (!thumbnail) {
-        console.log("Thumbnail is missing");
-        return next(new ErrorHandler("Thumbnail là bắt buộc", 400));
-      }
-
-      if (thumbnail?.public_id) {
-        console.log("Thumbnail already uploaded, proceeding to create course");
-        return createCourse(data, res, next);
-      }
-
-      if (typeof thumbnail !== 'string' || (!thumbnail.startsWith('data:') && !thumbnail.startsWith('http'))) {
-        console.log("Invalid thumbnail format:", typeof thumbnail, thumbnail);
-        return next(new ErrorHandler("Thumbnail không hợp lệ", 400));
-      }
-
-      console.log("Uploading thumbnail to Cloudinary...");
-      try {
-        const myCloud = await cloudinary.v2.uploader.upload(thumbnail, {
-          folder: "courses",
-          width: 500,
-          height: 300,
-          crop: "fill",
-        });
-
-        console.log("Cloudinary upload successful:", myCloud.public_id);
-        data.thumbnail = {
-          public_id: myCloud.public_id,
-          url: myCloud.secure_url,
-        };
-      } catch (uploadError: any) {
-        console.error("Cloudinary upload error:", uploadError);
-        return next(new ErrorHandler("Lỗi khi upload thumbnail: " + uploadError.message, 500));
+          console.log("Cloudinary upload successful:", myCloud.public_id);
+          data.thumbnail = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url,
+          };
+        } catch (uploadError: any) {
+          console.error("Cloudinary upload error:", uploadError);
+                      return next(new ErrorHandler("Error uploading thumbnail: " + uploadError.message, 500));
+        }
       }
 
       console.log("Calling createCourse service...");
@@ -110,42 +94,12 @@ export const editCourse = CatchAsyncError(
 
       let benefitIds: string[] = [];
       if (benefits && benefits.length > 0) {
-        if (findCourse.benefits && findCourse.benefits.length > 0) {
-          await BenefitModel.deleteMany({ _id: { $in: findCourse.benefits } });
-        }
-
-        const createdBenefits = await Promise.all(
-          benefits.map(async (benefit: any, index: number) => {
-            const newBenefit = await BenefitModel.create({
-              title: benefit.title,
-              description: benefit.description || "",
-              icon: benefit.icon || "",
-              order: index,
-            });
-            return newBenefit._id;
-          })
-        );
-        benefitIds = createdBenefits;
+        benefitIds = benefits;
       }
 
       let prerequisiteIds: string[] = [];
       if (prerequisites && prerequisites.length > 0) {
-        if (findCourse.prerequisites && findCourse.prerequisites.length > 0) {
-          await PrerequisiteModel.deleteMany({ _id: { $in: findCourse.prerequisites } });
-        }
-
-        const createdPrerequisites = await Promise.all(
-          prerequisites.map(async (prerequisite: any, index: number) => {
-            const newPrerequisite = await PrerequisiteModel.create({
-              title: prerequisite.title,
-              description: prerequisite.description || "",
-              isRequired: prerequisite.isRequired !== undefined ? prerequisite.isRequired : true,
-              order: index,
-            });
-            return newPrerequisite._id;
-          })
-        );
-        prerequisiteIds = createdPrerequisites;
+        prerequisiteIds = prerequisites;
       }
 
       const course = await CourseModel.findByIdAndUpdate(
@@ -173,7 +127,7 @@ export const editCourse = CatchAsyncError(
 );
 
 // get single course (no purchase required => only show global information)
-export const getSingleCourse = CatchAsyncError(
+export const getCourseOverview = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
@@ -307,7 +261,7 @@ export const getAllCourses = CatchAsyncError(
 );
 
 // get full course content (for user who have purchase the course and admins only)
-export const getCourseByUser = CatchAsyncError(
+export const enrollCourse = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
@@ -341,48 +295,6 @@ export const getCourseByUser = CatchAsyncError(
 export const searchCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const query = req.query.query as string;
-
-      if (!query) {
-        return next(new ErrorHandler("Search query is required", 400));
-      }
-
-      // Create a regex pattern for case-insensitive search
-      const regexPattern = new RegExp(query, "i");
-
-      // Check if query is a valid ObjectId
-      const isValidObjectId = mongoose.Types.ObjectId.isValid(query);
-
-      const searchConditions: any[] = [
-        { name: { $regex: regexPattern } },
-        { categories: { $regex: regexPattern } },
-        { tags: { $regex: regexPattern } },
-        { level: { $regex: regexPattern } },
-      ];
-
-      if (isValidObjectId) {
-        searchConditions.push({ _id: query });
-      }
-
-      const courses = await CourseModel.find({
-        $or: searchConditions,
-      }).select(
-        "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
-      );
-
-      res.status(200).json({
-        success: true,
-        courses,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
-export const advancedSearchCourses = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
       const { query, category, level, priceMin, priceMax, sort } = req.query;
 
       // Build the filter object
@@ -391,11 +303,23 @@ export const advancedSearchCourses = CatchAsyncError(
       // Add text search if query exists
       if (query) {
         const regexPattern = new RegExp(query as string, "i");
-        filter.$or = [
+        
+        // Check if query is a valid ObjectId
+        const isValidObjectId = mongoose.Types.ObjectId.isValid(query as string);
+        
+        const searchConditions: any[] = [
           { name: { $regex: regexPattern } },
           { description: { $regex: regexPattern } },
+          { categories: { $regex: regexPattern } },
           { tags: { $regex: regexPattern } },
+          { level: { $regex: regexPattern } },
         ];
+
+        if (isValidObjectId) {
+          searchConditions.push({ _id: query });
+        }
+
+        filter.$or = searchConditions;
       }
 
       // Add category filter if exists
@@ -447,7 +371,7 @@ export const advancedSearchCourses = CatchAsyncError(
       // Find courses with the filter and sort options
       const courses = await CourseModel.find(filter)
         .select(
-          "name description categories price level thumbnail ratings purchased createdAt"
+          "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
         )
         .sort(sortOption);
 
@@ -706,7 +630,7 @@ export const addReplyToReview = CatchAsyncError(
 );
 
 // get all courses--- only for admin
-export const getAdminCourses = CatchAsyncError(
+export const adminGetAllCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       getAllCoursesService(res);

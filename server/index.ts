@@ -11,8 +11,7 @@ import notificationRouter from "./routes/notification.route";
 import analyticsRouter from "./routes/analytics.route";
 import layoutRouter from "./routes/layout.route";
 import stripeRouter from "./routes/stripe.route";
-import benefitRouter from "./routes/benefit.route";
-import prerequisiteRouter from "./routes/prerequisite.route";
+
 import { stripeWebhook } from "./controllers/order.controller";
 
 app.post(
@@ -51,8 +50,6 @@ app.use("/api", notificationRouter);
 app.use("/api", analyticsRouter);
 app.use("/api", layoutRouter);
 app.use("/api/stripe", stripeRouter);
-app.use("/api", benefitRouter);
-app.use("/api", prerequisiteRouter);
 
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
   console.log(`404 - Router ${req.originalUrl} not found`);
