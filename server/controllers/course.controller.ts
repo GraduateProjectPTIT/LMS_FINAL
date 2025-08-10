@@ -1,17 +1,27 @@
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
-import { createCourse, getAllCoursesService } from "../services/course.service";
+import {
+  createCourse,
+  editCourseService,
+  getCourseOverviewService,
+  getAllCoursesService,
+  adminGetAllCoursesService,
+  enrollCourseService,
+  searchCoursesService,
+  addQuestionService,
+  addAnswerService,
+  addReviewService,
+  addReplyToReviewService,
+  deleteCourseService,
+} from "../services/course.service";
 import cloudinary from "cloudinary";
-import mongoose from "mongoose";
-import path from "path";
-import ejs from "ejs";
-import sendMail from "../utils/sendMail";
-import CourseModel from "../models/course.model";
-
-import { redis } from "../utils/redis";
-import NotificationModel from "../models/notification.model";
-import userModel from "../models/user.model";
+import {
+  IAddQuestionData,
+  IAddAnswerData,
+  IAddReviewData,
+  IAddReviewReplyData,
+} from "../interfaces/course.interface";
 
 // upload course
 export const createCourseController = CatchAsyncError(
@@ -19,9 +29,14 @@ export const createCourseController = CatchAsyncError(
     try {
       const data = req.body;
       console.log("Received data:", JSON.stringify(data, null, 2));
-      
+
       // If thumbnail exists, upload to Cloudinary
-      if (data.thumbnail && typeof data.thumbnail === 'string' && (data.thumbnail.startsWith('data:') || data.thumbnail.startsWith('http'))) {
+      if (
+        data.thumbnail &&
+        typeof data.thumbnail === "string" &&
+        (data.thumbnail.startsWith("data:") ||
+          data.thumbnail.startsWith("http"))
+      ) {
         console.log("Uploading thumbnail to Cloudinary...");
         try {
           const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
@@ -38,7 +53,12 @@ export const createCourseController = CatchAsyncError(
           };
         } catch (uploadError: any) {
           console.error("Cloudinary upload error:", uploadError);
-                      return next(new ErrorHandler("Error uploading thumbnail: " + uploadError.message, 500));
+          return next(
+            new ErrorHandler(
+              "Error uploading thumbnail: " + uploadError.message,
+              500
+            )
+          );
         }
       }
 
@@ -56,70 +76,39 @@ export const editCourse = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = req.body;
-      const thumbnail = data.thumbnail;
-
       const courseId = req.params.id;
 
-      const findCourse = await CourseModel.findById(courseId);
+      // If thumbnail exists, upload to Cloudinary
+      if (
+        data.thumbnail &&
+        typeof data.thumbnail === "string" &&
+        (data.thumbnail.startsWith("data:") ||
+          data.thumbnail.startsWith("http"))
+      ) {
+        try {
+          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
+            folder: "courses",
+            width: 500,
+            height: 300,
+            crop: "fill",
+          });
 
-      if (!findCourse) {
-        return next(new ErrorHandler("Course not found", 404));
-      }
-
-      const availableCourseThumbnail = findCourse?.thumbnail;
-
-      if (thumbnail && thumbnail !== availableCourseThumbnail?.url) {
-        if (availableCourseThumbnail?.public_id) {
-          await cloudinary.v2.uploader.destroy(
-            availableCourseThumbnail.public_id
+          data.thumbnail = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url,
+          };
+        } catch (uploadError: any) {
+          console.error("Cloudinary upload error:", uploadError);
+          return next(
+            new ErrorHandler(
+              "Error uploading thumbnail: " + uploadError.message,
+              500
+            )
           );
         }
-
-        const myCloud = await cloudinary.v2.uploader.upload(thumbnail, {
-          folder: "courses",
-          width: 500,
-          height: 300,
-          crop: "fill",
-        });
-
-        data.thumbnail = {
-          public_id: myCloud.public_id,
-          url: myCloud.secure_url,
-        };
-      } else {
-        data.thumbnail = availableCourseThumbnail;
       }
 
-      const { benefits, prerequisites, ...courseData } = data;
-
-      let benefitIds: string[] = [];
-      if (benefits && benefits.length > 0) {
-        benefitIds = benefits;
-      }
-
-      let prerequisiteIds: string[] = [];
-      if (prerequisites && prerequisites.length > 0) {
-        prerequisiteIds = prerequisites;
-      }
-
-      const course = await CourseModel.findByIdAndUpdate(
-        courseId,
-        {
-          $set: {
-            ...courseData,
-            benefits: benefitIds,
-            prerequisites: prerequisiteIds,
-          },
-        },
-        { new: true }
-      ).populate("benefits").populate("prerequisites");
-
-      // await redis.del("allCourses");
-
-      res.status(201).json({
-        success: true,
-        course,
-      });
+      editCourseService(courseId, data, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -131,107 +120,7 @@ export const getCourseOverview = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
-
-      const course = await CourseModel.findById(courseId)
-        .populate("reviews.userId", "name avatar")
-        .populate("reviews.replies.userId", "name avatar")
-        .populate("benefits")
-        .populate("prerequisites");
-
-      if (!course) {
-        return next(new ErrorHandler("Course not found", 404));
-      }
-
-      const totalSections = course.courseData.length;
-      let totalLectures = 0;
-      let totalTimeMinutes = 0;
-
-      const sections = course.courseData.map((section: any) => {
-        const lectures = section.sectionContents.map((lecture: any) => ({
-          title: lecture.videoTitle,
-          time: lecture.videoLength, // minutes
-        }));
-
-        const sectionTotalLectures = lectures.length;
-        const sectionTotalTime = lectures.reduce(
-          (acc: number, curr: any) => acc + (curr.time || 0),
-          0
-        );
-
-        totalLectures += sectionTotalLectures;
-        totalTimeMinutes += sectionTotalTime;
-
-        return {
-          sectionTitle: section.sectionTitle,
-          totalLectures: sectionTotalLectures,
-          totalTime: sectionTotalTime,
-          lectures,
-        };
-      });
-
-      const formatTime = (minutes: number) => {
-        if (minutes < 60) {
-          return `${minutes}m`;
-        }
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
-      };
-
-      const courseData = {
-        _id: course._id,
-        name: course.name,
-        description: course.description,
-        categories: course.categories,
-        price: course.price,
-        estimatedPrice: course.estimatedPrice,
-        level: course.level,
-        tags: course.tags,
-        demoUrl: course.demoUrl,
-        thumbnail: course.thumbnail,
-        benefits: course.benefits,
-        prerequisites: course.prerequisites,
-        totalSections,
-        totalLectures,
-        totalTime: formatTime(totalTimeMinutes),
-        sections: sections.map((section: any) => ({
-          sectionTitle: section.sectionTitle,
-          totalLectures: section.totalLectures,
-          totalTime: formatTime(section.totalTime),
-          lectures: section.lectures.map((lecture: any) => ({
-            title: lecture.title,
-            time: formatTime(lecture.time),
-          })),
-        })),
-        reviews: course.reviews.map((review: any) => ({
-          _id: review._id,
-          user: {
-            _id: review.userId._id,
-            name: review.userId.name,
-            avatar: review.userId.avatar,
-          },
-          rating: review.rating,
-          comment: review.comment,
-          replies: review.replies.map((reply: any) => ({
-            _id: reply._id,
-            user: {
-              _id: reply.userId._id,
-              name: reply.userId.name,
-              avatar: reply.userId.avatar,
-            },
-            answer: reply.answer,
-            createdAt: reply.createdAt,
-            updatedAt: reply.updatedAt,
-          })),
-          createdAt: review.createdAt,
-          updatedAt: review.updatedAt,
-        })),
-      };
-
-      res.status(200).json({
-        success: true,
-        courseData,
-      });
+      getCourseOverviewService(courseId, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -242,18 +131,7 @@ export const getCourseOverview = CatchAsyncError(
 export const getAllCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const courses = await CourseModel.find()
-        .select("-courseData.sectionContents")
-        .populate("benefits")
-        .populate("prerequisites")
-        .populate("reviews.userId", "name avatar");
-
-      //   await redis.set("allCourses", JSON.stringify(courses));
-
-      res.status(200).json({
-        success: true,
-        courses,
-      });
+      getAllCoursesService(res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -265,120 +143,18 @@ export const enrollCourse = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
-
-      const isEnrolled = req.user?.courses?.some(
-        (c: any) => c.courseId.toString() === courseId
-      );
-
-      if (!isEnrolled && req.user?.role !== "admin") {
-        return next(
-          new ErrorHandler("You are not eligible to access this course", 500)
-        );
-      }
-
-      const course = await CourseModel.findById(courseId)
-        .populate("benefits")
-        .populate("prerequisites")
-        .populate("reviews.userId", "name avatar")
-        .populate("reviews.replies.userId", "name avatar");
-
-      res.status(200).json({
-        success: true,
-        course: course,
-      });
+      enrollCourseService(courseId, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
+// search courses
 export const searchCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { query, category, level, priceMin, priceMax, sort } = req.query;
-
-      // Build the filter object
-      const filter: any = {};
-
-      // Add text search if query exists
-      if (query) {
-        const regexPattern = new RegExp(query as string, "i");
-        
-        // Check if query is a valid ObjectId
-        const isValidObjectId = mongoose.Types.ObjectId.isValid(query as string);
-        
-        const searchConditions: any[] = [
-          { name: { $regex: regexPattern } },
-          { description: { $regex: regexPattern } },
-          { categories: { $regex: regexPattern } },
-          { tags: { $regex: regexPattern } },
-          { level: { $regex: regexPattern } },
-        ];
-
-        if (isValidObjectId) {
-          searchConditions.push({ _id: query });
-        }
-
-        filter.$or = searchConditions;
-      }
-
-      // Add category filter if exists
-      if (category) {
-        filter.categories = { $regex: new RegExp(category as string, "i") };
-      }
-
-      // Add level filter if exists
-      if (level) {
-        filter.level = { $regex: new RegExp(level as string, "i") };
-      }
-
-      // Add price range filter if exists
-      if (priceMin || priceMax) {
-        filter.price = {};
-        if (priceMin) filter.price.$gte = Number(priceMin);
-        if (priceMax) filter.price.$lte = Number(priceMax);
-      }
-
-      // Determine sort order
-      let sortOption = {};
-      if (sort) {
-        switch (sort) {
-          case "price_asc":
-            sortOption = { price: 1 };
-            break;
-          case "price_desc":
-            sortOption = { price: -1 };
-            break;
-          case "newest":
-            sortOption = { createdAt: -1 };
-            break;
-          case "oldest":
-            sortOption = { createdAt: 1 };
-            break;
-          case "popular":
-            sortOption = { purchased: -1 };
-            break;
-          case "rating":
-            sortOption = { ratings: -1 };
-            break;
-          default:
-            sortOption = { createdAt: -1 }; // Default to newest
-        }
-      } else {
-        sortOption = { createdAt: -1 }; // Default to newest
-      }
-
-      // Find courses with the filter and sort options
-      const courses = await CourseModel.find(filter)
-        .select(
-          "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
-        )
-        .sort(sortOption);
-
-      res.status(200).json({
-        success: true,
-        courses,
-      });
+      searchCoursesService(req.query, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -386,53 +162,11 @@ export const searchCourses = CatchAsyncError(
 );
 
 // add question in each lecture
-interface IAddQuestionData {
-  question: string;
-  courseId: string;
-  contentId: string;
-}
-
 export const addQuestion = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { question, courseId, contentId }: IAddQuestionData = req.body;
-      const course = await CourseModel.findById(courseId);
-
-      if (!course) return next(new ErrorHandler("Course not found", 404));
-
-      const section = course?.courseData.find((sec: any) =>
-        sec.sectionContents.some((cont: any) => cont._id.equals(contentId))
-      );
-
-      const content = section?.sectionContents.find((cont: any) =>
-        cont._id.equals(contentId)
-      );
-
-      if (!content) return next(new ErrorHandler("Content not found", 404));
-
-      // create a new question object
-      const newQuestion: any = {
-        userId: req.user?._id,
-        question,
-        replies: [],
-      };
-
-      // add this question to our course content
-      content.lectureQuestions.push(newQuestion);
-
-      await NotificationModel.create({
-        userId: req.user?._id, // objectId
-        title: "New Question",
-        message: `You have a new question in section: ${section?.sectionTitle}`,
-      });
-
-      // save the updated course
-      await course?.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Ask question successfully",
-      });
+      const questionData: IAddQuestionData = req.body;
+      addQuestionService(questionData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -440,80 +174,11 @@ export const addQuestion = CatchAsyncError(
 );
 
 // add answer in each lecture
-interface IAddAnswerData {
-  answer: string;
-  courseId: string;
-  contentId: string;
-  questionId: string;
-}
-
 export const addAnswer = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { answer, courseId, contentId, questionId }: IAddAnswerData =
-        req.body;
-      const course = await CourseModel.findById(courseId);
-
-      if (!course) return next(new ErrorHandler("Course not found", 404));
-
-      const section = course?.courseData.find((sec: any) =>
-        sec.sectionContents.some((cont: any) => cont._id.equals(contentId))
-      );
-
-      const content = section?.sectionContents.find((cont: any) =>
-        cont._id.equals(contentId)
-      );
-
-      if (!content) return next(new ErrorHandler("Content not found", 404));
-
-      const question = content?.lectureQuestions.find((q: any) =>
-        q._id.equals(questionId)
-      );
-
-      if (!question) return next(new ErrorHandler("Question not found", 404));
-
-      const askedUser = await userModel.findById(question.userId);
-
-      if (!askedUser || !askedUser.email) {
-        return next(new ErrorHandler("User email not found", 404));
-      }
-
-      const reply: any = {
-        userId: req.user?._id,
-        answer,
-      };
-
-      // add this question to our course content
-      question.replies?.push(reply);
-
-      // save the updated course
-      await course?.save();
-
-      const data = {
-        name: askedUser.name,
-        title: section?.sectionTitle,
-      };
-
-      const html = await ejs.renderFile(
-        path.join(__dirname, "../mails/question-reply.ejs"),
-        data
-      );
-
-      try {
-        await sendMail({
-          email: askedUser.email,
-          subject: "Question Reply",
-          template: "question-reply.ejs",
-          data,
-        });
-      } catch (error: any) {
-        return next(new ErrorHandler(error.message, 500));
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Reply question successfully",
-      });
+      const answerData: IAddAnswerData = req.body;
+      addAnswerService(answerData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -521,63 +186,12 @@ export const addAnswer = CatchAsyncError(
 );
 
 // add course review -- only for user who purchase the course and admin
-interface IAddReviewData {
-  review: string;
-  rating: number;
-}
-
 export const addReview = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
-      const { review, rating } = req.body as IAddReviewData;
-
-      const isEnrolled = req.user?.courses?.some(
-        (c: any) => c.courseId === courseId
-      );
-
-      if (!isEnrolled && req.user?.role !== "admin") {
-        return next(
-          new ErrorHandler("You are not eligible to review this course", 403)
-        );
-      }
-
-      const course = await CourseModel.findById(courseId);
-
-      if (!course) {
-        return next(new ErrorHandler("Course not found", 404));
-      }
-
-      const reviewData: any = {
-        userId: req.user?._id,
-        rating,
-        comment: review,
-        replies: [],
-      };
-
-      course?.reviews.push(reviewData);
-
-      // make avarage rating
-      let avg = 0;
-      course?.reviews.forEach((rev: any) => {
-        avg += rev.rating;
-      });
-      if (course) {
-        course.ratings = avg / course.reviews.length;
-      }
-
-      await course?.save();
-
-      await NotificationModel.create({
-        userId: req.user?._id,
-        title: "New Review Received",
-        message: `${req.user?.name} has given a review in ${course?.name}`,
-      });
-
-      res.status(200).json({
-        success: true,
-        course,
-      });
+      const reviewData: IAddReviewData = req.body;
+      addReviewService(courseId, reviewData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -585,83 +199,36 @@ export const addReview = CatchAsyncError(
 );
 
 // add reply in course review
-interface IAddReviewReplyData {
-  comment: string;
-  courseId: string;
-  reviewId: string;
-}
-
 export const addReplyToReview = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { comment, courseId, reviewId } = req.body as IAddReviewReplyData;
-
-      const course = await CourseModel.findById(courseId);
-
-      if (!course) {
-        return next(new ErrorHandler("Course not found", 404));
-      }
-
-      const review = course?.reviews?.find(
-        (rev: any) => rev._id.toString() === reviewId
-      );
-
-      if (!review) {
-        return next(new ErrorHandler("Review of the course not found", 404));
-      }
-
-      const replyData: any = {
-        userId: req.user?._id,
-        answer: comment,
-      };
-
-      review.replies?.push(replyData);
-
-      await course?.save();
-
-      res.status(200).json({
-        success: true,
-        course,
-      });
+      const replyData: IAddReviewReplyData = req.body;
+      addReplyToReviewService(replyData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
-// get all courses--- only for admin
-export const adminGetAllCourses = CatchAsyncError(
+// delete course
+export const deleteCourse = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      getAllCoursesService(res);
+      const courseId = req.params.id;
+      deleteCourseService(courseId, res, next);
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
-// delete course-- only for admin
-export const deleteCourse = CatchAsyncError(
+// get all courses for admin
+export const adminGetAllCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-
-      const course = await CourseModel.findById(id);
-
-      if (!course) {
-        return next(new ErrorHandler("Course not found", 404));
-      }
-
-      await course.deleteOne({ id });
-
-      //   await redis.del(id);
-
-      res.status(201).json({
-        success: true,
-        message: "Course deleted successfully",
-      });
+      adminGetAllCoursesService(res);
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
