@@ -130,12 +130,12 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
             if (!faq || !Array.isArray(faq)) {
                 return next(new ErrorHandler("Invalid data of FAQ", 404));
             }
-            const faqItems = faq.map((item: any) => ({
+            const faqs = faq.map((item: any) => ({
                 question: item.question,
                 answer: item.answer
             }));
 
-            await LayoutModel.findByIdAndUpdate(faqData._id, { $set: { faq: faqItems } });
+            await LayoutModel.findByIdAndUpdate(faqData._id, { $set: { faq: faqs } });
         }
         else if (type === "Categories") {
             const categoriesData = await LayoutModel.findOne({ type: "Categories" });
