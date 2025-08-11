@@ -48,8 +48,7 @@ export const createCourse = async (
       if (!existingCategories.includes(courseCategory)) {
         return next(
           new ErrorHandler(
-            `Category "${
-              data.categories
+            `Category "${data.categories
             }" does not exist. Available categories: ${existingCategories.join(
               ", "
             )}`,
@@ -129,8 +128,7 @@ export const editCourseService = async (
       if (!existingCategories.includes(courseCategory)) {
         return next(
           new ErrorHandler(
-            `Category "${
-              data.categories
+            `Category "${data.categories
             }" does not exist. Available categories: ${existingCategories.join(
               ", "
             )}`,
@@ -301,6 +299,8 @@ export const enrollCourseService = async (
     }
 
     const course = await CourseModel.findById(courseId)
+      .populate("courseData.sectionContents.lectureQuestions.userId", "name avatar")
+      .populate("courseData.sectionContents.lectureQuestions.replies.userId", "name avatar")
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar");
 
