@@ -14,6 +14,8 @@ import {
   addReviewService,
   addReplyToReviewService,
   deleteCourseService,
+  getAllCategoriesService,
+  getAllLevelsService,
 } from "../services/course.service";
 import cloudinary from "cloudinary";
 import {
@@ -230,5 +232,17 @@ export const adminGetAllCourses = CatchAsyncError(
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+);
+
+export const getAllCategories = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    getAllCategoriesService(res, next);
+  }
+);
+
+export const getAllLevels = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    getAllLevelsService(res, next);
   }
 );
