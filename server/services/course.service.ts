@@ -48,7 +48,8 @@ export const createCourse = async (
       if (!existingCategories.includes(courseCategory)) {
         return next(
           new ErrorHandler(
-            `Category "${data.categories
+            `Category "${
+              data.categories
             }" does not exist. Available categories: ${existingCategories.join(
               ", "
             )}`,
@@ -128,7 +129,8 @@ export const editCourseService = async (
       if (!existingCategories.includes(courseCategory)) {
         return next(
           new ErrorHandler(
-            `Category "${data.categories
+            `Category "${
+              data.categories
             }" does not exist. Available categories: ${existingCategories.join(
               ", "
             )}`,
@@ -299,8 +301,14 @@ export const enrollCourseService = async (
     }
 
     const course = await CourseModel.findById(courseId)
-      .populate("courseData.sectionContents.lectureQuestions.userId", "name avatar")
-      .populate("courseData.sectionContents.lectureQuestions.replies.userId", "name avatar")
+      .populate(
+        "courseData.sectionContents.lectureQuestions.userId",
+        "name avatar"
+      )
+      .populate(
+        "courseData.sectionContents.lectureQuestions.replies.userId",
+        "name avatar"
+      )
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar");
 
@@ -725,4 +733,32 @@ export const adminGetAllCoursesService = async (res: Response) => {
     success: true,
     courses,
   });
+};
+
+export const getAllCategoriesService = async (
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const categoriesLayout = await LayoutModel.findOne({ type: "Categories" });
+    const categories = (categoriesLayout?.categories || []).map(
+      (item: any) => item.title
+    );
+
+    res.status(200).json({ success: true, categories });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const getAllLevelsService = async (
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const levels = await CourseModel.distinct("level");
+    res.status(200).json({ success: true, levels });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
 };
