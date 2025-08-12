@@ -41,7 +41,7 @@ export const createOrder = CatchAsyncError(
 
       const data: any = {
         courseId: (course._id as string).toString(),
-        userId: (user?._id as string).toString(),
+        userId: (user?._id as unknown as string).toString(),
         payment_info,
         payment_method: payment_method || 'stripe',
       };

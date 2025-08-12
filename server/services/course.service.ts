@@ -34,6 +34,10 @@ export const createCourse = async (
       return next(new ErrorHandler("Course price is required", 400));
     }
 
+    if (!data.creatorId) {
+      return next(new ErrorHandler("Creator ID is required", 400));
+    }
+
     if (data.categories) {
       const layoutData = await LayoutModel.findOne({ type: "Categories" });
       if (!layoutData) {
@@ -274,6 +278,7 @@ export const getAllCoursesService = async (res: Response) => {
   const courses = await CourseModel.find()
     .select("-courseData.sectionContents")
     .populate("reviews.userId", "name avatar")
+    .populate("creatorId", "name avatar email")
     .sort({ createAt: -1 });
 
   res.status(200).json({
@@ -310,7 +315,8 @@ export const enrollCourseService = async (
         "name avatar"
       )
       .populate("reviews.userId", "name avatar")
-      .populate("reviews.replies.userId", "name avatar");
+      .populate("reviews.replies.userId", "name avatar")
+      .populate("creatorId", "name avatar email");
 
     res.status(200).json({
       success: true,
@@ -415,6 +421,7 @@ export const searchCoursesService = async (
       .select(
         "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
       )
+      .populate("creatorId", "name avatar email")
       .sort(sortOption);
 
     res.status(200).json({
@@ -727,6 +734,7 @@ export const deleteCourseService = async (
 export const adminGetAllCoursesService = async (res: Response) => {
   const courses = await CourseModel.find()
     .populate("reviews.userId", "name avatar")
+    .populate("creatorId", "name avatar email")
     .sort({ createAt: -1 });
 
   res.status(200).json({

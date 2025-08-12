@@ -20,6 +20,7 @@ export interface ICourse extends Document {
     courseData: ICourseSection[];
     ratings?: number;
     purchased: number;
+    creatorId: mongoose.Types.ObjectId;
 }
 
 interface ICourseReview extends Document {
@@ -172,6 +173,11 @@ const courseSchema = new Schema<ICourse>(
         purchased: {
             type: Number,
             default: 0,
+        },
+        creatorId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
         },
     },
     { timestamps: true }
