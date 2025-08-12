@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 
 // Lấy giá trị từ .env và chuyển sang số (tính bằng giây)
 const accessTokenExpire = parseInt(
-  process.env.ACCESS_TOKEN_EXPIRE || "300",
+  process.env.ACCESS_TOKEN_EXPIRE || "1800",
   10
 ); // 300 giây = 5 phút
 const refreshTokenExpire = parseInt(

@@ -246,8 +246,8 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
 
 // --- NGHIỆP VỤ ĐĂNG XUẤT ---
 export const logoutUserService = async (res: Response, userId: string) => {
-  res.cookie("access_token", "", { maxAge: 1 });
-  res.cookie("refresh_token", "", { maxAge: 1 });
+  res.clearCookie("access_token");
+  res.clearCookie("refresh_token");
 
   return "Logged out successfully";
 };
