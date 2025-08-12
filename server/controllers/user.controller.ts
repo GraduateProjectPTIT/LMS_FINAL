@@ -41,7 +41,7 @@ export const updatePassword = CatchAsyncError(
 export const getUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id;
-
+    console.log(userId);
     if (!userId) {
       return next(new ErrorHandler("Authentication required", 401));
     }

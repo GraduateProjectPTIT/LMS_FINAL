@@ -2,20 +2,20 @@
 import userModel from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
-import { redis } from "../utils/redis";
+// import { redis } from "../utils/redis";
 import { IUpdateUserInfo } from "../types/user.types";
 import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
-  const userJson = await redis.get(id);
-  if (userJson) {
-    return JSON.parse(userJson);
-  }
+  // const userJson = await redis.get(id);
+  // if (userJson) {
+  //   return JSON.parse(userJson);
+  // }
   const user = await userModel.findById(id);
-  if (user) {
-    await redis.set(id, JSON.stringify(user));
-  }
+  // if (user) {
+  //   await redis.set(id, JSON.stringify(user));
+  // }
   return user;
 };
 
@@ -39,7 +39,7 @@ export const updateUserInfoService = async (
     user.name = data.name;
   }
   await user.save();
-  await redis.set(userId, JSON.stringify(user));
+  // await redis.set(userId, JSON.stringify(user));
   return user;
 };
 
@@ -74,7 +74,7 @@ export const updateProfilePictureService = async (
 
   user.avatar = { public_id: result.public_id, url: result.secure_url };
   await user.save();
-  await redis.set(userId, JSON.stringify(user));
+  // await redis.set(userId, JSON.stringify(user));
   return user;
 };
 
@@ -89,7 +89,7 @@ export const updateUserRoleService = async (id: string, role: string) => {
   if (!user) {
     throw new ErrorHandler("User not found", 404);
   }
-  await redis.set(id, JSON.stringify(user));
+  // await redis.set(id, JSON.stringify(user));
   return user;
 };
 
@@ -104,7 +104,7 @@ export const deleteUserService = async (id: string) => {
     await cloudinary.v2.uploader.destroy(user.avatar.public_id);
   }
   await user.deleteOne();
-  await redis.del(id);
+  // await redis.del(id);
 };
 
 // --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---

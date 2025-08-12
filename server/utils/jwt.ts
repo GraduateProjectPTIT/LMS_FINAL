@@ -34,7 +34,7 @@ export const refreshTokenOptions: ITokenOptions = {
 
 export const generateAccessToken = (user: IUser): string => {
   return jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN || "", {
-    expiresIn: "5m",
+    expiresIn: "30m",
   });
 };
 

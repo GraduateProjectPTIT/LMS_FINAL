@@ -25,7 +25,7 @@ const createActivationToken = (user: IRegistrationBody): IActivationToken => {
   const token = jwt.sign(
     { user, activationCode },
     process.env.ACTIVATION_SECRET as Secret,
-    { expiresIn: "5m" }
+    { expiresIn: "30m" }
   );
   return { token, activationCode };
 };

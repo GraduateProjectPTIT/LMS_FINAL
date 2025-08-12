@@ -18,7 +18,7 @@ const upload = multer({ storage }).single("avatar");
 
 // Các route cho người dùng thông thường (đã đăng nhập)
 userRouter.get("/user/me", isAuthenticated, getUserInfo);
-userRouter.put("/user/update-info", isAuthenticated, updateUserInfo);
+userRouter.put("/user/update_user_info", isAuthenticated, updateUserInfo);
 userRouter.put(
   "/user/update-avatar",
   isAuthenticated,
@@ -29,7 +29,7 @@ userRouter.put("/user/update_password", isAuthenticated, updatePassword);
 
 // Các route cho quản trị viên (Admin)
 userRouter.get(
-  "/user/get-all-users",
+  "/user/get_all_users",
   isAuthenticated,
   authorizeRoles("admin"),
   getAllUsers

@@ -18,8 +18,8 @@ authRouter.post("/auth/register", register);
 authRouter.post("/auth/activate", activateUser);
 authRouter.post("/auth/login", login);
 authRouter.post("/auth/social_auth", socialAuth);
-authRouter.post("/auth/forgot-password", forgotPassword);
-authRouter.put("/auth/reset-password/:token", resetPassword);
+authRouter.post("/auth/forgot_password", forgotPassword);
+authRouter.put("/auth/reset_password/:token", resetPassword);
 
 // Các route này yêu cầu người dùng phải đăng nhập
 authRouter.post("/auth/logout", isAuthenticated, logout);
