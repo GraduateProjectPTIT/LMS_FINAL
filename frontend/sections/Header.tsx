@@ -104,12 +104,12 @@ const Header = () => {
 
   const handleSearchSubmit = (e: any) => {
     e.preventDefault();
-    router.push(`/courses?search=${searchTerm}`);
+    router.push(`/courses/search?query=${searchTerm}`);
   }
 
   const handleMobileSearchSubmit = (e: any) => {
     e.preventDefault();
-    router.push(`/courses?search=${mobileSearchTerm}`);
+    router.push(`/courses/search?query=${mobileSearchTerm}`);
     closeMobileSearch();
   }
 

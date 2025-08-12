@@ -12,11 +12,8 @@ const CallToActionCourse = () => {
                         Our 30-day money-back guarantee ensures you can try with confidence.
                     </p>
                     <div className="flex flex-wrap gap-4">
-                        <button className="bg-white hover:bg-gray-50 text-indigo-600 font-bold py-3 px-8 rounded-lg transition-colors shadow-lg hover:shadow-xl">
+                        <button className="bg-white hover:bg-gray-50 hover:cursor-pointer hover:opacity-70 text-indigo-600 font-bold py-3 px-8 rounded-lg transition-colors shadow-lg hover:shadow-xl">
                             Enroll Now
-                        </button>
-                        <button className="bg-transparent border-2 border-white/80 hover:bg-white/10 text-white font-bold py-3 px-8 rounded-lg transition-colors">
-                            Try Free Preview
                         </button>
                     </div>
                 </div>

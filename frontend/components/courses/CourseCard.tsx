@@ -10,10 +10,11 @@ import MissingImage from '@/public/missing_image.jpg'
 interface CourseCardProps {
     course: Course;
     viewMode: 'grid' | 'list';
-    onViewDemo: (url: string) => void;
+    setShowPreviewModal: React.Dispatch<React.SetStateAction<boolean>>;
+    setSelectedCourse: React.Dispatch<React.SetStateAction<{}>>;
 }
 
-const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
+const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }: CourseCardProps) => {
 
     const router = useRouter();
 
@@ -34,12 +35,17 @@ const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
     };
 
     const handleViewDetails = (courseId: string) => {
-        router.push(`/course/${courseId}`)
+        router.push(`/course-overview/${courseId}`)
+    }
+
+    const handleClickPreview = (course: any) => {
+        setSelectedCourse(course);
+        setShowPreviewModal(true);
     }
 
     if (viewMode === 'list') {
         return (
-            <Card className="w-full group hover:shadow-md hover:cursor-pointer transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+            <Card onClick={() => handleViewDetails(course._id)} className="w-full group hover:shadow-md hover:cursor-pointer transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
                 <CardContent className="p-6">
                     <div className="flex gap-6">
                         <div className="flex-shrink-0">
@@ -98,7 +104,10 @@ const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => onViewDemo(course.demoUrl)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleClickPreview(course)
+                                        }}
                                         className="flex items-center gap-2 hover:cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900/70"
                                     >
                                         <Play className="h-4 w-4" />
@@ -124,7 +133,7 @@ const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
     }
 
     return (
-        <Card className="w-full group hover:shadow-md hover:cursor-pointer transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:-translate-y-1">
+        <Card onClick={() => handleViewDetails(course._id)} className="w-full group hover:shadow-md hover:cursor-pointer transition-all duration-300 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:-translate-y-1">
             <CardHeader className="p-0">
                 <div className="relative overflow-hidden">
                     <img
@@ -178,7 +187,10 @@ const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onViewDemo(course.demoUrl)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleClickPreview(course)
+                            }}
                             className="flex items-center hover:cursor-pointer gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 "
                         >
                             <Play className="h-4 w-4" />
@@ -187,7 +199,7 @@ const CourseCard = ({ course, viewMode, onViewDemo }: CourseCardProps) => {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/course/${course._id}`)}
+                            onClick={() => handleViewDetails(course._id)}
                             className="flex items-center hover:cursor-pointer gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 "
                         >
                             <Eye className="h-4 w-4" />

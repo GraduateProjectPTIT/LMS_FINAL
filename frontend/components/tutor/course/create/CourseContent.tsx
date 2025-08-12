@@ -8,7 +8,7 @@ import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FiPlusCircle } from "react-icons/fi";
 import { Separator } from '@/components/ui/separator';
 
-import { CourseDataProps, SectionContentProps, VideoLinkProps } from "@/type"
+import { CourseDataProps, CourseLectureProps, VideoLinkProps } from "@/type"
 
 interface CourseContentProps {
     active: number,
@@ -34,7 +34,7 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
                 return;
             }
 
-            section.sectionContents.forEach((content: SectionContentProps) => {
+            section.sectionContents.forEach((content: CourseLectureProps) => {
                 if (!content.videoTitle || !content.videoDescription || !content.videoUrl || !content.videoLength) {
                     isValid = false;
                     return;
@@ -135,7 +135,7 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
         setCourseData(updatedData);
     };
 
-    const handleContentChange = (sectionIndex: number, contentIndex: number, field: keyof SectionContentProps, value: string | number) => {
+    const handleContentChange = (sectionIndex: number, contentIndex: number, field: keyof CourseLectureProps, value: string | number) => {
         const updatedData = [...courseData];
         if (field === 'videoLength') {
             updatedData[sectionIndex].sectionContents[contentIndex][field] = Number(value);
@@ -206,7 +206,7 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
                                 </div>
 
                                 <div className="mt-2">
-                                    {section.sectionContents.map((content: SectionContentProps, contentIndex: number) => (
+                                    {section.sectionContents.map((content: CourseLectureProps, contentIndex: number) => (
                                         <div key={contentIndex} className="border border-gray-300 dark:border-slate-700 rounded-lg p-4 mb-4 bg-white dark:bg-slate-700">
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-md font-medium">Content #{contentIndex + 1}</h3>

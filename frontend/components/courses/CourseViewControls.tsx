@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Grid, List, LayoutGrid } from 'lucide-react';
 
@@ -7,7 +7,6 @@ interface CourseViewControlsProps {
     onViewModeChange: (mode: 'grid' | 'list') => void;
     totalResults: number;
     currentPage: number;
-    totalPages: number;
     itemsPerPage: number;
 }
 
@@ -16,33 +15,28 @@ const CourseViewControls = ({
     onViewModeChange,
     totalResults,
     currentPage,
-    totalPages,
     itemsPerPage,
 }: CourseViewControlsProps) => {
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalResults);
 
     const [isMobile, setIsMobile] = useState(false);
-
-    console.log(viewMode)
+    const hasSwitchedRef = useRef(false);
 
     useEffect(() => {
         const checkScreenSize = () => {
             const mobile = window.innerWidth < 768; // md breakpoint
             setIsMobile(mobile);
 
-            // Auto-set to grid on mobile
-            if (mobile && viewMode === 'list') {
+            if (mobile && viewMode === 'list' && !hasSwitchedRef.current) {
+                hasSwitchedRef.current = true;
                 onViewModeChange('grid');
             }
         };
 
         checkScreenSize();
-
         window.addEventListener('resize', checkScreenSize);
-
         return () => window.removeEventListener('resize', checkScreenSize);
-
     }, [viewMode, onViewModeChange])
 
     return (

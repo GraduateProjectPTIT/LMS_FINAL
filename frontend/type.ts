@@ -31,7 +31,7 @@ export interface VideoLinkProps {
     url: string;
 }
 
-export interface SectionContentProps {
+export interface CourseLectureProps {
     videoTitle: string;
     videoDescription: string;
     videoUrl: string;
@@ -41,7 +41,7 @@ export interface SectionContentProps {
 
 export interface CourseDataProps {
     sectionTitle: string;
-    sectionContents: SectionContentProps[]
+    sectionContents: CourseLectureProps[]
 }
 
 export interface Course extends CourseInfoProps {

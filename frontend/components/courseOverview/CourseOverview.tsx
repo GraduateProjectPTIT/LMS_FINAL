@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { BenefitsProps, PrerequisitesProps } from '@/type';
 import Image from 'next/image';
-import { Clock, Award, CheckCircle, BookOpen, Play, Users, BarChart2, Star, Shield, User, Globe, Heart, Share2, Download, MessageCircle } from 'lucide-react';
+import { Clock, Award, CheckCircle, BookOpen, Play, Users, BarChart2, Star, User, Globe, Share2, Download, MessageCircle } from 'lucide-react';
 import Loader from '../Loader';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
@@ -14,8 +14,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MissingImage from "@/public/missing_image.jpg"
 import NoVideoFound from "@/public/no_video_found.jpg"
+import { isYouTubeUrl, toYouTubeEmbedUrl } from '@/utils/youtube';
+import toast from 'react-hot-toast';
 
-const CourseDetail = ({ courseId }: { courseId: string }) => {
+const CourseOverview = ({ courseId }: { courseId: string }) => {
 
     const router = useRouter();
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -25,15 +27,15 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
     const [prerequisites, setPrerequisites] = useState<PrerequisitesProps[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [lectures, setLectures] = useState<any[]>([]);
-
     const [isLoading, setIsLoading] = useState(true);
-
     const [activeSections, setActiveSections] = useState<number[]>([]);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [loadingEnroll, setLoadingEnroll] = useState(false);
 
     const handleGetCourseData = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/get_single_course/${courseId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/overview/${courseId}`, {
                 method: 'GET',
                 credentials: 'include',
             });
@@ -41,13 +43,18 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
             if (!res.ok) {
                 console.log("Fetching course data failed: ", data.message);
                 return;
-            } else {
-                setCourseData(data.courseData);
-                setBenefits(data.courseData.benefits);
-                setPrerequisites(data.courseData.prerequisites);
-                setSections(data.courseData.sections);
-                setLectures(data.courseData.sections.lectures);
             }
+
+            const c = data?.courseData ?? {};
+            setCourseData(c);
+            setBenefits(c?.benefits ?? []);
+            setPrerequisites(c?.prerequisites ?? []);
+            setSections(c?.sections ?? []);
+
+            // vì sections là 1 mảng nên map qua để gom tất cả lecture
+            const allLectures = (c?.sections ?? []).flatMap((s: any) => s?.lectures ?? []);
+            setLectures(allLectures);
+
         } catch (error: any) {
             console.log(error.message);
         } finally {
@@ -68,27 +75,15 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
 
     useEffect(() => {
         handleGetCourseData();
-        checkCourseAccessed(courseId);
-    }, []);
+    }, [courseId]);
 
     const toggleSection = (index: number) => {
         setActiveSections(prevSections =>
             prevSections.includes(index)
-                ? prevSections.filter(i => i !== index) // Remove if already open
-                : [...prevSections, index] // Add if closed
+                ? prevSections.filter(i => i !== index)
+                : [...prevSections, index]
         );
     };
-
-
-    const [isPlaying, setIsPlaying] = useState(false);
-
-    const getStreamableEmbedUrl = (url: string) => {
-        if (!url) return null;
-        const videoId = url.split("/").pop(); // Get the last part of the URL (e.g., "abc123" from "https://streamable.com/abc123")
-        return videoId ? `https://streamable.com/e/${videoId}?autoplay=0` : null;
-    };
-
-    const [loadingEnroll, setLoadingEnroll] = useState(false);
 
     const handleEnroll = (courseId: string) => {
         setLoadingEnroll(true);
@@ -99,8 +94,8 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
         return thumbnailUrl || MissingImage;
     }
 
-    const getValidDemoUrl = (demoUrl?: string) => {
-        return demoUrl ? getStreamableEmbedUrl(demoUrl) : null;
+    const handleBuyCourse = () => {
+        toast.success("Buying course")
     }
 
     return (
@@ -114,6 +109,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                         <div className="bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#183dc2aa,#EAEEFE_100%)] dark:bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#0A1D56,#0D1B2A_100%)] overflow-x-clip">
                             <div className="container">
                                 <div className="flex flex-col md:flex-row gap-8 py-4 md:gap-12 relative">
+                                    {/* Course Basic Information */}
                                     <div className="md:w-1/2 flex flex-col justify-center">
                                         {/* Course Category Badge */}
                                         <div className="inline-flex items-center px-3 py-1 rounded-full bg-black/10 dark:bg-white/20 backdrop-blur-sm text-black dark:text-white text-sm font-medium mb-4 self-start">
@@ -170,13 +166,13 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                         </div>
                                     </div>
 
+                                    {/* Course Thumbnail with Play Button */}
                                     <div className="md:w-1/2 md:my-[20px]">
-                                        {/* Course Thumbnail with Play Button */}
                                         <div className="rounded-2xl overflow-hidden shadow-2xl relative group transition-all hover:shadow-indigo-500/20 hover:border-white/30">
                                             <div className="aspect-video relative">
-                                                {isPlaying && getValidDemoUrl(courseData.demoUrl) ? (
+                                                {isPlaying && isYouTubeUrl(courseData.demoUrl) ? (
                                                     <iframe
-                                                        src={getValidDemoUrl(courseData.demoUrl)!}
+                                                        src={toYouTubeEmbedUrl(courseData.demoUrl) || undefined}
                                                         allow="autoplay; fullscreen"
                                                         allowFullScreen
                                                         className="w-full h-full rounded-2xl"
@@ -207,64 +203,6 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                                         )}
                                                     </>
                                                 )}
-                                            </div>
-                                        </div>
-
-
-                                        {/* Enrollment & Pricing Card */}
-                                        <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 transform hover:-translate-y-1 transition-transform duration-300">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <div className="text-3xl font-bold text-gray-800 dark:text-white">
-                                                    ${courseData.price}
-                                                    {courseData.estimatedPrice && (
-                                                        <span className="text-lg text-gray-500 dark:text-gray-400 line-through ml-2">
-                                                            ${courseData.estimatedPrice}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {courseData.estimatedPrice && (
-                                                    <div className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 px-3 py-1 rounded-full text-sm font-medium">
-                                                        Save {Math.round((1 - courseData.price / courseData.estimatedPrice) * 100)}%
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <button className="relative w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-4 px-6 rounded-xl transition-all mb-4 shadow-lg hover:shadow-xl overflow-hidden group">
-                                                {
-                                                    checkCourseAccessed(courseId) ? (
-                                                        <span onClick={() => handleEnroll(courseId)} className="relative z-10">
-                                                            {
-                                                                loadingEnroll ? "Enrolling..." : "Enter to course"
-                                                            }
-                                                        </span>
-                                                    ) : (
-                                                        <span className="relative z-10">
-                                                            Enroll now
-                                                        </span>
-                                                    )
-                                                }
-                                            </button>
-
-                                            {/* Action Buttons */}
-                                            <div className="flex justify-between mb-4">
-                                                <button className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                    <Heart size={16} />
-                                                    <span className="text-sm">Wishlist</span>
-                                                </button>
-                                                <button className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                    <Share2 size={16} />
-                                                    <span className="text-sm">Share</span>
-                                                </button>
-                                                <button className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                    <Download size={16} />
-                                                    <span className="text-sm">Save</span>
-                                                </button>
-                                            </div>
-
-                                            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-300 mt-3 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                                                <Shield size={16} className="text-indigo-500" />
-                                                <span>30-Day Money-Back Guarantee</span>
                                             </div>
                                         </div>
                                     </div>
@@ -355,7 +293,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
 
                                         <div className="flex flex-col md:flex-row gap-6">
                                             <div className="md:w-1/4 flex flex-col items-center md:items-start">
-                                                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-100 dark:border-indigo-900 shadow-md mb-3">
+                                                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-100 dark:border-blue-900 shadow-md mb-3">
                                                     {courseData.instructor?.avatar ? (
                                                         <Image
                                                             src={courseData.instructor.avatar.url}
@@ -366,7 +304,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                                             className="rounded-full"
                                                         />
                                                     ) : (
-                                                        <div className="w-full h-full bg-indigo-200 dark:bg-indigo-800 flex items-center justify-center">
+                                                        <div className="w-full h-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
                                                             <User size={48} className="text-indigo-600 dark:text-indigo-300" />
                                                         </div>
                                                     )}
@@ -461,7 +399,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                                         }
                                                     </span>
                                                 ) : (
-                                                    <span className="relative z-10">
+                                                    <span onClick={handleBuyCourse} className="relative z-10">
                                                         Enroll now
                                                     </span>
                                                 )
@@ -503,4 +441,4 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
     )
 }
 
-export default CourseDetail
+export default CourseOverview

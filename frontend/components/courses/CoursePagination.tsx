@@ -19,35 +19,29 @@ const CoursePagination = ({
     onItemsPerPageChange,
 }: CoursePaginationProps) => {
     const getVisiblePages = () => {
+        if (totalPages <= 1) return [1];
+
         const delta = 2;
-        const range = [];
-        const rangeWithDots = [];
+        const middle: number[] = [];
 
         for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-            range.push(i);
+            middle.push(i);
         }
 
-        if (currentPage - delta > 2) {
-            rangeWithDots.push(1, '...');
-        } else {
-            rangeWithDots.push(1);
-        }
+        const pages: (number | string)[] = [1];
 
-        rangeWithDots.push(...range);
+        if (middle.length && middle[0] > 2) pages.push('...');
+        pages.push(...middle);
+        if (middle.length && middle[middle.length - 1] < totalPages - 1) pages.push('...');
 
-        if (currentPage + delta < totalPages - 1) {
-            rangeWithDots.push('...', totalPages);
-        } else {
-            rangeWithDots.push(totalPages);
-        }
-
-        return rangeWithDots;
+        pages.push(totalPages);
+        return pages;
     };
 
-    if (totalPages <= 1) return null;
 
     return (
         <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+            {/* Items per page */}
             <div className="flex items-center gap-4">
                 <div className="bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-3">
@@ -59,37 +53,44 @@ const CoursePagination = ({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg shadow-xl">
-                                <SelectItem value="6" className="hover:bg-slate-50 dark:hover:bg-slate-700">6</SelectItem>
-                                <SelectItem value="12" className="hover:bg-slate-50 dark:hover:bg-slate-700">12</SelectItem>
+                                <SelectItem value="4" className="hover:bg-slate-50 dark:hover:bg-slate-700">4</SelectItem>
+                                <SelectItem value="8" className="hover:bg-slate-50 dark:hover:bg-slate-700">8</SelectItem>
+                                <SelectItem value="16" className="hover:bg-slate-50 dark:hover:bg-slate-700">16</SelectItem>
                                 <SelectItem value="24" className="hover:bg-slate-50 dark:hover:bg-slate-700">24</SelectItem>
-                                <SelectItem value="48" className="hover:bg-slate-50 dark:hover:bg-slate-700">48</SelectItem>
+                                <SelectItem value="32" className="hover:bg-slate-50 dark:hover:bg-slate-700">32</SelectItem>
+                                <SelectItem value="40" className="hover:bg-slate-50 dark:hover:bg-slate-700">40</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
             </div>
 
+            {/* Pagination Controls */}
             <div className="flex items-center gap-2">
                 <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 p-1 flex items-center gap-1">
+                    {/* First Page */}
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onPageChange(1)}
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || totalPages === 1}
                         className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronsLeft className="h-4 w-4" />
                     </Button>
+
+                    {/* Previous Page */}
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onPageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || totalPages === 1}
                         className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
 
+                    {/* Page Numbers */}
                     {getVisiblePages().map((page, index) => (
                         <React.Fragment key={index}>
                             {page === '...' ? (
@@ -100,7 +101,7 @@ const CoursePagination = ({
                                 <button
                                     onClick={() => onPageChange(page as number)}
                                     className={`h-8 rounded-[10px] min-w-[32px] px-2 text-sm transition-all hover:cursor-pointer ${currentPage === page
-                                        ? 'bg-slate-300 dark:bg-slate-300 text-white dark:text-slate-900 shadow-sm'
+                                        ? 'bg-gray-300 dark:bg-slate-300 text-slate-700 dark:text-slate-900 shadow-sm'
                                         : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
                                         }`}
                                 >
@@ -110,20 +111,23 @@ const CoursePagination = ({
                         </React.Fragment>
                     ))}
 
+                    {/* Next Page */}
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onPageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || totalPages === 1}
                         className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
+
+                    {/* Last Page */}
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onPageChange(totalPages)}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || totalPages === 1}
                         className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronsRight className="h-4 w-4" />
