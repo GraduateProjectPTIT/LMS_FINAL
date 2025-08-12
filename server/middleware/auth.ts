@@ -55,7 +55,7 @@ export const isAuthenticated = CatchAsyncError(
       // FIX BẢO MẬT: Dùng jwt.verify để kiểm tra chữ ký
       const decoded = jwt.verify(
         access_token,
-        process.env.ACCESS_TOKEN_SECRET! // Đảm bảo key này đúng với key khi tạo token
+        process.env.ACCESS_TOKEN! // Đảm bảo key này đúng với key khi tạo token
       ) as JwtPayload;
 
       const user = await userModel.findById(decoded.id);
