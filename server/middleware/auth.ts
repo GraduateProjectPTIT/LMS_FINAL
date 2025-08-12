@@ -7,6 +7,7 @@ import { updateAccessToken } from "../controllers/auth.controller";
 import userModel from "../models/user.model";
 import { updateAccessTokenService } from "../services/auth.service";
 import { accessTokenOptions, refreshTokenOptions } from "../utils/jwt";
+import { Model } from "mongoose";
 
 // authenticated user
 // isAuthenticated đã được sửa lại
@@ -88,5 +89,52 @@ export const authorizeRoles = (...roles: string[]) => {
       );
     }
     next();
+  };
+};
+
+// Middleware này nhận vào một Model để có thể tái sử dụng
+export const checkOwnership = (model: Model<any>) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.user?.role === "admin") {
+        return next();
+      }
+
+      const resourceId = req.params.id;
+      const userId = req.user?._id;
+      const resource = await model.findById(resourceId);
+
+      if (!resource) {
+        return next(new ErrorHandler("Resource not found", 404));
+      }
+
+      if (!userId) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      console.log(resource);
+      // ✅ THÊM BƯỚC KIỂM TRA NÀY
+      // Kiểm tra xem document có thông tin người tạo không
+      if (!resource.creatorId) {
+        // Trả về lỗi 500 (Server Error) hoặc 403 (Forbidden) tùy theo logic của bạn
+        return next(
+          new ErrorHandler("Resource is missing ownership information", 500)
+        );
+      }
+
+      // Bây giờ bạn có thể yên tâm so sánh
+      if (resource.creatorId.toString() !== userId.toString()) {
+        return next(
+          new ErrorHandler(
+            "Forbidden: You are not the owner of this resource",
+            403
+          )
+        );
+      }
+
+      next();
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
   };
 };
