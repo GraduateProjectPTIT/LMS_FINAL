@@ -11,7 +11,7 @@ import notificationRouter from "./routes/notification.route";
 import analyticsRouter from "./routes/analytics.route";
 import layoutRouter from "./routes/layout.route";
 import stripeRouter from "./routes/stripe.route";
-
+import authRouter from "./routes/auth.route";
 import { stripeWebhook } from "./controllers/order.controller";
 
 app.post(
@@ -19,16 +19,15 @@ app.post(
   express.raw({ type: "application/json" }),
   stripeWebhook
 );
-
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use(
-    cors({
-        origin: ["http://localhost:3000"],
-        credentials: true,
-    })
+  cors({
+    origin: ["http://localhost:3000"],
+    credentials: true,
+  })
 );
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -36,21 +35,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.get("/test", (req: Request, res: Response) => {
+// testing api
+app.get("/test", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
     success: true,
     message: "API is working",
   });
 });
 
-app.use("/api", userRouter);
-app.use("/api", courseRouter);
-app.use("/api", orderRouter);
-app.use("/api", notificationRouter);
-app.use("/api", analyticsRouter);
-app.use("/api", layoutRouter);
+app.use(
+  "/api",
+  authRouter,
+  userRouter,
+  courseRouter,
+  orderRouter,
+  notificationRouter,
+  analyticsRouter,
+  layoutRouter
+);
+
 app.use("/api/stripe", stripeRouter);
 
+// unknown route
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
   console.log(`404 - Router ${req.originalUrl} not found`);
   const err = new Error(`Router ${req.originalUrl} not found`) as any;
