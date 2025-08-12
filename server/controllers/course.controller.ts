@@ -32,6 +32,12 @@ export const createCourseController = CatchAsyncError(
       const data = req.body;
       console.log("Received data:", JSON.stringify(data, null, 2));
 
+      if (req.user) {
+        data.creatorId = req.user._id;
+      } else {
+        return next(new ErrorHandler("User not authenticated", 401));
+      }
+
       // If thumbnail exists, upload to Cloudinary
       if (
         data.thumbnail &&
