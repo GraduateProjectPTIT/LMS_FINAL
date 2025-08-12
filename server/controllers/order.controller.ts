@@ -4,7 +4,7 @@ import OrderModel, { IOrder } from "../models/order.model";
 import userModel from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import CourseModel, { ICourse } from "../models/course.model";
-import { getAllOrdersService, newOrder } from "../services/order.service";
+import { getAllOrdersService, getPaidOrdersService, newOrder } from "../services/order.service";
 import sendMail from "../utils/sendMail";
 import path from "path";
 import ejs from "ejs";
@@ -18,7 +18,7 @@ require("dotenv").config();
 export const createOrder = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId, payment_info } = req.body as IOrder;
+      const { courseId, payment_info, payment_method } = req.body as IOrder;
 
       const userId = req.user?._id;
       const user = await userModel.findById(req.user?._id);
@@ -43,6 +43,7 @@ export const createOrder = CatchAsyncError(
         courseId: (course._id as string).toString(),
         userId: (user?._id as string).toString(),
         payment_info,
+        payment_method: payment_method || 'stripe',
       };
 
       const mailData = {
@@ -130,6 +131,16 @@ export const getUserOrders = CatchAsyncError(
   }
 );
 
+export const getPaidOrders = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getPaidOrdersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
 export const createStripeCheckoutSession = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -137,7 +148,7 @@ export const createStripeCheckoutSession = CatchAsyncError(
       const userId = req.user?._id;
       const user = await userModel.findById(userId);
 
-      console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+      console.log("ORIGIN:", process.env.ORIGIN);
       console.log("CourseId:", courseId);
       console.log("UserId:", userId);
 
@@ -161,6 +172,22 @@ export const createStripeCheckoutSession = CatchAsyncError(
         );
       }
 
+      const baseUrl = 'http://localhost:3000';
+
+      try {
+        new URL(baseUrl);
+      } catch (error) {
+        console.error("Invalid ORIGIN URL:", baseUrl);
+        return next(new ErrorHandler("Invalid ORIGIN URL configuration", 500));
+      }
+      
+      const successUrl = `${baseUrl}/course-enroll/${courseId}?success=true&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/courses?canceled=true`;
+
+      console.log("Base URL:", baseUrl);
+      console.log("Success URL:", successUrl);
+      console.log("Cancel URL:", cancelUrl);
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
@@ -183,8 +210,8 @@ export const createStripeCheckoutSession = CatchAsyncError(
           courseId: courseId,
           userId: userId?.toString() || "",
         },
-        success_url: `${process.env.ORIGIN || 'http://localhost:3000'}/course-enroll/${courseId}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.ORIGIN || 'http://localhost:3000'}/courses?canceled=true`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
       });
 
       res.status(200).json({
@@ -278,6 +305,7 @@ export const handleSuccessfulPayment = async (session: any) => {
         amount: session.amount_total / 100,
         currency: session.currency,
       },
+      payment_method: 'stripe',
     };
 
     await OrderModel.create(orderData);
