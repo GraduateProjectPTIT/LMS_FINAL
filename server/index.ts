@@ -10,21 +10,30 @@ import orderRouter from "./routes/order.route";
 import notificationRouter from "./routes/notification.route";
 import analyticsRouter from "./routes/analytics.route";
 import layoutRouter from "./routes/layout.route";
+import stripeRouter from "./routes/stripe.route";
 import authRouter from "./routes/auth.route";
+import { stripeWebhook } from "./controllers/order.controller";
 
-// body parser
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 app.use(express.json({ limit: "50mb" }));
-
-// cookie parser
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// cors => cors origin resource sharing
 app.use(
   cors({
     origin: ["http://localhost:3000"],
     credentials: true,
   })
 );
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`${req.method} ${req.originalUrl}`);
+  next();
+});
 
 // testing api
 app.get("/test", (req: Request, res: Response, next: NextFunction) => {
@@ -45,8 +54,11 @@ app.use(
   layoutRouter
 );
 
+app.use("/api/stripe", stripeRouter);
+
 // unknown route
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  console.log(`404 - Router ${req.originalUrl} not found`);
   const err = new Error(`Router ${req.originalUrl} not found`) as any;
   err.statusCode = 404;
   next(err);

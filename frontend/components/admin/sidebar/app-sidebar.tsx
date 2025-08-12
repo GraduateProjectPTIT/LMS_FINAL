@@ -33,9 +33,9 @@ const sectionData = {
                     value: "courses_analytic",
                 },
                 {
-                    title: "Orders Analytics",
-                    url: "/admin/statistics/orders",
-                    value: "orders_analytic",
+                    title: "Revenue Analytics",
+                    url: "/admin/statistics/revenues",
+                    value: "revenue_analytic",
                 },
             ],
         },
@@ -60,33 +60,6 @@ const sectionData = {
                     title: "Orders Data",
                     url: "/admin/data/orders",
                     value: "orders_data",
-                },
-                {
-                    title: "Notifications Data",
-                    url: "/admin/data/notifications",
-                    value: "notifications_data",
-                },
-            ],
-        },
-        {
-            title: "Courses",
-            url: "/admin/courses",
-            icon: TvMinimalPlay,
-            items: [
-                {
-                    title: "Create Course",
-                    url: "/admin/courses/create_course",
-                    value: "create_course",
-                },
-                {
-                    title: "Live Course",
-                    url: "/admin/courses/live_course",
-                    value: "live_course",
-                },
-                {
-                    title: "Edit Courses",
-                    url: "/admin/courses/edit_course/",
-                    value: "edit_course",
                 },
             ],
         },

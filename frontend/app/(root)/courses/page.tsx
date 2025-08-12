@@ -25,7 +25,7 @@ const CoursesPage = () => {
     const [sortBy, setSortBy] = useState('default');
 
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(12);
+    const [itemsPerPage, setItemsPerPage] = useState(6);
 
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
@@ -66,8 +66,6 @@ const CoursesPage = () => {
             handleSearchCourses();
         }
     }, [searchTerm])
-
-
 
     // Get unique categories and levels
     const { categories, levels } = useMemo(() => {
@@ -224,7 +222,7 @@ const CoursesPage = () => {
 
     return (
         <Layout>
-            <div className='min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800'>
+            <div className='min-h-screen theme-mode dark:theme-mode'>
                 <div className="container">
                     <div className='flex flex-col gap-4 py-8'>
 

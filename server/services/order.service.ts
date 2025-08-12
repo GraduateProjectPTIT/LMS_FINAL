@@ -21,3 +21,18 @@ export const getAllOrdersService = async (res: Response) => {
         orders,
     })
 }
+
+// Get all paid orders
+export const getPaidOrdersService = async (res: Response) => {
+    const orders = await OrderModel.find({
+        $or: [
+            { "payment_info.status": "paid" },
+            { "payment_info.status": "succeeded" }
+        ]
+    }).sort({ createdAt: -1 })
+
+    res.status(200).json({
+        success: true,
+        orders,
+    })
+}

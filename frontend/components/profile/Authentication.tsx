@@ -104,7 +104,7 @@ const Authentication = ({ user }: AuthenticationProps) => {
             <form onSubmit={handleSubmitForm}>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Email Addresses</h3>
+                        <h3 className="text-lg font-semibold">Email Address</h3>
 
                         <div className="p-4 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex items-center justify-between">
                             <div>
@@ -113,8 +113,6 @@ const Authentication = ({ user }: AuthenticationProps) => {
                             </div>
                             <Badge className="bg-green-500">Verified</Badge>
                         </div>
-
-                        <Button type='button' variant="outline" className="w-full cursor-pointer">Add New Email</Button>
                     </div>
 
                     <Separator className="my-4 border" />

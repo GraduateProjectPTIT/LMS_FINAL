@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Grid, List, LayoutGrid } from 'lucide-react';
 
@@ -22,8 +22,31 @@ const CourseViewControls = ({
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalResults);
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    console.log(viewMode)
+
+    useEffect(() => {
+        const checkScreenSize = () => {
+            const mobile = window.innerWidth < 768; // md breakpoint
+            setIsMobile(mobile);
+
+            // Auto-set to grid on mobile
+            if (mobile && viewMode === 'list') {
+                onViewModeChange('grid');
+            }
+        };
+
+        checkScreenSize();
+
+        window.addEventListener('resize', checkScreenSize);
+
+        return () => window.removeEventListener('resize', checkScreenSize);
+
+    }, [viewMode, onViewModeChange])
+
     return (
-        <div className="flex flex-row justify-between items-center gap-6">
+        <div className="hidden md:flex flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-4">
                 <div className="bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">

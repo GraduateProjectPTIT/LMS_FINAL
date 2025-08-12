@@ -1,12 +1,9 @@
-
-const AdminPage = () => {
+const AdminHomePage = () => {
     return (
-
-        <div className="w-full container">
-            Main dashboard of admin. Show statistics here!
+        <div className="w-full container theme-mode dark:theme-mode">
+            Main dashboard of admin
         </div>
-
     )
 }
 
-export default AdminPage
+export default AdminHomePage

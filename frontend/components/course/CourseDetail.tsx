@@ -109,7 +109,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                 isLoading ? (
                     <Loader />
                 ) : (
-                    <div className='light-mode dark:dark-mode min-h-screen'>
+                    <div className='theme-mode dark:theme-mode min-h-screen'>
                         {/* Hero Section */}
                         <div className="bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#183dc2aa,#EAEEFE_100%)] dark:bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#0A1D56,#0D1B2A_100%)] overflow-x-clip">
                             <div className="container">
@@ -230,7 +230,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                                 )}
                                             </div>
 
-                                            <button className="relative w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-500 dark:to-purple-500 dark:hover:from-indigo-600 dark:hover:to-purple-600 cursor-pointer text-white font-bold py-4 px-6 rounded-xl transition-all mb-4 shadow-lg hover:shadow-xl overflow-hidden group">
+                                            <button className="relative w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-4 px-6 rounded-xl transition-all mb-4 shadow-lg hover:shadow-xl overflow-hidden group">
                                                 {
                                                     checkCourseAccessed(courseId) ? (
                                                         <span onClick={() => handleEnroll(courseId)} className="relative z-10">
@@ -452,7 +452,7 @@ const CourseDetail = ({ courseId }: { courseId: string }) => {
                                             </div>
                                         </div>
 
-                                        <button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-500 dark:to-purple-500 dark:hover:from-indigo-600 dark:hover:to-purple-600 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                        <button className="w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                                             {
                                                 checkCourseAccessed(courseId) ? (
                                                     <span onClick={() => handleEnroll(courseId)} className="relative z-10">

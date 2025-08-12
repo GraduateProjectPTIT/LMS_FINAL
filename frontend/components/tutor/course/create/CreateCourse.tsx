@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import CourseInformation from '@/components/admin/course/create/CourseInformation';
-import CourseData from '@/components/admin/course/create/CourseData';
-import CourseContent from '@/components/admin/course/create/CourseContent';
-import CoursePreview from '@/components/admin/course/create/CoursePreview';
-import CourseOptions from '@/components/admin/course/create/CourseOptions';
+import CourseInformation from '@/components/tutor/course/create/CourseInformation';
+import CourseData from '@/components/tutor/course/create/CourseData';
+import CourseContent from '@/components/tutor/course/create/CourseContent';
+import CoursePreview from '@/components/tutor/course/create/CoursePreview';
+import CourseOptions from '@/components/tutor/course/create/CourseOptions';
 
 import { CourseInfoProps, BenefitsProps, PrerequisitesProps, CourseDataProps } from "@/type"
 

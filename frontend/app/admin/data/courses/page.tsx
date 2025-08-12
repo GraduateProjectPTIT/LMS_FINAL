@@ -1,7 +1,7 @@
 import React from 'react'
 import CourseData from '@/components/admin/data/CourseData'
 
-const DataCoursesPage = () => {
+const AdminDataCoursesPage = () => {
     return (
         <div className='flex-1 h-screen max-h-[1473px] p-[20px]'>
             <CourseData />
@@ -9,4 +9,4 @@ const DataCoursesPage = () => {
     )
 }
 
-export default DataCoursesPage
+export default AdminDataCoursesPage

@@ -151,7 +151,7 @@ const Login = () => {
     }, [session])
 
     return (
-        <div className='w-[400px] md:w-[1000px] h-[550px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border dark:border-slate-500 rounded-[10px] shadow-lg '>
+        <div className='w-[400px] md:w-[1000px] h-[600px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border dark:border-slate-500 rounded-[10px] shadow-lg '>
             {
                 isLoading ? (
                     <Loader />
@@ -167,13 +167,24 @@ const Login = () => {
                                 <div className='flex flex-col items-center justify-center gap-3 mt-4'>
                                     <div className='w-full border border-blue-300 rounded-[20px] flex items-center text-center gap-[10px] p-[5px] '>
                                         <TfiEmail className='text-gray-400 mx-[10px]' />
-                                        <input {...register("email")} type="email" required placeholder='Email' className='outline-none bg-transparent w-full backdrop-blur-sm ' />
+                                        <input
+                                            {...register("email")}
+                                            type="email"
+                                            required
+                                            placeholder='Email'
+                                            className='outline-none bg-transparent w-full backdrop-blur-sm '
+                                        />
                                     </div>
 
                                     <div className='w-full border border-blue-300 rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px] '>
                                         <div className='flex items-center w-[500px]'>
                                             <RiLockPasswordLine className='text-gray-400 mx-[10px] text-[20px]' />
-                                            <input {...register("password")} type={showPassword ? 'text' : 'password'} required placeholder='Password' className='mx-[10px] outline-none bg-transparent w-full backdrop-blur-sm' />
+                                            <input
+                                                {...register("password")}
+                                                type={showPassword ? 'text' : 'password'}
+                                                required placeholder='Password'
+                                                className='mx-[10px] outline-none bg-transparent w-full backdrop-blur-sm'
+                                            />
                                         </div>
                                         <button onClick={handleShowPassword} className='mx-[10px]'>
                                             {showPassword ? (

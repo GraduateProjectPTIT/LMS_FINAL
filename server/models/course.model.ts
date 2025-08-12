@@ -23,29 +23,29 @@ export interface ICourse extends Document {
 }
 
 interface ICourseReview extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId;
     rating: number;
     comment: string;
     replies: IReviewReply[];
 }
 
 interface IReviewReply extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId;
     answer: string;
 }
 
 interface ICourseSection extends Document {
     sectionTitle: string;
-    sectionContents: ICourseContent[];
+    sectionContents: ICourseLecture[];
 }
 
-interface ICourseContent extends Document {
+interface ICourseLecture extends Document {
     videoTitle: string;
     videoDescription: string;
     videoUrl: string;
     videoLength: number;
     videoLinks: ILink[];
-    questions: ILectureQuestion[];
+    lectureQuestions: ILectureQuestion[];
 }
 
 interface ILink extends Document {
@@ -54,13 +54,13 @@ interface ILink extends Document {
 }
 
 interface ILectureQuestion extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId;
     question: string;
     replies: IQuestionReply[];
 }
 
 interface IQuestionReply extends Document {
-    user: IUser;
+    userId: mongoose.Types.ObjectId;
     answer: string;
 }
 
@@ -68,7 +68,7 @@ interface IQuestionReply extends Document {
 
 const questionReplySchema = new Schema<IQuestionReply>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         answer: { type: String, required: true },
     },
     { timestamps: true }
@@ -76,7 +76,7 @@ const questionReplySchema = new Schema<IQuestionReply>(
 
 const lectureQuestionSchema = new Schema<ILectureQuestion>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         question: { type: String, required: true },
         replies: [questionReplySchema], // this is only for lecture questions
     },
@@ -85,7 +85,7 @@ const lectureQuestionSchema = new Schema<ILectureQuestion>(
 
 const reviewReplySchema = new Schema<IReviewReply>(
     {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         answer: { type: String, required: true },
     },
     { timestamps: true }
@@ -93,7 +93,7 @@ const reviewReplySchema = new Schema<IReviewReply>(
 
 const courseReviewSchema = new Schema<ICourseReview>(
     {
-        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         rating: { type: Number, default: 0 },
         comment: { type: String },
         replies: [reviewReplySchema],
@@ -106,13 +106,13 @@ const linkSchema = new Schema<ILink>({
     url: String,
 });
 
-const courseLectureSchema = new Schema<ICourseContent>({
+const courseLectureSchema = new Schema<ICourseLecture>({
     videoTitle: { type: String, required: true },
     videoDescription: { type: String, required: true },
     videoUrl: { type: String, required: true },
     videoLength: { type: Number, required: true },
     videoLinks: [linkSchema],
-    questions: [lectureQuestionSchema],
+    lectureQuestions: [lectureQuestionSchema],
 });
 
 const courseSectionSchema = new Schema<ICourseSection>({
