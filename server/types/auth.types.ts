@@ -5,12 +5,17 @@ export interface IActivationToken {
   token: string;
   activationCode: string;
 }
+export interface IDecodedPayload {
+  id: string;
+  iat: number;
+  exp: number;
+}
 
 export interface IResetPasswordPayload {
   user: {
     id: string; // Chỉ cần lưu ID là đủ
   };
-  resetCode: string; // Mã reset người dùng sẽ nhập
+  resetToken: string; // truyền vào Token
 }
 
 export interface IResetPasswordToken {

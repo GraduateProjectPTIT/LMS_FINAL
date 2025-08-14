@@ -20,6 +20,7 @@ export interface IUser extends Document {
     url: string;
   };
   role: UserRole;
+  resetToken?: string;
   isVerified: boolean;
   courses: Array<{ courseId: string }>;
   comparePassword: (password: string) => Promise<boolean>;
@@ -60,6 +61,10 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    resetToken: {
+      type: String,
+    },
+
     courses: [
       {
         courseId: String,

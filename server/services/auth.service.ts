@@ -16,6 +16,7 @@ import {
   ILoginRequest,
   IResetPasswordToken,
   IResetPasswordPayload,
+  IDecodedPayload,
 } from "../types/auth.types";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
@@ -39,11 +40,10 @@ export const createResetPasswordToken = (user: IUser): IResetPasswordToken => {
   // Tạo JWT, chỉ chứa ID của user và mã code
   const token = jwt.sign(
     {
-      user: { id: user._id }, // Chỉ cần lưu ID để xác định user
-      resetCode,
+      id: user._id,
     },
     process.env.RESET_PASSWORD_SECRET as Secret, // !! Dùng một SECRET KEY khác để tăng bảo mật
-    { expiresIn: "10m" } // Đặt thời gian hết hạn
+    { expiresIn: "1h" } // Đặt thời gian hết hạn
   );
 
   return { token, resetCode };
@@ -63,13 +63,16 @@ export const forgotPasswordService = async (email: string) => {
 
   // 2. Tạo token và mã code reset
   const resetTokenData = createResetPasswordToken(user);
-  const resetCode = resetTokenData.resetCode;
   const resetToken = resetTokenData.token;
+
+  // cập nhật resetToken
+  user.resetToken = resetToken;
+  await user.save();
 
   // 3. Chuẩn bị dữ liệu cho email template
   const data = {
     user: { name: user.name }, // Lấy tên user từ DB
-    resetCode: resetCode,
+    resetToken: resetToken,
   };
 
   const templatePath = path.join(__dirname, "../mails/reset-password-mail.ejs");
@@ -99,42 +102,41 @@ export const forgotPasswordService = async (email: string) => {
 };
 
 export const resetPasswordService = async (
-  token: string,
-  resetCode: string,
+  resetToken: string, // Đây chính là JWT từ URL
   newPassword: string
 ): Promise<{ message: string }> => {
-  let decoded: IResetPasswordPayload;
-
   try {
-    // 1. Giải mã JWT. Nếu token không hợp lệ hoặc hết hạn, nó sẽ tự động throw lỗi
-    decoded = jwt.verify(
-      token,
-      process.env.RESET_PASSWORD_SECRET as Secret
-    ) as IResetPasswordPayload;
+    const decoded = jwt.verify(
+      resetToken,
+      process.env.RESET_PASSWORD_SECRET as string
+    ) as IDecodedPayload;
+    const user = await userModel.findOne({ resetToken: resetToken });
+
+    // 2. Nếu không tìm thấy, token không hợp lệ hoặc đã được sử dụng
+    if (!user) {
+      throw new ErrorHandler(
+        "Password reset token is invalid or has already been used.",
+        400
+      );
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    user.resetToken = undefined;
+
+    // Dòng `user.resetToken = undefined;` đã được XÓA BỎ
+    // vì chúng ta không lưu token trong user model nữa.
+
+    await user.save();
+
+    return { message: "Password has been reset successfully." };
   } catch (error) {
+    console.log(error);
     throw new ErrorHandler(
-      "Invalid or expired token. Please request a new one.",
+      "Password reset token is invalid or has expired.",
       400
     );
   }
-
-  // 2. So sánh mã reset từ JWT với mã người dùng nhập
-  if (decoded.resetCode !== resetCode) {
-    throw new ErrorHandler("Invalid reset code.", 400);
-  }
-
-  // 3. Tìm người dùng bằng ID từ trong JWT
-  const user = await userModel.findById(decoded.user.id);
-
-  if (!user) {
-    throw new ErrorHandler("User not found.", 404);
-  }
-
-  // 4. Cập nhật mật khẩu mới và lưu
-  user.password = newPassword;
-  await user.save();
-
-  return { message: "Password has been reset successfully." };
 };
 
 // --- NGHIỆP VỤ ĐĂNG KÝ ---

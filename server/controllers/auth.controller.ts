@@ -98,24 +98,31 @@ export const forgotPassword = CatchAsyncError(
   }
 );
 
-// ✅ Controller `resetPassword` được cập nhật
-export const resetPassword = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { token } = req.params;
-    // Lấy thêm `resetCode` từ body
-    const { password, resetCode } = req.body;
+// reset mật khẩu
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Lấy cả token và mật khẩu mới từ request body
+    const { resetToken, newPassword } = req.body;
 
-    if (!password || !resetCode) {
+    // Luôn kiểm tra đầy đủ input
+    if (!resetToken || !newPassword) {
       return next(
-        new ErrorHandler(
-          "Please provide a new password and the reset code",
-          400
-        )
+        new ErrorHandler("Token and new password are required.", 400)
       );
     }
 
-    const result = await resetPasswordService(token, resetCode, password);
+    // Gọi service với token và password từ body
+    const result = await resetPasswordService(resetToken, newPassword);
 
-    res.status(200).json({ success: true, message: result.message });
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return next(error); // Chuyển lỗi đến middleware xử lý lỗi
   }
-);
+};
