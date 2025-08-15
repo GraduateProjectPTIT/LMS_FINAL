@@ -201,15 +201,24 @@ export const activateUserService = async (body: IActivationRequest) => {
 // --- NGHIỆP VỤ ĐĂNG NHẬP ---
 export const loginUserService = async (body: ILoginRequest) => {
   const { email, password } = body;
+
   if (!email || !password) {
     throw new ErrorHandler("Please enter email and password", 400);
   }
+
   const user = await userModel.findOne({ email }).select("+password");
+
   if (!user || !(await user.comparePassword(password))) {
     throw new ErrorHandler("Invalid email or password", 400);
-  } // ✔️ Thay đổi: Chỉ trả về user, không tạo token ở đây nữa
+  }
 
-  return user;
+  // ✔️ Thay đổi: Chuyển đổi Mongoose document thành plain object
+  const userObject = user.toObject();
+
+  // ✅ Thay thế `delete` bằng cú pháp này
+  const { password: hashedPassword, ...userWithoutPassword } = userObject;
+
+  return userWithoutPassword;
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
