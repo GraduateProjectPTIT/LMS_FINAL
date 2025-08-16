@@ -51,13 +51,11 @@ export const createResetPasswordToken = (user: IUser): IResetPasswordToken => {
 
 export const forgotPasswordService = async (email: string) => {
   const user = await userModel.findOne({ email });
-  // 1. Kiểm tra User
-  // !! Khác với register: nếu không tìm thấy user, ta không báo lỗi
-  // mà âm thầm trả về thành công để tránh kẻ xấu dò email.
+
   if (!user) {
     return {
-      success: true,
-      message: `If an account with email: ${email} exists, you will receive a reset code.`,
+      success: false,
+      message: `Email is invalid`,
     };
   }
 
