@@ -12,6 +12,8 @@ import {
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
+import { paginate } from "../utils/pagination.helper"; // Import our new helper
+import userModel from "../models/user.model";
 
 // --- CẬP NHẬT MẬT KHẨU ---
 export const updatePassword = CatchAsyncError(
@@ -84,8 +86,14 @@ export const updateProfilePicture = CatchAsyncError(
 // --- LẤY TẤT CẢ USERS (ADMIN) ---
 export const getAllUsers = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const users = await getAllUsersService();
-    res.status(200).json({ success: true, users });
+    // 1. Call the service and pass the request query
+    const paginatedUsers = await getAllUsersService(req.query);
+
+    // 2. Send the response with the data returned from the service
+    res.status(200).json({
+      success: true,
+      ...paginatedUsers,
+    });
   }
 );
 

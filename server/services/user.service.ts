@@ -2,8 +2,10 @@
 import userModel from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
+import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
 import { IUpdateUserInfo } from "../types/user.types";
+import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
 import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
 
 // --- LẤY USER BẰNG ID (đã có) ---
@@ -79,8 +81,15 @@ export const updateProfilePictureService = async (
 };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
-export const getAllUsersService = async () => {
-  return await userModel.find().sort({ createdAt: -1 });
+export const getAllUsersService = async (queryParams: PaginationParams) => {
+  // Optional: build a filter based on other query params if needed
+  const filter = queryParams.isActive
+    ? { isActive: queryParams.isActive === "true" }
+    : {};
+
+  const paginatedUsers = await paginate(userModel, queryParams, filter);
+
+  return paginatedUsers;
 };
 
 // --- CẬP NHẬT VAI TRÒ (đã có) ---
