@@ -8,6 +8,7 @@ import {
   updateUserRole,
   deleteUser,
   updatePassword,
+  deleteMyAccount,
 } from "../controllers/user.controller";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth"; // Giả sử bạn có middleware
 import multer from "multer";
@@ -46,5 +47,7 @@ userRouter.delete(
   authorizeRoles("admin"),
   deleteUser
 );
+
+userRouter.delete("/user/me", isAuthenticated, deleteMyAccount);
 
 export default userRouter;

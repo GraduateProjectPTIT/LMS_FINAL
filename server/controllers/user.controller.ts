@@ -9,6 +9,7 @@ import {
   updateUserRoleService,
   deleteUserService,
   updatePasswordService,
+  deleteMyAccountService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
@@ -114,5 +115,29 @@ export const deleteUser = CatchAsyncError(
     res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
+  }
+);
+
+// --- TỰ XÓA USER ---
+
+export const deleteMyAccount = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?._id.toString();
+
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    // Gọi service để xử lý logic xóa
+    await deleteMyAccountService(userId);
+
+    // Xóa cookie token để đăng xuất người dùng sau khi xóa tài khoản
+    res.cookie("access_token", "", { maxAge: 1 });
+    res.cookie("refresh_token", "", { maxAge: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Your account has been deleted successfully.",
+    });
   }
 );

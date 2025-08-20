@@ -133,3 +133,22 @@ export const updatePasswordService = async (data: IUpdatePasswordParams) => {
   user.password = newPassword;
   await user.save();
 };
+
+// --- NGHIỆP VỤ TỰ XÓA TÀI KHOẢN ---
+
+export const deleteMyAccountService = async (id: string) => {
+  const user = await userModel.findById(id);
+
+  if (!user) {
+    // Trường hợp này hiếm khi xảy ra vì user đã được xác thực
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  // 1. Xóa avatar trên Cloudinary nếu có
+  if (user.avatar?.public_id) {
+    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+  }
+
+  // 2. Xóa người dùng khỏi database
+  await user.deleteOne();
+};
