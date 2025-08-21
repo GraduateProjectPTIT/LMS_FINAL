@@ -21,6 +21,8 @@ export interface IUser extends Document {
   };
   role: UserRole;
   resetToken?: string;
+  activationCode?: string;
+  activationToken?: string;
   isVerified: boolean;
   courses: Array<{ courseId: string }>;
   comparePassword: (password: string) => Promise<boolean>;
@@ -50,7 +52,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     avatar: {
       public_id: { type: String, default: "" },
-      url: { type: String },
+      url: { type: String, default: "" },
     },
     role: {
       type: String,
@@ -63,6 +65,15 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     resetToken: {
       type: String,
+      select: false,
+    },
+    activationCode: {
+      type: String,
+      select: false,
+    },
+    activationToken: {
+      type: String,
+      select: false,
     },
   },
   { timestamps: true }

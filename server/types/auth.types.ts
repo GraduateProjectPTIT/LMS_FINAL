@@ -41,7 +41,7 @@ export interface IRegistrationBody {
 
 // Dùng cho body của request kích hoạt tài khoản
 export interface IActivationRequest {
-  activation_token: string;
+  email: string;
   activation_code: string;
 }
 

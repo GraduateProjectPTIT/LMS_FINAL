@@ -26,7 +26,7 @@ const createActivationToken = (user: IRegistrationBody): IActivationToken => {
   const token = jwt.sign(
     { user, activationCode },
     process.env.ACTIVATION_SECRET as Secret,
-    { expiresIn: "30m" }
+    { expiresIn: "3h" }
   );
   return { token, activationCode };
 };
@@ -150,6 +150,20 @@ export const registerUserService = async (body: IRegistrationBody) => {
   }
 
   const activationTokenData = createActivationToken({ name, email, password });
+
+  const user = {
+    name,
+    email,
+    password, // Mật khẩu sẽ được hash bởi pre-save hook trong Model
+  };
+
+  const newUser = await userModel.create({
+    ...user,
+    activationCode: activationTokenData.activationCode,
+    activationToken: activationTokenData.token, // Lưu token để xác thực ở bước sau
+    isVerified: false, // Trạng thái mặc định
+  });
+
   const data = {
     user: { name },
     activationCode: activationTokenData.activationCode,
@@ -160,7 +174,7 @@ export const registerUserService = async (body: IRegistrationBody) => {
   try {
     // Gửi email kích hoạt
     await sendMail({
-      email,
+      email: newUser.email,
       subject: "Activate your account",
       template: "activation-mail.ejs",
       data,
@@ -168,7 +182,6 @@ export const registerUserService = async (body: IRegistrationBody) => {
     return {
       success: true,
       message: `Please check your email: ${email} to activate your account!`,
-      activationToken: activationTokenData.token,
     };
   } catch (error: any) {
     throw new ErrorHandler(error.message, 400);
@@ -177,23 +190,40 @@ export const registerUserService = async (body: IRegistrationBody) => {
 
 // --- NGHIỆP VỤ KÍCH HOẠT USER ---
 export const activateUserService = async (body: IActivationRequest) => {
-  const { activation_token, activation_code } = body;
-  const decodedToken = jwt.verify(
-    activation_token,
-    process.env.ACTIVATION_SECRET as string
-  ) as { user: IRegistrationBody; activationCode: string };
+  const { email, activation_code } = body;
 
-  if (decodedToken.activationCode !== activation_code) {
-    throw new ErrorHandler("Invalid activation code", 400);
+  const user = await userModel.findOne({
+    email: email,
+    activationCode: activation_code,
+  });
+
+  if (!user) {
+    throw new ErrorHandler("Invalid activation code or token", 400);
   }
 
-  const { name, email, password } = decodedToken.user;
-  const existUser = await userModel.findOne({ email });
-  if (existUser) {
-    throw new ErrorHandler("Email already exists", 400);
+  if (!user.activationToken) {
+    throw new ErrorHandler("Activation token not found for this user.", 400);
   }
 
-  await userModel.create({ name, email, password, isVerified: true });
+  try {
+    const activationSecret = process.env.ACTIVATION_SECRET;
+    if (!activationSecret) {
+      throw new ErrorHandler("Server configuration error.", 500);
+    }
+    jwt.verify(user.activationToken, activationSecret);
+  } catch (error) {
+    throw new ErrorHandler(
+      "Your activation token is invalid or has expired.",
+      400
+    );
+  }
+
+  // 3. Cập nhật trạng thái và xóa các trường kích hoạt
+  user.isVerified = true;
+  user.activationCode = undefined; // Xóa mã sau khi đã sử dụng
+  user.activationToken = undefined; // Xóa token sau khi đã sử dụng
+
+  await user.save();
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP ---
