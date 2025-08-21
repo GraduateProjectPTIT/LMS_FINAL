@@ -9,6 +9,7 @@ import {
   socialAuth,
   forgotPassword,
   resetPassword,
+  resendCode,
 } from "../controllers/auth.controller";
 import { isAuthenticated } from "../middleware/auth"; // Giả sử bạn có middleware này
 
@@ -20,6 +21,7 @@ authRouter.post("/auth/login", login);
 authRouter.post("/auth/social_auth", socialAuth);
 authRouter.post("/auth/forgot_password", forgotPassword);
 authRouter.put("/auth/reset_password", resetPassword);
+authRouter.post("/auth/resend_activation_code", resendCode);
 
 // Các route này yêu cầu người dùng phải đăng nhập
 authRouter.post("/auth/logout", isAuthenticated, logout);

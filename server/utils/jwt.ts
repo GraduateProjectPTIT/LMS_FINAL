@@ -2,7 +2,7 @@ require("dotenv").config();
 import { Response } from "express";
 import { IUser } from "../models/user.model";
 import { redis } from "./redis";
-import { ITokenOptions } from "../types/auth.types";
+import { ITokenOptions, IUserResponse } from "../types/auth.types";
 import jwt from "jsonwebtoken";
 
 // Lấy giá trị từ .env và chuyển sang số (tính bằng giây)
@@ -32,28 +32,40 @@ export const refreshTokenOptions: ITokenOptions = {
   sameSite: "lax",
 };
 
-export const generateAccessToken = (user: IUser): string => {
+export const generateAccessToken = (user: IUserResponse): string => {
   return jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN || "", {
     expiresIn: "30m",
   });
 };
 
-export const generateRefreshToken = (user: IUser): string => {
+export const generateRefreshToken = (user: IUserResponse): string => {
   return jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN || "", {
     expiresIn: "3d",
   });
 };
 
-export const sendToken = (user: IUser, statusCode: number, res: Response) => {
+export const sendToken = (
+  user: IUserResponse,
+  statusCode: number,
+  res: Response
+) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
+
+  const userResponse: IUserResponse = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    avatar: user.avatar,
+  };
 
   res.cookie("access_token", accessToken, accessTokenOptions);
   res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
   res.status(statusCode).json({
     success: true,
-    user,
+    userResponse,
     accessToken,
   });
 };
