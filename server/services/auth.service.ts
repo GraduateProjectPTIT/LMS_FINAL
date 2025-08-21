@@ -12,6 +12,7 @@ import {
   IActivationToken,
   IRegistrationBody,
   ISocialAuthBody,
+  IResendCodeRequest,
   IUpdatePassword, // IUpdatePasswordService was renamed to IUpdatePassword
   ILoginRequest,
   IResetPasswordToken,
@@ -184,6 +185,57 @@ export const registerUserService = async (body: IRegistrationBody) => {
       message: `Please check your email: ${email} to activate your account!`,
     };
   } catch (error: any) {
+    throw new ErrorHandler(error.message, 400);
+  }
+};
+
+// NGHIỆP VỤ GỬI LẠI ACTIVATION CODE
+export const resendCodeService = async (body: IResendCodeRequest) => {
+  const { email } = body;
+
+  // 1. Tìm người dùng bằng email
+  const user = await userModel.findOne({ email });
+
+  // Nếu không tìm thấy user, ném lỗi
+  if (!user) {
+    throw new ErrorHandler("User with this email does not exist", 404);
+  }
+
+  // 2. Kiểm tra xem tài khoản đã được kích hoạt hay chưa
+  if (user.isVerified) {
+    throw new ErrorHandler("This account has already been activated.", 400);
+  }
+
+  // 3. Tạo lại mã và token kích hoạt mới
+  // Giả sử hàm createActivationToken có thể hoạt động chỉ với name và email
+  const activationTokenData = createActivationToken(user);
+
+  // 4. Cập nhật mã và token mới vào bản ghi user
+  user.activationCode = activationTokenData.activationCode;
+  user.activationToken = activationTokenData.token;
+  await user.save();
+
+  // 5. Chuẩn bị dữ liệu để gửi email
+  const data = {
+    user: { name: user.name },
+    activationCode: activationTokenData.activationCode,
+  };
+
+  // 6. Gửi lại email kích hoạt
+  try {
+    await sendMail({
+      email: user.email,
+      subject: "Activate your account - New Code", // Tiêu đề có thể khác để phân biệt
+      template: "activation-mail.ejs",
+      data,
+    });
+
+    return {
+      success: true,
+      message: `A new activation code has been sent to ${email}. Please check your email!`,
+    };
+  } catch (error: any) {
+    // Xử lý lỗi nếu không gửi được email
     throw new ErrorHandler(error.message, 400);
   }
 };

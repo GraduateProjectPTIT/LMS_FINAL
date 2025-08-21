@@ -67,3 +67,7 @@ export interface IUpdatePassword {
 export interface IUpdatePasswordParams extends IUpdatePassword {
   userId: string;
 }
+
+export interface IResendCodeRequest {
+  email: string;
+}

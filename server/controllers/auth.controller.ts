@@ -10,6 +10,7 @@ import {
   socialAuthService,
   forgotPasswordService,
   resetPasswordService,
+  resendCodeService,
 } from "../services/auth.service";
 import { ILoginRequest, IUpdatePassword } from "../types/auth.types";
 import {
@@ -35,6 +36,17 @@ export const activateUser = CatchAsyncError(
     res
       .status(201)
       .json({ success: true, message: "Account activated successfully" });
+  }
+);
+
+// --- GỬI LẠI MÃ KÍCH HOẠT ---
+export const resendCode = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Gọi đến service để xử lý logic
+    const result = await resendCodeService(req.body);
+
+    // Trả về kết quả thành công
+    res.status(200).json(result);
   }
 );
 
