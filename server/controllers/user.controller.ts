@@ -4,12 +4,12 @@ import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import {
   getUserById,
   updateUserInfoService,
-  updateProfilePictureService,
   getAllUsersService,
   updateUserRoleService,
   deleteUserService,
   updatePasswordService,
   deleteMyAccountService,
+  updateAvatarService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
@@ -70,17 +70,28 @@ export const updateUserInfo = CatchAsyncError(
 );
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
-export const updateProfilePicture = CatchAsyncError(
+export const updateAvatar = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.user?._id;
+    try {
+      const { avatar } = req.body; // 'avatar' here is the base64 string
+      const userId = req.user?._id.toString();
 
-    // ✅ Bắt buộc phải có bước kiểm tra này
-    if (!userId) {
-      return next(new ErrorHandler("Authentication required", 401));
+      // --- VALIDATION ---
+      if (!avatar || typeof avatar !== "string") {
+        return next(
+          new ErrorHandler("Please provide a valid avatar image", 400)
+        );
+      }
+      if (!userId) {
+        return next(new ErrorHandler("User not found, please log in.", 401));
+      }
+
+      // --- CALL SERVICE ---
+      // Pass the base64 string to the service
+      updateAvatarService(userId, avatar, res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
     }
-
-    const user = await updateProfilePictureService(userId.toString(), req.file);
-    res.status(200).json({ success: true, user });
   }
 );
 

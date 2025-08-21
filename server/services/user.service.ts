@@ -46,38 +46,56 @@ export const updateUserInfoService = async (
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
-export const updateProfilePictureService = async (
+export const updateAvatarService = async (
   userId: string,
-  file: Express.Multer.File | undefined
+  avatarString: string, // base64
+  res: Response
 ) => {
-  if (!file) {
-    throw new ErrorHandler("No file provided", 400);
-  }
-  const user = await userModel.findById(userId);
-  if (!user) {
-    throw new ErrorHandler("User not found", 404);
-  }
-  if (user.avatar?.public_id) {
-    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-  }
-
-  const result = await new Promise<cloudinary.UploadApiResponse>(
-    (resolve, reject) => {
-      const uploadStream = cloudinary.v2.uploader.upload_stream(
-        { folder: "avatars", width: 150, crop: "scale" },
-        (error, result) => {
-          if (result) resolve(result);
-          else reject(error || new Error("Cloudinary upload failed"));
-        }
-      );
-      uploadStream.end(file.buffer);
+  try {
+    // 1. --- FIND USER ---
+    const user = await userModel.findById(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found", 404);
     }
-  );
 
-  user.avatar = { public_id: result.public_id, url: result.secure_url };
-  await user.save();
-  // await redis.set(userId, JSON.stringify(user));
-  return user;
+    // 2. --- DELETE OLD AVATAR IF IT EXISTS ---
+    // If the user already has an avatar with a public_id, destroy it
+    if (user.avatar && user.avatar.public_id) {
+      try {
+        await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+      } catch (destroyError: any) {
+        console.error("Cloudinary old avatar deletion failed:", destroyError);
+      }
+    }
+
+    // 3. --- UPLOAD NEW AVATAR ---
+    // Upload the new base64 string image to Cloudinary
+    const myCloud = await cloudinary.v2.uploader.upload(avatarString, {
+      // Use the renamed variable
+      folder: "avatars",
+      width: 150,
+      height: 150,
+      crop: "fill",
+    });
+
+    // 4. --- UPDATE USER RECORD ---
+    // Update the user's avatar object, matching the IUser interface
+    user.avatar = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
+    };
+
+    await user.save();
+
+    // 5. --- SEND RESPONSE ---
+    res.status(200).json({
+      success: true,
+      message: "Avatar updated successfully",
+      user,
+    });
+  } catch (error: any) {
+    throw new ErrorHandler(error.message, 500);
+  }
 };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
