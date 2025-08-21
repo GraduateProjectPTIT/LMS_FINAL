@@ -64,12 +64,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     resetToken: {
       type: String,
     },
-
-    courses: [
-      {
-        courseId: String,
-      },
-    ],
   },
   { timestamps: true }
 );
