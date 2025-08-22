@@ -14,9 +14,9 @@ export interface PaginatedResult<T> {
 }
 
 export interface PaginationParams {
-  isActive?: string; // The '?' makes it OPTIONAL
   page?: string;
   limit?: string;
+  role?: string; // Thêm role vào đây
 }
 
 /**

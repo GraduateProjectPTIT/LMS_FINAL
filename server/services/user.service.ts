@@ -100,14 +100,19 @@ export const updateAvatarService = async (
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
 export const getAllUsersService = async (queryParams: PaginationParams) => {
-  // Optional: build a filter based on other query params if needed
-  const filter = queryParams.isActive
-    ? { isActive: queryParams.isActive === "true" }
-    : {};
+  // Tách các tham số phân trang ra khỏi các tham số dùng để lọc
+  const { page, limit, role } = queryParams; // 1. Xây dựng đối tượng filter
 
-  const paginatedUsers = await paginate(userModel, queryParams, filter);
+  const filter: { [key: string]: any } = {};
+  if (role === "student" || role === "tutor") {
+    filter.role = role;
+  }
 
-  return paginatedUsers;
+  const paginatedResult = await paginate(userModel, { page, limit }, filter); // 3. (Tùy chọn) Đổi tên key 'data' thành 'users' cho dễ hiểu ở controller
+
+  return {
+    paginatedResult,
+  };
 };
 
 // --- CẬP NHẬT VAI TRÒ (đã có) ---
