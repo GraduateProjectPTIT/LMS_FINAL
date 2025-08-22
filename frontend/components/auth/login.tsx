@@ -22,6 +22,8 @@ import { FaRegEye } from "react-icons/fa6";
 import { FaRegEyeSlash } from "react-icons/fa6";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
+import { IoAlertCircleOutline } from "react-icons/io5";
+import { IoCheckmarkCircleOutline } from "react-icons/io5";
 import Loader from '@/components/Loader';
 
 const loginSchema = z.object({
@@ -65,12 +67,51 @@ const Login = () => {
     const {
         register,
         handleSubmit,
+        watch,
         formState: {
-            isSubmitting
+            isSubmitting,
+            errors,
+            touchedFields
         }
     } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
+        mode: "onChange"
     })
+
+    const watchedFields = watch();
+
+    const getFieldStatus = (fieldName: keyof LoginFormValues) => {
+        const isTouched = touchedFields[fieldName];
+        const hasError = errors[fieldName];
+        const hasValue = watchedFields[fieldName]?.length > 0;
+
+        if (!isTouched || !hasValue) return 'default';
+        if (hasError) return 'error';
+        return 'success';
+    }
+
+    const getFieldBorderClass = (fieldName: keyof LoginFormValues) => {
+        const status = getFieldStatus(fieldName);
+        switch (status) {
+            case 'error':
+                return 'border-red-400';
+            case 'success':
+                return 'border-green-400';
+            default:
+                return 'border-slate-400';
+        }
+    }
+
+    const getFieldIcon = (fieldName: keyof LoginFormValues) => {
+        const status = getFieldStatus(fieldName);
+        if (status === 'error') {
+            return <IoAlertCircleOutline className="text-red-500 text-lg" />;
+        }
+        if (status === 'success') {
+            return <IoCheckmarkCircleOutline className="text-green-500 text-lg" />;
+        }
+        return null;
+    }
 
     const onSubmit = async (data: LoginFormValues) => {
         dispatch(signInStart());
@@ -151,7 +192,7 @@ const Login = () => {
     }, [session])
 
     return (
-        <div className='w-[400px] md:w-[1000px] h-[600px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border dark:border-slate-500 rounded-[10px] shadow-lg '>
+        <div className='w-[400px] md:w-[1000px] h-[600px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border border-slate-300 dark:border-slate-500 rounded-[10px] shadow-lg '>
             {
                 isLoading ? (
                     <Loader />
@@ -165,34 +206,66 @@ const Login = () => {
                                     <Link href='/signup' className='underline'>Signup</Link>
                                 </div>
                                 <div className='flex flex-col items-center justify-center gap-3 mt-4'>
-                                    <div className='w-full border border-blue-300 rounded-[20px] flex items-center text-center gap-[10px] p-[5px] '>
-                                        <TfiEmail className='text-gray-400 mx-[10px]' />
-                                        <input
-                                            {...register("email")}
-                                            type="email"
-                                            required
-                                            placeholder='Email'
-                                            className='outline-none bg-transparent w-full backdrop-blur-sm '
-                                        />
+
+                                    {/* Email Field */}
+                                    <div className='w-full'>
+                                        <div className={`w-full border ${getFieldBorderClass('email')} rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}>
+                                            <TfiEmail className='text-gray-400 mx-[10px]' />
+                                            <input
+                                                {...register("email")}
+                                                type="email"
+                                                required
+                                                placeholder='Email'
+                                                className='outline-none bg-transparent w-full backdrop-blur-sm '
+                                            />
+                                            <div className="mx-[10px]">
+                                                {getFieldIcon('email')}
+                                            </div>
+                                        </div>
+                                        {errors.email && watchedFields.email && (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                                <p className="text-red-400 text-[12px]">{errors.email.message}</p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className='w-full border border-blue-300 rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px] '>
-                                        <div className='flex items-center w-[500px]'>
-                                            <RiLockPasswordLine className='text-gray-400 mx-[10px] text-[20px]' />
-                                            <input
-                                                {...register("password")}
-                                                type={showPassword ? 'text' : 'password'}
-                                                required placeholder='Password'
-                                                className='mx-[10px] outline-none bg-transparent w-full backdrop-blur-sm'
-                                            />
+                                    {/* Password Field */}
+                                    <div className='w-full'>
+                                        <div className={`w-full border ${getFieldBorderClass('password')} rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}>
+                                            <div className='flex items-center w-[500px]'>
+                                                <RiLockPasswordLine className='text-gray-400 mx-[10px] text-[20px]' />
+                                                <input
+                                                    {...register("password")}
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    required placeholder='Password'
+                                                    className='mx-[10px] outline-none bg-transparent w-full backdrop-blur-sm'
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 mx-[10px]">
+                                                {getFieldIcon('password')}
+                                                <button onClick={handleShowPassword}>
+                                                    {showPassword ? (
+                                                        <FaRegEyeSlash className='text-gray-400' />
+                                                    ) : (
+                                                        <FaRegEye className='text-gray-400' />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button onClick={handleShowPassword} className='mx-[10px]'>
-                                            {showPassword ? (
-                                                <FaRegEyeSlash className='text-gray-400' />
-                                            ) : (
-                                                <FaRegEye className='text-gray-400' />
-                                            )}
-                                        </button>
+                                        {errors.password && watchedFields.password && (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                                <p className="text-red-400 text-[12px]">{errors.password.message}</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Forgot Password Link */}
+                                    <div className='w-full flex justify-end'>
+                                        <Link href='/forgot-password' className='text-sm text-gray-400 hover:text-gray-400/70 underline'>
+                                            Forgot Password?
+                                        </Link>
                                     </div>
 
                                 </div>

@@ -5,6 +5,7 @@ import "../globals.css";
 import CombineProvider from "@/providers/CombineProviders";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/tutor/sidebar/app-sidebar";
+import TutorProtectedLayout from "@/providers/TutorProtectedLayout";
 
 const poppins = Poppins({
     subsets: ["latin"],
@@ -29,15 +30,17 @@ export default function TutorLayout({
 }>) {
     return (
         <div className={`${poppins.variable} ${josefin.variable} antialiased `}>
-            {/* <CombineProvider> */}
-            <SidebarProvider>
-                <AppSidebar />
-                <main className="w-full max-h-[1500px]">
-                    <SidebarTrigger />
-                    {children}
-                </main>
-            </SidebarProvider>
-            {/* </CombineProvider> */}
+            <CombineProvider>
+                <TutorProtectedLayout>
+                    <SidebarProvider>
+                        <AppSidebar />
+                        <main className="w-full max-h-[1500px]">
+                            <SidebarTrigger />
+                            {children}
+                        </main>
+                    </SidebarProvider>
+                </TutorProtectedLayout>
+            </CombineProvider>
         </div>
     );
 }

@@ -3,19 +3,18 @@
 import React, { useState } from "react"
 import { useSelector } from "react-redux"
 import { RootState } from "@/redux/store"
-import AdminProtected from "@/hooks/useAdminProtected"
 import { Grip, LayoutDashboard, FileText, TvMinimalPlay, SlidersHorizontal, ChartNoAxesCombined } from "lucide-react"
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
-import NavMain from "@/components/admin/sidebar/nav-main"
-import NavUser from "@/components/admin/sidebar/nav-user"
+import NavMain from "@/components/tutor/sidebar/nav-main"
+import NavUser from "@/components/tutor/sidebar/nav-user"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail, useSidebar, } from "@/components/ui/sidebar"
 import { Separator } from "../../ui/separator"
 
 const sectionData = {
     sections: [
-        // Statistics
+        // Statistics for tutor (course, student, revenue)
         {
             title: "Statistics",
             url: "/tutor/statistics",
@@ -39,7 +38,7 @@ const sectionData = {
                 },
             ],
         },
-        // Data
+        // Data for tutor (course, student, order)
         {
             title: "Data",
             url: "/admin/data",
@@ -63,6 +62,7 @@ const sectionData = {
                 },
             ],
         },
+        // Manage course for tutor
         {
             title: "Courses",
             url: "/admin/courses",
@@ -94,17 +94,11 @@ const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
     const { state } = useSidebar();
     const pathname = usePathname();
 
-    // to check if the pathname is equal to sections.items.url and add the attribute isActive to the sections
+    // để kiểm tra xem pathname có bằng sections.items.url không và thêm thuộc tính isActive vào các phần
     const sectionWithActiveState = sectionData.sections.map((section) => {
         const isActiveItem = pathname === section.url || section.items?.some((subItem) => pathname === subItem.url);
         return { ...section, isActive: isActiveItem };
     })
-
-    const [selected, setSelected] = useState("dashboard");
-
-    const handleSelect = (parentTitle: string, childTitle: string) => {
-        setSelected(childTitle ? childTitle : parentTitle);
-    }
 
     return (
         <Sidebar
@@ -133,7 +127,7 @@ const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
             </SidebarHeader>
             <Separator className="border dark:border-slate-600" />
             <SidebarContent>
-                <NavMain selected={selected} handleSelect={handleSelect} sectionItems={sectionWithActiveState} />
+                <NavMain sectionItems={sectionWithActiveState} pathname={pathname} />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={currentUser} />

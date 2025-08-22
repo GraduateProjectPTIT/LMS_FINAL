@@ -5,6 +5,7 @@ import { LayoutDashboard, ChevronRight, type LucideIcon } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
 import Link from "next/link";
+import clsx from "clsx"
 
 interface NavMainProps {
     sectionItems: {
@@ -19,11 +20,10 @@ interface NavMainProps {
             value: string
         }[]
     }[],
-    selected: string;
-    handleSelect: (value1: string, value2: string) => void
+    pathname: string | null;
 }
 
-const NavMain = ({ sectionItems, selected, handleSelect }: NavMainProps) => {
+const NavMain = ({ sectionItems, pathname }: NavMainProps) => {
 
     return (
         <SidebarGroup>
@@ -31,9 +31,11 @@ const NavMain = ({ sectionItems, selected, handleSelect }: NavMainProps) => {
             <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
             <Link
                 href="/admin"
-                onClick={() => handleSelect("dashboard", "dashboard")}
             >
-                <SidebarMenuButton className={`cursor-pointer hover:bg-gray-200 hover:text-blue-500 dark:hover:bg-slate-700 dark:hover:text-blue-400 ${selected === "dashboard" ? "bg-gray-200 dark:bg-slate-600 text-blue-500 dark:text-blue-400" : ""}  `}>
+                <SidebarMenuButton className={clsx(
+                    "cursor-pointer hover:bg-gray-200 hover:text-blue-500 dark:hover:bg-slate-700 dark:hover:text-blue-400",
+                    { "bg-gray-200 dark:bg-slate-600 text-blue-500 dark:text-blue-400": pathname === "/admin" }
+                )}>
                     <LayoutDashboard />
                     <span className="text-[16px] font-[500]">Dashboard</span>
 
@@ -55,10 +57,10 @@ const NavMain = ({ sectionItems, selected, handleSelect }: NavMainProps) => {
                             <SidebarMenuItem>
                                 <CollapsibleTrigger asChild>
                                     <SidebarMenuButton
-                                        className={`${section.isActive
-                                            ? "bg-gray-200 dark:bg-slate-600 text-blue-500 dark:text-blue-400"
-                                            : "hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-slate-700 dark:hover:text-blue-400"
-                                            }`}
+                                        className={clsx(
+                                            "hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-slate-700 dark:hover:text-blue-400",
+                                            { "bg-gray-200 dark:bg-slate-600 text-blue-500 dark:text-blue-400": section.isActive }
+                                        )}
                                         tooltip={section.title}
                                     >
                                         {section.icon && <section.icon />}
@@ -75,10 +77,11 @@ const NavMain = ({ sectionItems, selected, handleSelect }: NavMainProps) => {
                                                         <SidebarMenuSubItem key={index}>
                                                             <SidebarMenuSubButton asChild>
                                                                 <Link
-                                                                    onClick={() => handleSelect(section.title, subSection.title)}
                                                                     href={subSection.url}
-                                                                    className={` hover:bg-gray-300 hover:text-blue-500 dark:hover:bg-slate-700 dark:hover:text-blue-400
-                                                                        ${subSection.title === selected ? "font-semibold text-blue-500 dark:text-blue-400" : ""}`}
+                                                                    className={clsx(
+                                                                        "hover:bg-gray-300 hover:text-blue-500 dark:hover:bg-slate-700 dark:hover:text-blue-400",
+                                                                        { "font-semibold text-blue-500 dark:text-blue-400": pathname === subSection.url }
+                                                                    )}
                                                                 >
                                                                     {subSection.title}
                                                                 </Link>

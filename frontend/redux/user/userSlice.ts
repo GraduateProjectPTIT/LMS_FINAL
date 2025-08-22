@@ -7,6 +7,7 @@ interface UserState {
     activationToken: any;
     accessToken: any;
     isLoggedIn: boolean;
+    resetToken: any;
 }
 
 const initialState: UserState = {
@@ -15,7 +16,8 @@ const initialState: UserState = {
     loading: false,
     activationToken: null,
     accessToken: null,
-    isLoggedIn: false
+    isLoggedIn: false,
+    resetToken: null
 };
 
 const userSlice = createSlice({
@@ -64,6 +66,16 @@ const userSlice = createSlice({
             state.loading = false;
             state.error = null;
         },
+        forgotPasswordStart: (state) => {
+            state.loading = false;
+            state.error = null;
+            state.resetToken = null;
+        },
+        forgotPasswordSuccess: (state, action: PayloadAction<any>) => {
+            state.loading = false;
+            state.error = null;
+            state.resetToken = action.payload;
+        },
         updateStart: (state) => {
             state.loading = true;
             state.error = null;
@@ -93,6 +105,8 @@ export const {
     updateStart,
     updateSuccess,
     updateFailure,
+    forgotPasswordSuccess,
+    forgotPasswordStart
 } = userSlice.actions;
 
 export default userSlice.reducer;

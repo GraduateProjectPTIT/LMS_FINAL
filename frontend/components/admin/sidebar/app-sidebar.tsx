@@ -3,7 +3,6 @@
 import React, { useState } from "react"
 import { useSelector } from "react-redux"
 import { RootState } from "@/redux/store"
-import AdminProtected from "@/hooks/useAdminProtected"
 import { Grip, LayoutDashboard, FileText, TvMinimalPlay, SlidersHorizontal, ChartNoAxesCombined } from "lucide-react"
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
@@ -15,7 +14,7 @@ import { Separator } from "../../ui/separator"
 
 const sectionData = {
     sections: [
-        // Statistics
+        // Statistics for admin (user, course, revenue)
         {
             title: "Statistics",
             url: "/admin/statistics",
@@ -39,7 +38,7 @@ const sectionData = {
                 },
             ],
         },
-        // Data
+        // Data for admin (user, course, order)
         {
             title: "Data",
             url: "/admin/data",
@@ -63,6 +62,7 @@ const sectionData = {
                 },
             ],
         },
+        // Manage system layout
         {
             title: "Customization",
             url: "/admin/customizations",
@@ -100,17 +100,11 @@ const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
     const { state } = useSidebar();
     const pathname = usePathname();
 
-    // to check if the pathname is equal to sections.items.url and add the attribute isActive to the sections
+    // để kiểm tra xem pathname có bằng sections.items.url không và thêm thuộc tính isActive vào các phần
     const sectionWithActiveState = sectionData.sections.map((section) => {
         const isActiveItem = pathname === section.url || section.items?.some((subItem) => pathname === subItem.url);
         return { ...section, isActive: isActiveItem };
     })
-
-    const [selected, setSelected] = useState("dashboard");
-
-    const handleSelect = (parentTitle: string, childTitle: string) => {
-        setSelected(childTitle ? childTitle : parentTitle);
-    }
 
     return (
         <Sidebar
@@ -139,7 +133,7 @@ const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
             </SidebarHeader>
             <Separator className="border dark:border-slate-600" />
             <SidebarContent>
-                <NavMain selected={selected} handleSelect={handleSelect} sectionItems={sectionWithActiveState} />
+                <NavMain sectionItems={sectionWithActiveState} pathname={pathname} />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={currentUser} />
