@@ -20,12 +20,21 @@ export interface IUser extends Document {
     url: string;
   };
   role: UserRole;
+  socials?: {
+    facebook?: string;
+    instagram?: string;
+    tiktok?: string;
+  };
   resetToken?: string;
   activationCode?: string;
   activationToken?: string;
   isVerified: boolean;
-  courses: Array<{ courseId: string }>;
   comparePassword: (password: string) => Promise<boolean>;
+}
+
+export interface ITutor extends IUser {
+  bio: string;
+  expertise: string[];
 }
 
 const userSchema: Schema<IUser> = new mongoose.Schema(
@@ -59,6 +68,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       enum: Object.values(UserRole),
       default: UserRole.Student,
     },
+    socials: {
+      facebook: { type: String },
+      instagram: { type: String },
+      tiktok: { type: String },
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -75,7 +89,10 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       type: String,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    discriminatorKey: "role", // Quan trọng: key để phân biệt các model
+  }
 );
 
 // Hash password before saving
@@ -94,5 +111,24 @@ userSchema.methods.comparePassword = async function (
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const userModel: Model<IUser> = mongoose.model("User", userSchema);
+const userModel: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+
+const tutorSchema: Schema<ITutor> = new Schema({
+  bio: {
+    type: String,
+    default: "",
+    maxlength: [1000, "Bio cannot be more than 1000 characters"],
+  },
+  expertise: {
+    type: [String],
+    default: [],
+  },
+});
+
+// MODEL TUTOR (TẠO TỪ DISCRIMINATOR)
+export const tutorModel = userModel.discriminator<ITutor>(
+  UserRole.Tutor,
+  tutorSchema
+);
+
 export default userModel;
