@@ -104,6 +104,14 @@ userSchema.pre<IUser>("save", async function (next) {
   next();
 });
 
+userSchema.index(
+  { createdAt: 1 },
+  {
+    expireAfterSeconds: 259200,
+    partialFilterExpression: { isVerified: false },
+  }
+);
+
 // Compare password
 userSchema.methods.comparePassword = async function (
   enteredPassword: string
