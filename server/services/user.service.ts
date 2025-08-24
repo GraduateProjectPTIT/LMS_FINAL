@@ -2,8 +2,10 @@
 import userModel from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
+import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
 import { IUpdateUserInfo } from "../types/user.types";
+import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
 import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
 
 // --- LẤY USER BẰNG ID (đã có) ---
@@ -44,43 +46,73 @@ export const updateUserInfoService = async (
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
-export const updateProfilePictureService = async (
+export const updateAvatarService = async (
   userId: string,
-  file: Express.Multer.File | undefined
+  avatarString: string, // base64
+  res: Response
 ) => {
-  if (!file) {
-    throw new ErrorHandler("No file provided", 400);
-  }
-  const user = await userModel.findById(userId);
-  if (!user) {
-    throw new ErrorHandler("User not found", 404);
-  }
-  if (user.avatar?.public_id) {
-    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-  }
-
-  const result = await new Promise<cloudinary.UploadApiResponse>(
-    (resolve, reject) => {
-      const uploadStream = cloudinary.v2.uploader.upload_stream(
-        { folder: "avatars", width: 150, crop: "scale" },
-        (error, result) => {
-          if (result) resolve(result);
-          else reject(error || new Error("Cloudinary upload failed"));
-        }
-      );
-      uploadStream.end(file.buffer);
+  try {
+    // 1. --- FIND USER ---
+    const user = await userModel.findById(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found", 404);
     }
-  );
 
-  user.avatar = { public_id: result.public_id, url: result.secure_url };
-  await user.save();
-  // await redis.set(userId, JSON.stringify(user));
-  return user;
+    // 2. --- DELETE OLD AVATAR IF IT EXISTS ---
+    // If the user already has an avatar with a public_id, destroy it
+    if (user.avatar && user.avatar.public_id) {
+      try {
+        await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+      } catch (destroyError: any) {
+        console.error("Cloudinary old avatar deletion failed:", destroyError);
+      }
+    }
+
+    // 3. --- UPLOAD NEW AVATAR ---
+    // Upload the new base64 string image to Cloudinary
+    const myCloud = await cloudinary.v2.uploader.upload(avatarString, {
+      // Use the renamed variable
+      folder: "avatars",
+      width: 150,
+      height: 150,
+      crop: "fill",
+    });
+
+    // 4. --- UPDATE USER RECORD ---
+    // Update the user's avatar object, matching the IUser interface
+    user.avatar = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
+    };
+
+    await user.save();
+
+    // 5. --- SEND RESPONSE ---
+    res.status(200).json({
+      success: true,
+      message: "Avatar updated successfully",
+      user,
+    });
+  } catch (error: any) {
+    throw new ErrorHandler(error.message, 500);
+  }
 };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
-export const getAllUsersService = async () => {
-  return await userModel.find().sort({ createdAt: -1 });
+export const getAllUsersService = async (queryParams: PaginationParams) => {
+  // Tách các tham số phân trang ra khỏi các tham số dùng để lọc
+  const { page, limit, role } = queryParams; // 1. Xây dựng đối tượng filter
+
+  const filter: { [key: string]: any } = {};
+  if (role === "student" || role === "tutor") {
+    filter.role = role;
+  }
+
+  const paginatedResult = await paginate(userModel, { page, limit }, filter); // 3. (Tùy chọn) Đổi tên key 'data' thành 'users' cho dễ hiểu ở controller
+
+  return {
+    paginatedResult,
+  };
 };
 
 // --- CẬP NHẬT VAI TRÒ (đã có) ---
@@ -123,4 +155,23 @@ export const updatePasswordService = async (data: IUpdatePasswordParams) => {
 
   user.password = newPassword;
   await user.save();
+};
+
+// --- NGHIỆP VỤ TỰ XÓA TÀI KHOẢN ---
+
+export const deleteMyAccountService = async (id: string) => {
+  const user = await userModel.findById(id);
+
+  if (!user) {
+    // Trường hợp này hiếm khi xảy ra vì user đã được xác thực
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  // 1. Xóa avatar trên Cloudinary nếu có
+  if (user.avatar?.public_id) {
+    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+  }
+
+  // 2. Xóa người dùng khỏi database
+  await user.deleteOne();
 };

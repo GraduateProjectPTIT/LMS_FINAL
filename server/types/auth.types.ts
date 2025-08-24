@@ -1,9 +1,23 @@
 // src/types/auth.types.ts
 
+import { Types } from "mongoose";
+import { UserRole } from "../models/user.model";
+
 // Dùng trong quá trình tạo token kích hoạt
 export interface IActivationToken {
   token: string;
   activationCode: string;
+}
+
+export interface IUserResponse {
+  _id: Types.ObjectId;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar: {
+    public_id: string;
+    url: string;
+  };
 }
 export interface IDecodedPayload {
   id: string;
@@ -41,7 +55,7 @@ export interface IRegistrationBody {
 
 // Dùng cho body của request kích hoạt tài khoản
 export interface IActivationRequest {
-  activation_token: string;
+  email: string;
   activation_code: string;
 }
 
@@ -66,4 +80,8 @@ export interface IUpdatePassword {
 
 export interface IUpdatePasswordParams extends IUpdatePassword {
   userId: string;
+}
+
+export interface IResendCodeRequest {
+  email: string;
 }

@@ -12,6 +12,7 @@ import {
   IActivationToken,
   IRegistrationBody,
   ISocialAuthBody,
+  IResendCodeRequest,
   IUpdatePassword, // IUpdatePasswordService was renamed to IUpdatePassword
   ILoginRequest,
   IResetPasswordToken,
@@ -26,7 +27,7 @@ const createActivationToken = (user: IRegistrationBody): IActivationToken => {
   const token = jwt.sign(
     { user, activationCode },
     process.env.ACTIVATION_SECRET as Secret,
-    { expiresIn: "30m" }
+    { expiresIn: "3h" }
   );
   return { token, activationCode };
 };
@@ -51,13 +52,11 @@ export const createResetPasswordToken = (user: IUser): IResetPasswordToken => {
 
 export const forgotPasswordService = async (email: string) => {
   const user = await userModel.findOne({ email });
-  // 1. Kiểm tra User
-  // !! Khác với register: nếu không tìm thấy user, ta không báo lỗi
-  // mà âm thầm trả về thành công để tránh kẻ xấu dò email.
+
   if (!user) {
     return {
-      success: true,
-      message: `If an account with email: ${email} exists, you will receive a reset code.`,
+      success: false,
+      message: `Email is invalid`,
     };
   }
 
@@ -152,6 +151,20 @@ export const registerUserService = async (body: IRegistrationBody) => {
   }
 
   const activationTokenData = createActivationToken({ name, email, password });
+
+  const user = {
+    name,
+    email,
+    password, // Mật khẩu sẽ được hash bởi pre-save hook trong Model
+  };
+
+  const newUser = await userModel.create({
+    ...user,
+    activationCode: activationTokenData.activationCode,
+    activationToken: activationTokenData.token, // Lưu token để xác thực ở bước sau
+    isVerified: false, // Trạng thái mặc định
+  });
+
   const data = {
     user: { name },
     activationCode: activationTokenData.activationCode,
@@ -162,7 +175,7 @@ export const registerUserService = async (body: IRegistrationBody) => {
   try {
     // Gửi email kích hoạt
     await sendMail({
-      email,
+      email: newUser.email,
       subject: "Activate your account",
       template: "activation-mail.ejs",
       data,
@@ -170,46 +183,122 @@ export const registerUserService = async (body: IRegistrationBody) => {
     return {
       success: true,
       message: `Please check your email: ${email} to activate your account!`,
-      activationToken: activationTokenData.token,
     };
   } catch (error: any) {
     throw new ErrorHandler(error.message, 400);
   }
 };
 
+// NGHIỆP VỤ GỬI LẠI ACTIVATION CODE
+export const resendCodeService = async (body: IResendCodeRequest) => {
+  const { email } = body;
+
+  // 1. Tìm người dùng bằng email
+  const user = await userModel.findOne({ email });
+
+  // Nếu không tìm thấy user, ném lỗi
+  if (!user) {
+    throw new ErrorHandler("User with this email does not exist", 404);
+  }
+
+  // 2. Kiểm tra xem tài khoản đã được kích hoạt hay chưa
+  if (user.isVerified) {
+    throw new ErrorHandler("This account has already been activated.", 400);
+  }
+
+  // 3. Tạo lại mã và token kích hoạt mới
+  // Giả sử hàm createActivationToken có thể hoạt động chỉ với name và email
+  const activationTokenData = createActivationToken(user);
+
+  // 4. Cập nhật mã và token mới vào bản ghi user
+  user.activationCode = activationTokenData.activationCode;
+  user.activationToken = activationTokenData.token;
+  await user.save();
+
+  // 5. Chuẩn bị dữ liệu để gửi email
+  const data = {
+    user: { name: user.name },
+    activationCode: activationTokenData.activationCode,
+  };
+
+  // 6. Gửi lại email kích hoạt
+  try {
+    await sendMail({
+      email: user.email,
+      subject: "Activate your account - New Code", // Tiêu đề có thể khác để phân biệt
+      template: "activation-mail.ejs",
+      data,
+    });
+
+    return {
+      success: true,
+      message: `A new activation code has been sent to ${email}. Please check your email!`,
+    };
+  } catch (error: any) {
+    // Xử lý lỗi nếu không gửi được email
+    throw new ErrorHandler(error.message, 400);
+  }
+};
+
 // --- NGHIỆP VỤ KÍCH HOẠT USER ---
 export const activateUserService = async (body: IActivationRequest) => {
-  const { activation_token, activation_code } = body;
-  const decodedToken = jwt.verify(
-    activation_token,
-    process.env.ACTIVATION_SECRET as string
-  ) as { user: IRegistrationBody; activationCode: string };
+  const { email, activation_code } = body;
 
-  if (decodedToken.activationCode !== activation_code) {
-    throw new ErrorHandler("Invalid activation code", 400);
+  const user = await userModel.findOne({
+    email: email,
+    activationCode: activation_code,
+  });
+
+  if (!user) {
+    throw new ErrorHandler("Invalid activation code or token", 400);
   }
 
-  const { name, email, password } = decodedToken.user;
-  const existUser = await userModel.findOne({ email });
-  if (existUser) {
-    throw new ErrorHandler("Email already exists", 400);
+  if (!user.activationToken) {
+    throw new ErrorHandler("Activation token not found for this user.", 400);
   }
 
-  await userModel.create({ name, email, password, isVerified: true });
+  try {
+    const activationSecret = process.env.ACTIVATION_SECRET;
+    if (!activationSecret) {
+      throw new ErrorHandler("Server configuration error.", 500);
+    }
+    jwt.verify(user.activationToken, activationSecret);
+  } catch (error) {
+    throw new ErrorHandler(
+      "Your activation token is invalid or has expired.",
+      400
+    );
+  }
+
+  // 3. Cập nhật trạng thái và xóa các trường kích hoạt
+  user.isVerified = true;
+  user.activationCode = undefined; // Xóa mã sau khi đã sử dụng
+  user.activationToken = undefined; // Xóa token sau khi đã sử dụng
+
+  await user.save();
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP ---
 export const loginUserService = async (body: ILoginRequest) => {
   const { email, password } = body;
+
   if (!email || !password) {
     throw new ErrorHandler("Please enter email and password", 400);
   }
+
   const user = await userModel.findOne({ email }).select("+password");
+
   if (!user || !(await user.comparePassword(password))) {
     throw new ErrorHandler("Invalid email or password", 400);
-  } // ✔️ Thay đổi: Chỉ trả về user, không tạo token ở đây nữa
+  }
 
-  return user;
+  // ✔️ Thay đổi: Chuyển đổi Mongoose document thành plain object
+  const userObject = user.toObject();
+
+  // ✅ Thay thế `delete` bằng cú pháp này
+  const { password: hashedPassword, ...userWithoutPassword } = userObject;
+
+  return userWithoutPassword;
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
