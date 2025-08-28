@@ -29,7 +29,9 @@ export const getPaidOrdersService = async (res: Response) => {
             { "payment_info.status": "paid" },
             { "payment_info.status": "succeeded" }
         ]
-    }).sort({ createdAt: -1 })
+    }).populate("courseId", "name price")
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
 
     res.status(200).json({
         success: true,
