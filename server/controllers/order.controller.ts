@@ -24,12 +24,13 @@ export const createOrder = CatchAsyncError(
 
       const userId = req.user?._id;
       const user = await userModel.findById(req.user?._id);
+      
+      const existingEnrollment = await EnrolledCourseModel.findOne({
+        userId,
+        courseId,
+      });
 
-      const courseExistsInUser = user?.courses.some(
-        (course: any) => course.courseId.toString() === courseId
-      );
-
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return next(
           new ErrorHandler("You have already purchased this course", 400)
         );
@@ -79,9 +80,15 @@ export const createOrder = CatchAsyncError(
         return next(new ErrorHandler(error.message, 500));
       }
 
-      user?.courses.push({ courseId: courseId });
-
-      await user?.save();
+      try {
+        await EnrolledCourseModel.create({ userId, courseId });
+      } catch (enrollErr: any) {
+        if (enrollErr?.code === 11000) {
+          console.warn("Enrollment already exists for user/course", { userId, courseId });
+        } else {
+          console.error("Failed to create enrollment:", enrollErr?.message || enrollErr);
+        }
+      }
 
       // await redis.set(userId as string, JSON.stringify(user));
 
@@ -122,11 +129,9 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         return next(new ErrorHandler("Course not found", 404));
       }
 
-      const courseExistsInUser = user.courses.some(
-        (userCourse: any) => userCourse.courseId.toString() === courseId
-      );
+      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return next(
           new ErrorHandler("You have already purchased this course", 400)
         );
@@ -210,11 +215,9 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler("User or course not found", 404));
       }
 
-      const courseExistsInUser = user.courses.some(
-        (userCourse: any) => userCourse.courseId.toString() === courseId
-      );
+      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return res.status(400).json({
           success: false,
           message: "You have already purchased this course"
@@ -302,9 +305,6 @@ export const paypalSuccess = CatchAsyncError(
 
       const newOrder = await OrderModel.create(orderData);
       console.log("Order created:", newOrder._id);
-
-      user.courses.push({ courseId: courseId as string });
-      await user.save();
 
       try {
         await EnrolledCourseModel.create({ userId, courseId });
@@ -532,11 +532,9 @@ export const createStripeCheckoutSession = CatchAsyncError(
         return next(new ErrorHandler("Course not found", 404));
       }
 
-      const courseExistsInUser = user.courses.some(
-        (userCourse: any) => userCourse.courseId.toString() === courseId
-      );
+      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return next(
           new ErrorHandler("You have already purchased this course", 400)
         );
@@ -654,17 +652,12 @@ export const handleSuccessfulPayment = async (session: any) => {
       return;
     }
 
-    const courseExistsInUser = user.courses.some(
-      (userCourse: any) => userCourse.courseId.toString() === courseId
-    );
+    const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-    if (courseExistsInUser) {
+    if (existingEnrollment) {
       console.log("User already has this course");
       return;
     }
-
-    user.courses.push({ courseId: courseId });
-    await user.save();
 
     try {
       await EnrolledCourseModel.create({ userId, courseId });
@@ -681,7 +674,7 @@ export const handleSuccessfulPayment = async (session: any) => {
       userId: userId,
       payment_info: {
         id: session.payment_intent,
-        status: session.payment_status,
+        status: session.payment_status === 'paid' ? 'succeeded' : 'failed',
         amount: session.amount_total / 100,
         currency: session.currency,
       },

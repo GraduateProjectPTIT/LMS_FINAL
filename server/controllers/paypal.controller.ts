@@ -31,11 +31,9 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         return next(new ErrorHandler("Course not found", 404));
       }
 
-      const courseExistsInUser = user.courses.some(
-        (userCourse: any) => userCourse.courseId.toString() === courseId
-      );
+      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return next(
           new ErrorHandler("You have already purchased this course", 400)
         );
@@ -119,11 +117,9 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler("User or course not found", 404));
       }
 
-      const courseExistsInUser = user.courses.some(
-        (userCourse: any) => userCourse.courseId.toString() === courseId
-      );
+      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
 
-      if (courseExistsInUser) {
+      if (existingEnrollment) {
         return res.status(400).json({
           success: false,
           message: "You have already purchased this course"
@@ -212,8 +208,7 @@ export const paypalSuccess = CatchAsyncError(
       const newOrder = await OrderModel.create(orderData);
       console.log("Order created:", newOrder._id);
 
-      user.courses.push({ courseId: courseId as string });
-      await user.save();
+      // Enrollment is recorded below; removed legacy user.courses update
 
       try {
         await EnrolledCourseModel.create({ userId, courseId });

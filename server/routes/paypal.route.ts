@@ -1,6 +1,6 @@
 import express from "express";
 import { isAuthenticated } from "../middleware/auth";
-import { createPayPalCheckoutSession, paypalSuccess, checkPayPalPaymentStatus, cancelPayPalPayment, checkPayPalOrderStatus } from "../controllers/order.controller";
+import { createPayPalCheckoutSession, paypalSuccess, checkPayPalPaymentStatus, cancelPayPalPayment, checkPayPalOrderStatus } from "../controllers/paypal.controller";
 
 const paypalRouter = express.Router();
 

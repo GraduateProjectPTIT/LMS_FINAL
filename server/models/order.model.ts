@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface IPaymentInfo {
+    id?: string;
     transaction_id?: string;
     amount: number;
     currency: string;
