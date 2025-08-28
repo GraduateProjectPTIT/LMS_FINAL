@@ -1,5 +1,3 @@
-// Course Controller Interfaces
-
 export interface IAddQuestionData {
   question: string;
   courseId: string;

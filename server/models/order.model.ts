@@ -8,6 +8,7 @@ export interface IPaymentInfo {
     payer_email?: string;
     payer_name?: string;
     payment_intent_id?: string;
+    payer_id?: string;
     paid_at?: Date;
     expires_at?: Date;
     refund_status?: 'none' | 'partial' | 'full';

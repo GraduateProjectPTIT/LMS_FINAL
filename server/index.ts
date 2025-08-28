@@ -11,6 +11,7 @@ import notificationRouter from "./routes/notification.route";
 import analyticsRouter from "./routes/analytics.route";
 import layoutRouter from "./routes/layout.route";
 import stripeRouter from "./routes/stripe.route";
+import paypalRouter from "./routes/paypal.route";
 import authRouter from "./routes/auth.route";
 import { stripeWebhook } from "./controllers/order.controller";
 
@@ -55,6 +56,7 @@ app.use(
 );
 
 app.use("/api/stripe", stripeRouter);
+app.use("/api/paypal", paypalRouter);
 
 // unknown route
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
