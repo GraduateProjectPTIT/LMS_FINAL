@@ -9,6 +9,7 @@ import ejs from "ejs";
 import sendMail from "../utils/sendMail";
 import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
+import EnrolledCourseModel from "../models/enrolledCourse.model";
 
 import ErrorHandler from "../utils/ErrorHandler";
 
@@ -766,6 +767,91 @@ export const getAllLevelsService = async (
   try {
     const levels = await CourseModel.distinct("level");
     res.status(200).json({ success: true, levels });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const generateUploadSignatureService = async (res: Response) => {
+  const timestamp = Math.round(new Date().getTime() / 1000);
+  const folder = process.env.CLOUDINARY_FOLDER || "videos_lms";
+
+  const cloudName = process.env.CLOUD_NAME as string;
+  const apiKey = process.env.CLOUD_API_KEY as string;
+  const apiSecret = process.env.CLOUD_SECRET_KEY as string;
+
+  const paramsToSign: Record<string, any> = {
+    folder,
+    resource_type: "video",
+    timestamp,
+  };
+
+  const signature = cloudinary.v2.utils.api_sign_request(paramsToSign, apiSecret);
+
+  res.status(200).json({
+    success: true,
+    cloudName,
+    apiKey,
+    timestamp,
+    folder,
+    signature,
+  });
+};
+
+export const markLectureCompletedService = async (
+  user: any,
+  data: { courseId: string; lectureId: string },
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { courseId, lectureId } = data;
+
+    if (!mongoose.Types.ObjectId.isValid(courseId) || !mongoose.Types.ObjectId.isValid(lectureId)) {
+      return next(new ErrorHandler("Invalid courseId or lectureId", 400));
+    }
+
+    const isEnrolledByUserDoc = await EnrolledCourseModel.findOne({ userId: user?._id, courseId });
+    if (!isEnrolledByUserDoc && user?.role !== "admin") {
+      return next(new ErrorHandler("You are not enrolled in this course", 403));
+    }
+
+    const course = await CourseModel.findById(courseId).select("courseData.sectionContents._id");
+    if (!course) return next(new ErrorHandler("Course not found", 404));
+
+    const totalLectures = 0 // Tinh tong so khoa hoc - Not done
+
+    if (totalLectures === 0) {
+      return next(new ErrorHandler("Course has no lectures", 400));
+    }
+
+    const updated = await EnrolledCourseModel.findOneAndUpdate(
+      { userId: user?._id, courseId },
+      { $addToSet: { completedLectures: new mongoose.Types.ObjectId(lectureId) } },
+      { new: true, upsert: user?.role === "admin" ? false : false }
+    );
+
+    if (!updated) {
+      return next(new ErrorHandler("Enrollment record not found", 404));
+    }
+
+    const completedCount = 0 // Tinh so luong completed - Not done
+    const progress = 0 // Tinh progress - Not done
+    const completed = progress >= 100;
+
+    if (progress !== updated.progress || completed !== updated.completed) {
+      updated.progress = progress;
+      updated.completed = completed;
+      await updated.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      progress,
+      completed,
+      completedLectures: updated.completedLectures,
+      totalLectures,
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }

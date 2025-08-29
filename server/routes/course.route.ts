@@ -19,6 +19,8 @@ import {
   createCourseController,
   getAllCategories,
   getAllLevels,
+  generateUploadSignature,
+  markLectureCompleted,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -32,7 +34,7 @@ courseRouter.post(
 courseRouter.put(
   "/course/update_course/:id",
   isAuthenticated,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "tutor"),
   editCourse
 );
 courseRouter.get(
@@ -42,7 +44,11 @@ courseRouter.get(
   getCourseOverview
 ); // check creator Id
 courseRouter.get("/course/get_all_courses", getAllCourses);
-courseRouter.get("/course/enroll/:id", isAuthenticated, enrollCourse);
+courseRouter.get(
+  "/course/enroll/:id",
+  isAuthenticated,
+  enrollCourse
+);
 courseRouter.put(
   "/course/add_question_to_lecture",
   isAuthenticated,
@@ -52,6 +58,11 @@ courseRouter.put(
   "/course/add_answer_to_lecture_question",
   isAuthenticated,
   addAnswer
+);
+courseRouter.put(
+  "/course/complete_lecture",
+  isAuthenticated,
+  markLectureCompleted
 );
 courseRouter.put("/course/add_review/:id", isAuthenticated, addReview);
 courseRouter.put(
@@ -68,11 +79,18 @@ courseRouter.get(
 courseRouter.delete(
   "/course/delete_course/:id",
   isAuthenticated,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "tutor"),
   deleteCourse
 );
 courseRouter.get("/course/search", searchCourses);
 courseRouter.get("/course/categories", getAllCategories);
 courseRouter.get("/course/levels", getAllLevels);
+
+courseRouter.get(
+  "/course/generate-upload-signature",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  generateUploadSignature
+);
 
 export default courseRouter;

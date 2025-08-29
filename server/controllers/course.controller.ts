@@ -16,6 +16,8 @@ import {
   deleteCourseService,
   getAllCategoriesService,
   getAllLevelsService,
+  generateUploadSignatureService,
+  markLectureCompletedService,
 } from "../services/course.service";
 import cloudinary from "cloudinary";
 import {
@@ -250,5 +252,29 @@ export const getAllCategories = CatchAsyncError(
 export const getAllLevels = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     getAllLevelsService(res, next);
+  }
+);
+
+export const generateUploadSignature = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await generateUploadSignatureService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const markLectureCompleted = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId, lectureId } = req.body || {};
+      if (!courseId || !lectureId) {
+        return next(new ErrorHandler("courseId and lectureId are required", 400));
+      }
+      await markLectureCompletedService(req.user, { courseId, lectureId }, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
   }
 );

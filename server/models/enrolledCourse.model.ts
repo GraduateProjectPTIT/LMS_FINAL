@@ -6,6 +6,7 @@ export interface IEnrolledCourse extends Document {
   progress?: number;
   completed?: boolean;
   enrolledAt?: Date;
+  completedLectures: mongoose.Types.ObjectId[];
 }
 
 const enrolledCourseSchema = new Schema<IEnrolledCourse>(
@@ -36,6 +37,11 @@ const enrolledCourseSchema = new Schema<IEnrolledCourse>(
       type: Date,
       default: Date.now,
     },
+    completedLectures: [
+      {
+        type: Schema.Types.ObjectId,
+      },
+    ],
   },
   { timestamps: true }
 );

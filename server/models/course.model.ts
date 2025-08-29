@@ -43,7 +43,10 @@ interface ICourseSection extends Document {
 interface ICourseLecture extends Document {
     videoTitle: string;
     videoDescription: string;
-    videoUrl: string;
+    video: {
+        public_id: string;
+        url: string;
+    };
     videoLength: number;
     videoLinks: ILink[];
     lectureQuestions: ILectureQuestion[];
@@ -110,7 +113,10 @@ const linkSchema = new Schema<ILink>({
 const courseLectureSchema = new Schema<ICourseLecture>({
     videoTitle: { type: String, required: true },
     videoDescription: { type: String, required: true },
-    videoUrl: { type: String, required: true },
+    video: {
+        public_id: { type: String, required: true },
+        url: { type: String, required: true },
+    },
     videoLength: { type: Number, required: true },
     videoLinks: [linkSchema],
     lectureQuestions: [lectureQuestionSchema],
