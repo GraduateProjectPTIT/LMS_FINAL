@@ -106,8 +106,8 @@ export const editCourseService = async (
 
       const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
         folder: "courses",
-        width: 500,
-        height: 300,
+        width: 750,
+        height: 422,
         crop: "fill",
       });
 
