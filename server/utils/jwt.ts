@@ -1,6 +1,5 @@
 require("dotenv").config();
 import { Response } from "express";
-import { IUser } from "../models/user.model";
 import { redis } from "./redis";
 import { ITokenOptions, IUserResponse } from "../types/auth.types";
 import jwt from "jsonwebtoken";
@@ -49,23 +48,17 @@ export const sendToken = (
   statusCode: number,
   res: Response
 ) => {
+  // Hàm này bây giờ rất sạch sẽ vì nó tin rằng đối tượng `user` đã hoàn chỉnh
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  const userResponse: IUserResponse = {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-  };
-
+  // Không cần tạo lại userResponse nữa, vì `user` đã đúng định dạng
   res.cookie("access_token", accessToken, accessTokenOptions);
   res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
   res.status(statusCode).json({
     success: true,
-    userResponse,
+    userResponse: user,
     accessToken,
   });
 };
