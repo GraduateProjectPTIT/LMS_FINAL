@@ -51,8 +51,8 @@ export const createCourseController = CatchAsyncError(
         try {
           const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
             folder: "courses",
-            width: 500,
-            height: 300,
+            width: 750,
+            height: 422,
             crop: "fill",
           });
 
@@ -87,37 +87,6 @@ export const editCourse = CatchAsyncError(
     try {
       const data = req.body;
       const courseId = req.params.id;
-
-      // If thumbnail exists, upload to Cloudinary
-      if (
-        data.thumbnail &&
-        typeof data.thumbnail === "string" &&
-        (data.thumbnail.startsWith("data:") ||
-          data.thumbnail.startsWith("http"))
-      ) {
-        try {
-          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
-            folder: "courses",
-            width: 500,
-            height: 300,
-            crop: "fill",
-          });
-
-          data.thumbnail = {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
-          };
-        } catch (uploadError: any) {
-          console.error("Cloudinary upload error:", uploadError);
-          return next(
-            new ErrorHandler(
-              "Error uploading thumbnail: " + uploadError.message,
-              500
-            )
-          );
-        }
-      }
-
       editCourseService(courseId, data, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
