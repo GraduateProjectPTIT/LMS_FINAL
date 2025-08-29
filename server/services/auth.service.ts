@@ -18,10 +18,28 @@ import {
   IResetPasswordToken,
   IResetPasswordPayload,
   IDecodedPayload,
+  IUserResponse,
 } from "../types/auth.types";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
+
+const _toUserResponse = (user: IUser): IUserResponse => {
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isVerified: user.isVerified ?? false,
+    avatar: user.avatar ?? { public_id: "", url: "" },
+    socials: user.socials ?? {
+      facebook: "",
+      instagram: "",
+      tiktok: "",
+    },
+  };
+};
+
 const createActivationToken = (user: IRegistrationBody): IActivationToken => {
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
@@ -279,26 +297,23 @@ export const activateUserService = async (body: IActivationRequest) => {
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP ---
-export const loginUserService = async (body: ILoginRequest) => {
+export const loginUserService = async (
+  body: ILoginRequest
+): Promise<IUserResponse> => {
   const { email, password } = body;
 
   if (!email || !password) {
     throw new ErrorHandler("Please enter email and password", 400);
   }
 
-  const user = await userModel.findOne({ email }).select("+password");
+  const userFromDB = await userModel.findOne({ email }).select("+password");
 
-  if (!user || !(await user.comparePassword(password))) {
+  if (!userFromDB || !(await userFromDB.comparePassword(password))) {
     throw new ErrorHandler("Invalid email or password", 400);
   }
 
-  // ✔️ Thay đổi: Chuyển đổi Mongoose document thành plain object
-  const userObject = user.toObject();
-
-  // ✅ Thay thế `delete` bằng cú pháp này
-  const { password: hashedPassword, ...userWithoutPassword } = userObject;
-
-  return userWithoutPassword;
+  // ✅ Gọi hàm helper để chuyển đổi
+  return _toUserResponse(userFromDB);
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---

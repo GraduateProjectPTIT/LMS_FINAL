@@ -18,7 +18,15 @@ export interface IUserResponse {
     public_id: string;
     url: string;
   };
+  // ✅ Cập nhật ở đây
+  isVerified: boolean;
+  socials: {
+    facebook: string;
+    instagram: string;
+    tiktok: string;
+  };
 }
+
 export interface IDecodedPayload {
   id: string;
   iat: number;

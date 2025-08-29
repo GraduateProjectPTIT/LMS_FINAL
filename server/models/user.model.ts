@@ -20,10 +20,10 @@ export interface IUser extends Document {
     url: string;
   };
   role: UserRole;
-  socials?: {
-    facebook?: string;
-    instagram?: string;
-    tiktok?: string;
+  socials: {
+    facebook: string;
+    instagram: string;
+    tiktok: string;
   };
   resetToken?: string;
   activationCode?: string;
@@ -69,9 +69,9 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       default: UserRole.Student,
     },
     socials: {
-      facebook: { type: String },
-      instagram: { type: String },
-      tiktok: { type: String },
+      facebook: { type: String, default: "" },
+      instagram: { type: String, default: "" },
+      tiktok: { type: String, default: "" },
     },
     isVerified: {
       type: Boolean,
