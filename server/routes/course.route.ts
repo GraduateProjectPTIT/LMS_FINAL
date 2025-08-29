@@ -21,6 +21,8 @@ import {
   getAllLevels,
   generateUploadSignature,
   markLectureCompleted,
+  getMyCourses,
+  getCourseStudents,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -48,6 +50,18 @@ courseRouter.get(
   "/course/enroll/:id",
   isAuthenticated,
   enrollCourse
+);
+courseRouter.get(
+  "/course/:id/students",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
+  getCourseStudents
+);
+courseRouter.get(
+  "/course/my_courses",
+  isAuthenticated,
+  getMyCourses
 );
 courseRouter.put(
   "/course/add_question_to_lecture",
@@ -80,6 +94,7 @@ courseRouter.delete(
   "/course/delete_course/:id",
   isAuthenticated,
   authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
   deleteCourse
 );
 courseRouter.get("/course/search", searchCourses);

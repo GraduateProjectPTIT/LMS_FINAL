@@ -81,6 +81,38 @@ export const createCourse = async (
   }
 };
 
+export const getMyCoursesService = async (
+  user: any,
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filter: any = {};
+
+    if (user?.role === "tutor") {
+      filter.creatorId = user._id;
+    } else if (user?.role === "admin") {
+      if (query?.creatorId) {
+        filter.creatorId = query.creatorId;
+      }
+    } else {
+      return next(new ErrorHandler("Forbidden", 403));
+    }
+
+    const courses = await CourseModel.find(filter)
+      .select(
+        "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+      )
+      .populate("creatorId", "name avatar email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, courses });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
 // edit course
 export const editCourseService = async (
   courseId: string,
@@ -744,6 +776,22 @@ export const adminGetAllCoursesService = async (res: Response) => {
   });
 };
 
+export const getCourseStudentsService = async (
+  courseId: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const students = await EnrolledCourseModel.find({ courseId })
+      .populate("userId", "name email avatar")
+      .select("userId progress completed enrolledAt");
+
+    res.status(200).json({ success: true, students });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
 export const getAllCategoriesService = async (
   res: Response,
   next: NextFunction
@@ -786,7 +834,10 @@ export const generateUploadSignatureService = async (res: Response) => {
     timestamp,
   };
 
-  const signature = cloudinary.v2.utils.api_sign_request(paramsToSign, apiSecret);
+  const signature = cloudinary.v2.utils.api_sign_request(
+    paramsToSign,
+    apiSecret
+  );
 
   res.status(200).json({
     success: true,
@@ -807,19 +858,27 @@ export const markLectureCompletedService = async (
   try {
     const { courseId, lectureId } = data;
 
-    if (!mongoose.Types.ObjectId.isValid(courseId) || !mongoose.Types.ObjectId.isValid(lectureId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(courseId) ||
+      !mongoose.Types.ObjectId.isValid(lectureId)
+    ) {
       return next(new ErrorHandler("Invalid courseId or lectureId", 400));
     }
 
-    const isEnrolledByUserDoc = await EnrolledCourseModel.findOne({ userId: user?._id, courseId });
+    const isEnrolledByUserDoc = await EnrolledCourseModel.findOne({
+      userId: user?._id,
+      courseId,
+    });
     if (!isEnrolledByUserDoc && user?.role !== "admin") {
       return next(new ErrorHandler("You are not enrolled in this course", 403));
     }
 
-    const course = await CourseModel.findById(courseId).select("courseData.sectionContents._id");
+    const course = await CourseModel.findById(courseId).select(
+      "courseData.sectionContents._id"
+    );
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
-    const totalLectures = 0 // Tinh tong so khoa hoc - Not done
+    const totalLectures = 0; // Tinh tong so khoa hoc - Not done
 
     if (totalLectures === 0) {
       return next(new ErrorHandler("Course has no lectures", 400));
@@ -827,7 +886,11 @@ export const markLectureCompletedService = async (
 
     const updated = await EnrolledCourseModel.findOneAndUpdate(
       { userId: user?._id, courseId },
-      { $addToSet: { completedLectures: new mongoose.Types.ObjectId(lectureId) } },
+      {
+        $addToSet: {
+          completedLectures: new mongoose.Types.ObjectId(lectureId),
+        },
+      },
       { new: true, upsert: user?.role === "admin" ? false : false }
     );
 
@@ -835,8 +898,8 @@ export const markLectureCompletedService = async (
       return next(new ErrorHandler("Enrollment record not found", 404));
     }
 
-    const completedCount = 0 // Tinh so luong completed - Not done
-    const progress = 0 // Tinh progress - Not done
+    const completedCount = 0; // Tinh so luong completed - Not done
+    const progress = 0; // Tinh progress - Not done
     const completed = progress >= 100;
 
     if (progress !== updated.progress || completed !== updated.completed) {

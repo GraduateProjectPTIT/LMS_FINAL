@@ -18,6 +18,8 @@ import {
   getAllLevelsService,
   generateUploadSignatureService,
   markLectureCompletedService,
+  getMyCoursesService,
+  getCourseStudentsService,
 } from "../services/course.service";
 import cloudinary from "cloudinary";
 import {
@@ -76,6 +78,27 @@ export const createCourseController = CatchAsyncError(
       createCourse(data, res, next);
     } catch (error: any) {
       console.error("Course upload error:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getCourseStudents = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await getCourseStudentsService(courseId, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getMyCourses = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getMyCoursesService(req.user, req.query, res, next);
+    } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
