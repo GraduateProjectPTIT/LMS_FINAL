@@ -93,14 +93,18 @@ export const createOrder = CatchAsyncError(
       // await redis.set(userId as string, JSON.stringify(user));
 
       await NotificationModel.create({
-        user: user?._id,
+        userId: user?._id as any,
+        title: "Order Confirmation",
+        message: `You have successfully purchased ${course?.name}`,
+      });
+      await NotificationModel.create({
+        userId: course.creatorId as any,
         title: "New Order",
-        message: `You have a new order from ${course?.name}`,
+        message: `${user?.name} purchased ${course?.name}`,
       });
 
-      course.purchased += 1;
-
-      await course.save();
+      // Increment purchased without triggering full schema validation
+      await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
 
       newOrder(data, res, next);
     } catch (error: any) {
@@ -316,8 +320,7 @@ export const paypalSuccess = CatchAsyncError(
         }
       }
 
-      course.purchased += 1;
-      await course.save();
+      await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
 
       const mailData = {
         order: {
@@ -345,10 +348,14 @@ export const paypalSuccess = CatchAsyncError(
       }
 
       await NotificationModel.create({
-        user: userId,
-        title: "New Order - PayPal",
+        userId: userId as any,
+        title: "Order Confirmation - PayPal",
         message: `You have successfully purchased ${course.name} via PayPal`,
-        type: "order",
+      });
+      await NotificationModel.create({
+        userId: course.creatorId as any,
+        title: "New Order",
+        message: `${user.name} purchased ${course.name} via PayPal`,
       });
 
       res.status(200).json({
@@ -683,8 +690,7 @@ export const handleSuccessfulPayment = async (session: any) => {
 
     await OrderModel.create(orderData);
 
-    course.purchased += 1;
-    await course.save();
+    await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
 
     const mailData = {
       order: {
@@ -711,9 +717,14 @@ export const handleSuccessfulPayment = async (session: any) => {
     }
 
     await NotificationModel.create({
-      user: userId,
-      title: "New Order",
+      userId: userId as any,
+      title: "Order Confirmation",
       message: `You have successfully purchased ${course.name}`,
+    });
+    await NotificationModel.create({
+      userId: course.creatorId as any,
+      title: "New Order",
+      message: `${user.name} purchased ${course.name}`,
     });
 
     console.log("Payment processed successfully");

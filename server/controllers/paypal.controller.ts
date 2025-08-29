@@ -220,8 +220,7 @@ export const paypalSuccess = CatchAsyncError(
         }
       }
 
-      course.purchased += 1;
-      await course.save();
+      await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
 
       const mailData = {
         order: {
@@ -249,10 +248,14 @@ export const paypalSuccess = CatchAsyncError(
       }
 
       await NotificationModel.create({
-        user: userId,
-        title: "New Order - PayPal",
+        userId: userId as any,
+        title: "Order Confirmation - PayPal",
         message: `You have successfully purchased ${course.name} via PayPal`,
-        type: "order",
+      });
+      await NotificationModel.create({
+        userId: course.creatorId as any,
+        title: "New Order",
+        message: `${user.name} purchased ${course.name} via PayPal`,
       });
 
       res.status(200).json({
