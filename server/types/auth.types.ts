@@ -58,7 +58,6 @@ export interface IRegistrationBody {
   name: string;
   email: string;
   password: string;
-  confirmPassword?: string; // `confirmPassword` không lưu vào DB, có thể tùy chọn
 }
 
 // Dùng cho body của request kích hoạt tài khoản
