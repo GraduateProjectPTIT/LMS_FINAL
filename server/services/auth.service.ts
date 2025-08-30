@@ -325,6 +325,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
         public_id: "default_id", // Hoặc một ID mặc định nếu bạn muốn
         url: avatar,
       },
+      isVerified: true,
     });
   } else {
     // Kịch bản 2: Người dùng đã tồn tại -> Kiểm tra và cập nhật avatar
