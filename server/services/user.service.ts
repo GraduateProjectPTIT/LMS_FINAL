@@ -30,15 +30,12 @@ export const updateUserInfoService = async (
   if (!user) {
     throw new ErrorHandler("User not found", 404);
   }
-  if (data.email) {
-    const isEmailExist = await userModel.findOne({ email: data.email });
-    if (isEmailExist && isEmailExist._id.toString() !== userId) {
-      throw new ErrorHandler("Email already exists", 400);
-    }
-    user.email = data.email;
-  }
+
   if (data.name) {
     user.name = data.name;
+  }
+  if (data.socials) {
+    Object.assign(user.socials, data.socials);
   }
   await user.save();
   // await redis.set(userId, JSON.stringify(user));
