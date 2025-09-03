@@ -11,7 +11,6 @@ import {
   addReview,
   deleteCourse,
   editCourse,
-  getAllCourses,
   adminGetAllCourses,
   enrollCourse,
   getCourseOverview,
@@ -42,10 +41,8 @@ courseRouter.put(
 courseRouter.get(
   "/course/overview/:id",
   isAuthenticated,
-  checkOwnership(CourseModel),
   getCourseOverview
 ); // check creator Id
-courseRouter.get("/course/get_all_courses", getAllCourses);
 courseRouter.get(
   "/course/enroll/:id",
   isAuthenticated,

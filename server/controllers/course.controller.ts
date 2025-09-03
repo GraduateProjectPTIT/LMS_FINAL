@@ -5,7 +5,6 @@ import {
   createCourse,
   editCourseService,
   getCourseOverviewService,
-  getAllCoursesService,
   adminGetAllCoursesService,
   enrollCourseService,
   searchCoursesService,
@@ -21,7 +20,6 @@ import {
   getMyCoursesService,
   getCourseStudentsService,
 } from "../services/course.service";
-import cloudinary from "cloudinary";
 import {
   IAddQuestionData,
   IAddAnswerData,
@@ -40,38 +38,6 @@ export const createCourseController = CatchAsyncError(
         data.creatorId = req.user._id;
       } else {
         return next(new ErrorHandler("User not authenticated", 401));
-      }
-
-      // If thumbnail exists, upload to Cloudinary
-      if (
-        data.thumbnail &&
-        typeof data.thumbnail === "string" &&
-        (data.thumbnail.startsWith("data:") ||
-          data.thumbnail.startsWith("http"))
-      ) {
-        console.log("Uploading thumbnail to Cloudinary...");
-        try {
-          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
-            folder: "courses",
-            width: 750,
-            height: 422,
-            crop: "fill",
-          });
-
-          console.log("Cloudinary upload successful:", myCloud.public_id);
-          data.thumbnail = {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
-          };
-        } catch (uploadError: any) {
-          console.error("Cloudinary upload error:", uploadError);
-          return next(
-            new ErrorHandler(
-              "Error uploading thumbnail: " + uploadError.message,
-              500
-            )
-          );
-        }
       }
 
       console.log("Calling createCourse service...");
@@ -123,17 +89,6 @@ export const getCourseOverview = CatchAsyncError(
     try {
       const courseId = req.params.id;
       getCourseOverviewService(courseId, res, next);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
-// get all courses (no purchase required)
-export const getAllCourses = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      getAllCoursesService(res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -228,7 +183,7 @@ export const deleteCourse = CatchAsyncError(
 export const adminGetAllCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      adminGetAllCoursesService(res);
+      adminGetAllCoursesService(req.query, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
