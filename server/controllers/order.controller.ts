@@ -10,7 +10,6 @@ import path from "path";
 import ejs from "ejs";
 import NotificationModel from "../models/notification.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
-import { getAllCoursesService } from "../services/course.service";
 import { redis } from "../utils/redis";
 import mongoose from "mongoose";
 import stripe from "../utils/stripe";

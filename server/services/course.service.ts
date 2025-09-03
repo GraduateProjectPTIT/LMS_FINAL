@@ -39,6 +39,33 @@ export const createCourse = async (
       return next(new ErrorHandler("Creator ID is required", 400));
     }
 
+    if (
+      data.thumbnail &&
+      typeof data.thumbnail === "string" &&
+      (data.thumbnail.startsWith("data:") || data.thumbnail.startsWith("http"))
+    ) {
+      try {
+        const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
+          folder: "courses",
+          width: 750,
+          height: 422,
+          crop: "fill",
+        });
+
+        data.thumbnail = {
+          public_id: myCloud.public_id,
+          url: myCloud.secure_url,
+        };
+      } catch (uploadError: any) {
+        return next(
+          new ErrorHandler(
+            "Error uploading thumbnail: " + uploadError.message,
+            500
+          )
+        );
+      }
+    }
+
     if (data.categories) {
       const layoutData = await LayoutModel.findOne({ type: "Categories" });
       if (!layoutData) {
@@ -88,26 +115,115 @@ export const getMyCoursesService = async (
   next: NextFunction
 ) => {
   try {
-    const filter: any = {};
+    const pageParam = query?.page;
+    const limitParam = query?.limit;
+    let page = Number.parseInt(String(pageParam), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    let limit = Number.parseInt(String(limitParam), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const skip = (page - 1) * limit;
 
+    // Tutors: courses they created
     if (user?.role === "tutor") {
-      filter.creatorId = user._id;
-    } else if (user?.role === "admin") {
+      const [courses, total] = await Promise.all([
+        CourseModel.find({ creatorId: user._id })
+          .select(
+            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+          )
+          .populate("creatorId", "name avatar email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        CourseModel.countDocuments({ creatorId: user._id }),
+      ]);
+
+      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+      return res.status(200).json({
+        success: true,
+        courses,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: totalPages > 0 && page < totalPages,
+          hasPrevPage: totalPages > 0 && page > 1,
+        },
+      });
+    }
+
+    if (user?.role === "admin") {
+      const filter: any = {};
       if (query?.creatorId) {
         filter.creatorId = query.creatorId;
       }
-    } else {
-      return next(new ErrorHandler("Forbidden", 403));
+      const [courses, total] = await Promise.all([
+        CourseModel.find(filter)
+          .select(
+            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+          )
+          .populate("creatorId", "name avatar email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        CourseModel.countDocuments(filter),
+      ]);
+
+      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+      return res.status(200).json({
+        success: true,
+        courses,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: totalPages > 0 && page < totalPages,
+          hasPrevPage: totalPages > 0 && page > 1,
+        },
+      });
     }
 
-    const courses = await CourseModel.find(filter)
-      .select(
-        "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
-      )
-      .populate("creatorId", "name avatar email")
-      .sort({ createdAt: -1 });
+    if (user?._id) {
+      const [enrollments, total] = await Promise.all([
+        EnrolledCourseModel.find({ userId: user._id })
+          .select("courseId progress completed enrolledAt")
+          .populate({
+            path: "courseId",
+            select:
+              "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
+            populate: { path: "creatorId", select: "name avatar email" },
+          })
+          .sort({ enrolledAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        EnrolledCourseModel.countDocuments({ userId: user._id }),
+      ]);
 
-    res.status(200).json({ success: true, courses });
+      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+      const courses = enrollments.map((en) => ({
+        course: (en as any).courseId,
+        progress: (en as any).progress ?? 0,
+        completed: (en as any).completed ?? false,
+        enrolledAt: (en as any).enrolledAt,
+      }));
+
+      return res.status(200).json({
+        success: true,
+        courses,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: totalPages > 0 && page < totalPages,
+          hasPrevPage: totalPages > 0 && page > 1,
+        },
+      });
+    }
+
+    return next(new ErrorHandler("Forbidden", 403));
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -306,19 +422,6 @@ export const getCourseOverviewService = async (
   }
 };
 
-// get all courses
-export const getAllCoursesService = async (res: Response) => {
-  const courses = await CourseModel.find()
-    .select("-courseData.sectionContents")
-    .populate("reviews.userId", "name avatar")
-    .populate("creatorId", "name avatar email")
-    .sort({ createAt: -1 });
-
-  res.status(200).json({
-    success: true,
-    courses,
-  });
-};
 
 // enroll course
 export const enrollCourseService = async (
@@ -328,13 +431,16 @@ export const enrollCourseService = async (
   next: NextFunction
 ) => {
   try {
-    const isEnrolled = userId?.courses?.some(
-      (c: any) => c.courseId.toString() === courseId
-    );
+    const enrollment = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    });
+
+    const isEnrolled = Boolean(enrollment);
 
     if (!isEnrolled && userId?.role !== "admin") {
       return next(
-        new ErrorHandler("You are not eligible to access this course", 500)
+        new ErrorHandler("You are not eligible to access this course", 403)
       );
     }
 
@@ -480,9 +586,11 @@ export const addQuestionService = async (
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     // Check if user is enrolled in this course
-    const isEnrolled = userId?.courses?.some(
-      (c: any) => c.courseId.toString() === courseId
-    );
+    const enrollmentForQuestion = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    });
+    const isEnrolled = Boolean(enrollmentForQuestion);
 
     if (!isEnrolled && userId?.role !== "admin") {
       return next(
@@ -545,9 +653,11 @@ export const addAnswerService = async (
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     // Check if user is enrolled in this course
-    const isEnrolled = userId?.courses?.some(
-      (c: any) => c.courseId.toString() === courseId
-    );
+    const enrollmentForAnswer = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    });
+    const isEnrolled = Boolean(enrollmentForAnswer);
 
     if (!isEnrolled && userId?.role !== "admin") {
       return next(
@@ -631,10 +741,11 @@ export const addReviewService = async (
 ) => {
   try {
     const { review, rating } = reviewData;
-
-    const isEnrolled = userId?.courses?.some(
-      (c: any) => c.courseId === courseId
-    );
+    const enrollmentForReview = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    });
+    const isEnrolled = Boolean(enrollmentForReview);
 
     if (!isEnrolled && userId?.role !== "admin") {
       return next(
@@ -700,9 +811,11 @@ export const addReplyToReviewService = async (
     }
 
     // Check if user is enrolled in this course
-    const isEnrolled = userId?.courses?.some(
-      (c: any) => c.courseId.toString() === courseId
-    );
+    const enrollmentForReviewReply = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    });
+    const isEnrolled = Boolean(enrollmentForReviewReply);
 
     if (!isEnrolled && userId?.role !== "admin") {
       return next(
@@ -763,16 +876,45 @@ export const deleteCourseService = async (
   }
 };
 
-// get all courses for admin
-export const adminGetAllCoursesService = async (res: Response) => {
-  const courses = await CourseModel.find()
-    .populate("reviews.userId", "name avatar")
-    .populate("creatorId", "name avatar email")
-    .sort({ createAt: -1 });
+export const adminGetAllCoursesService = async (
+  query: any,
+  res: Response
+) => {
+  const pageParam = query?.page;
+  const limitParam = query?.limit;
+
+  let page = Number.parseInt(String(pageParam), 10);
+  if (Number.isNaN(page) || page < 1) page = 1;
+
+  let limit = Number.parseInt(String(limitParam), 10);
+  if (Number.isNaN(limit) || limit < 1) limit = 10;
+  if (limit > 100) limit = 100;
+
+  const skip = (page - 1) * limit;
+
+  const [courses, total] = await Promise.all([
+    CourseModel.find()
+      .populate("reviews.userId", "name avatar")
+      .populate("creatorId", "name avatar email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    CourseModel.countDocuments(),
+  ]);
+
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
   res.status(200).json({
     success: true,
     courses,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: totalPages > 0 && page < totalPages,
+      hasPrevPage: totalPages > 0 && page > 1,
+    },
   });
 };
 
@@ -877,9 +1019,11 @@ export const markLectureCompletedService = async (
       "courseData.sectionContents._id"
     );
     if (!course) return next(new ErrorHandler("Course not found", 404));
-
-    const totalLectures = 0; // Tinh tong so khoa hoc - Not done
-
+    
+    const totalLectures = (course.courseData || []).reduce((acc: number, section: any) => {
+      return acc + (section.sectionContents ? section.sectionContents.length : 0);
+    }, 0);
+    
     if (totalLectures === 0) {
       return next(new ErrorHandler("Course has no lectures", 400));
     }
@@ -891,15 +1035,15 @@ export const markLectureCompletedService = async (
           completedLectures: new mongoose.Types.ObjectId(lectureId),
         },
       },
-      { new: true, upsert: user?.role === "admin" ? false : false }
+      { new: true, upsert: user?.role === "admin" ? true : false }
     );
-
+    
     if (!updated) {
       return next(new ErrorHandler("Enrollment record not found", 404));
     }
-
-    const completedCount = 0; // Tinh so luong completed - Not done
-    const progress = 0; // Tinh progress - Not done
+    
+    const completedCount = (updated.completedLectures || []).length;
+    const progress = Math.min(100, Math.round((completedCount / totalLectures) * 100));
     const completed = progress >= 100;
 
     if (progress !== updated.progress || completed !== updated.completed) {
