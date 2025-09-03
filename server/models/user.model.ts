@@ -33,8 +33,7 @@ export interface IUser extends Document {
 }
 
 export interface ITutor extends IUser {
-  bio: string;
-  expertise: string[];
+  expertise?: (string | Types.ObjectId)[];
 }
 
 const userSchema: Schema<IUser> = new mongoose.Schema(
@@ -122,15 +121,13 @@ userSchema.methods.comparePassword = async function (
 const userModel: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 
 const tutorSchema: Schema<ITutor> = new Schema({
-  bio: {
-    type: String,
-    default: "",
-    maxlength: [1000, "Bio cannot be more than 1000 characters"],
-  },
-  expertise: {
-    type: [String],
-    default: [],
-  },
+  expertise: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Category",
+      required: false,
+    },
+  ],
 });
 
 // MODEL TUTOR (TẠO TỪ DISCRIMINATOR)

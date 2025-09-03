@@ -10,6 +10,7 @@ import {
   updatePasswordService,
   deleteMyAccountService,
   updateAvatarService,
+  setupProfileService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
@@ -108,6 +109,32 @@ export const getAllUsers = CatchAsyncError(
     });
   }
 );
+
+// register setup profile
+export const setupProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?._id.toString(); // Lấy user id từ middleware 'isAuthenticated'
+    const { role, expertise } = req.body;
+
+    if (!userId) {
+      return next(new ErrorHandler("User not found", 401));
+    }
+
+    const user = await setupProfileService(userId, { role, expertise });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile setup successful",
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // --- CẬP NHẬT VAI TRÒ (ADMIN) ---
 export const updateUserRole = CatchAsyncError(

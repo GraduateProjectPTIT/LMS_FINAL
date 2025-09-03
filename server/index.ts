@@ -14,6 +14,7 @@ import stripeRouter from "./routes/stripe.route";
 import paypalRouter from "./routes/paypal.route";
 import authRouter from "./routes/auth.route";
 import { stripeWebhook } from "./controllers/order.controller";
+import categoryRouter from "./routes/category.route";
 
 app.post(
   "/api/stripe/webhook",
@@ -52,7 +53,8 @@ app.use(
   orderRouter,
   notificationRouter,
   analyticsRouter,
-  layoutRouter
+  layoutRouter,
+  categoryRouter
 );
 
 app.use("/api/stripe", stripeRouter);

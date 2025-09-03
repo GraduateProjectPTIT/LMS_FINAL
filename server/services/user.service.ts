@@ -1,12 +1,13 @@
 // src/services/user.service.ts
-import userModel from "../models/user.model";
+import userModel, { ITutor, IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
-import { IUpdateUserInfo } from "../types/user.types";
+import { ISetupProfileDto, IUpdateUserInfo } from "../types/user.types";
 import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
 import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
+import CategoryModel from "../models/category.model";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -39,6 +40,56 @@ export const updateUserInfoService = async (
   }
   await user.save();
   // await redis.set(userId, JSON.stringify(user));
+  return user;
+};
+
+// Cập nhật profile khi đăng ký
+
+export const setupProfileService = async (
+  userId: string,
+  data: ISetupProfileDto
+): Promise<IUser> => {
+  const { role, expertise } = data;
+
+  // 1. Kiểm tra role hợp lệ
+  if (role !== UserRole.Student && role !== UserRole.Tutor) {
+    throw new ErrorHandler(
+      "Invalid role specified. Must be 'student' or 'tutor'.",
+      400
+    );
+  }
+
+  const user = await userModel.findById(userId);
+  if (!user) {
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  // 2. Kiểm tra xem user đã setup profile trước đó chưa
+
+  // 3. Xử lý logic nếu vai trò là Tutor
+  if (role === UserRole.Tutor) {
+    // Bắt buộc phải có expertise
+    if (!expertise || expertise.length === 0) {
+      throw new ErrorHandler("Expertise is required for tutors.", 400);
+    }
+
+    // Xác thực tất cả các ID trong mảng expertise
+    const categoryCount = await CategoryModel.countDocuments({
+      _id: { $in: expertise },
+    });
+
+    if (categoryCount !== expertise.length) {
+      throw new ErrorHandler("One or more expertise IDs are invalid.", 404);
+    }
+
+    // Gán expertise cho user
+    (user as ITutor).expertise = expertise;
+  }
+
+  // 4. Cập nhật vai trò và lưu
+  user.role = role;
+  await user.save({ validateBeforeSave: true });
+
   return user;
 };
 
