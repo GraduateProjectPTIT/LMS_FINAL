@@ -158,14 +158,10 @@ export const resetPasswordService = async (
 
 // --- NGHIỆP VỤ ĐĂNG KÝ ---
 export const registerUserService = async (body: IRegistrationBody) => {
-  const { name, email, password, confirmPassword } = body;
+  const { name, email, password } = body;
   const isEmailExist = await userModel.findOne({ email });
   if (isEmailExist) {
     throw new ErrorHandler("Email already exists", 400);
-  }
-
-  if (password !== confirmPassword) {
-    throw new ErrorHandler("Passwords do not match", 400);
   }
 
   const activationTokenData = createActivationToken({ name, email, password });
@@ -329,6 +325,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
         public_id: "default_id", // Hoặc một ID mặc định nếu bạn muốn
         url: avatar,
       },
+      isVerified: true,
     });
   } else {
     // Kịch bản 2: Người dùng đã tồn tại -> Kiểm tra và cập nhật avatar
