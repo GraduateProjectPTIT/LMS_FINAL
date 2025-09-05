@@ -36,13 +36,13 @@ courseRouter.put(
   "/course/update_course/:id",
   isAuthenticated,
   authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
   editCourse
 );
 courseRouter.get(
   "/course/overview/:id",
-  isAuthenticated,
   getCourseOverview
-); // check creator Id
+);
 courseRouter.get(
   "/course/enroll/:id",
   isAuthenticated,

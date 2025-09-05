@@ -403,14 +403,15 @@ export const enrollCourseService = async (
   next: NextFunction
 ) => {
   try {
-    const enrollment = await EnrolledCourseModel.findOne({
-      userId: userId?._id,
-      courseId,
-    });
+    const [enrollment, courseDoc] = await Promise.all([
+      EnrolledCourseModel.findOne({ userId: userId?._id, courseId }),
+      CourseModel.findById(courseId).select("creatorId"),
+    ]);
 
     const isEnrolled = Boolean(enrollment);
+    const isCreator = courseDoc && courseDoc.creatorId && courseDoc.creatorId.toString() === String(userId?._id);
 
-    if (!isEnrolled && userId?.role !== "admin") {
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
         new ErrorHandler("You are not eligible to access this course", 403)
       );
@@ -569,8 +570,9 @@ export const addQuestionService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForQuestion);
+    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
-    if (!isEnrolled && userId?.role !== "admin") {
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
         new ErrorHandler(
           "You must be enrolled in this course to ask questions",
@@ -636,8 +638,9 @@ export const addAnswerService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForAnswer);
+    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
-    if (!isEnrolled && userId?.role !== "admin") {
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
         new ErrorHandler(
           "You must be enrolled in this course to answer questions",
@@ -719,19 +722,18 @@ export const addReviewService = async (
 ) => {
   try {
     const { review, rating } = reviewData;
-    const enrollmentForReview = await EnrolledCourseModel.findOne({
-      userId: userId?._id,
-      courseId,
-    });
+    const [enrollmentForReview, course] = await Promise.all([
+      EnrolledCourseModel.findOne({ userId: userId?._id, courseId }),
+      CourseModel.findById(courseId),
+    ]);
     const isEnrolled = Boolean(enrollmentForReview);
+    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
-    if (!isEnrolled && userId?.role !== "admin") {
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
         new ErrorHandler("You are not eligible to review this course", 403)
       );
     }
-
-    const course = await CourseModel.findById(courseId);
 
     if (!course) {
       return next(new ErrorHandler("Course not found", 404));
@@ -794,8 +796,9 @@ export const addReplyToReviewService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForReviewReply);
+    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
-    if (!isEnrolled && userId?.role !== "admin") {
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
         new ErrorHandler(
           "You must be enrolled in this course to reply to reviews",
