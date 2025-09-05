@@ -4,7 +4,7 @@ import { IUser } from "./user.model";
 export interface ICourse extends Document {
     name: string;
     description: string;
-    categories: string;
+    categories: mongoose.Types.ObjectId[];
     price: number;
     estimatedPrice?: number;
     thumbnail: {
@@ -137,10 +137,13 @@ const courseSchema = new Schema<ICourse>(
             type: String,
             required: true,
         },
-        categories: {
-            type: String,
-            // required: true,
-        },
+        categories: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Category",
+                required: true,
+            },
+        ],
         price: {
             type: Number,
             required: true,

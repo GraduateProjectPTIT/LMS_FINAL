@@ -1,7 +1,7 @@
 import { Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import CourseModel from "../models/course.model";
-import LayoutModel from "../models/layout.model";
+import CategoryModel from "../models/category.model";
 import cloudinary from "cloudinary";
 import mongoose from "mongoose";
 import path from "path";
@@ -67,32 +67,18 @@ export const createCourse = async (
     }
 
     if (data.categories) {
-      const layoutData = await LayoutModel.findOne({ type: "Categories" });
-      if (!layoutData) {
-        return next(new ErrorHandler("Categories layout not found", 404));
+      if (!Array.isArray(data.categories) || data.categories.length === 0) {
+        return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
       }
-
-      const existingCategories = layoutData.categories.map((cat: any) =>
-        cat.title.toLowerCase()
-      );
-      const courseCategory = data.categories.toLowerCase();
-
-      if (!existingCategories.includes(courseCategory)) {
-        return next(
-          new ErrorHandler(
-            `Category "${
-              data.categories
-            }" does not exist. Available categories: ${existingCategories.join(
-              ", "
-            )}`,
-            400
-          )
-        );
+      const ids: string[] = data.categories;
+      if (!ids.every((id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id))) {
+        return next(new ErrorHandler("One or more category ids are invalid", 400));
       }
-
-      data.categories =
-        data.categories.charAt(0).toUpperCase() +
-        data.categories.slice(1).toLowerCase();
+      const found = await CategoryModel.find({ _id: { $in: ids } }).select("_id");
+      if (found.length !== ids.length) {
+        return next(new ErrorHandler("One or more categories do not exist", 400));
+      }
+      data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
     const course = await CourseModel.create(data);
@@ -267,34 +253,19 @@ export const editCourseService = async (
       data.thumbnail = availableCourseThumbnail;
     }
 
-    // Check if category exists in Layout and format it
     if (data.categories) {
-      const layoutData = await LayoutModel.findOne({ type: "Categories" });
-      if (!layoutData) {
-        return next(new ErrorHandler("Categories layout not found", 404));
+      if (!Array.isArray(data.categories) || data.categories.length === 0) {
+        return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
       }
-
-      const existingCategories = layoutData.categories.map((cat: any) =>
-        cat.title.toLowerCase()
-      );
-      const courseCategory = data.categories.toLowerCase();
-
-      if (!existingCategories.includes(courseCategory)) {
-        return next(
-          new ErrorHandler(
-            `Category "${
-              data.categories
-            }" does not exist. Available categories: ${existingCategories.join(
-              ", "
-            )}`,
-            400
-          )
-        );
+      const ids: string[] = data.categories;
+      if (!ids.every((id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id))) {
+        return next(new ErrorHandler("One or more category ids are invalid", 400));
       }
-
-      data.categories =
-        data.categories.charAt(0).toUpperCase() +
-        data.categories.slice(1).toLowerCase();
+      const found = await CategoryModel.find({ _id: { $in: ids } }).select("_id");
+      if (found.length !== ids.length) {
+        return next(new ErrorHandler("One or more categories do not exist", 400));
+      }
+      data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
     const course = await CourseModel.findByIdAndUpdate(
@@ -321,7 +292,8 @@ export const getCourseOverviewService = async (
   try {
     const course = await CourseModel.findById(courseId)
       .populate("reviews.userId", "name avatar")
-      .populate("reviews.replies.userId", "name avatar");
+      .populate("reviews.replies.userId", "name avatar")
+      .populate("categories", "title");
 
     if (!course) {
       return next(new ErrorHandler("Course not found", 404));
@@ -509,9 +481,14 @@ export const searchCoursesService = async (
       filter.$or = searchConditions;
     }
 
-    // Add category filter if exists
     if (category) {
-      filter.categories = { $regex: new RegExp(category as string, "i") };
+      const raw = Array.isArray(category) ? category.join(",") : String(category);
+      const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      const areValid = ids.every((id) => mongoose.Types.ObjectId.isValid(id));
+      if (!areValid) {
+        return next(new ErrorHandler("Invalid category id in filter", 400));
+      }
+      filter.categories = { $in: ids };
     }
 
     // Add level filter if exists
@@ -561,6 +538,7 @@ export const searchCoursesService = async (
         "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
       )
       .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
       .sort(sortOption);
 
     res.status(200).json({
@@ -939,11 +917,7 @@ export const getAllCategoriesService = async (
   next: NextFunction
 ) => {
   try {
-    const categoriesLayout = await LayoutModel.findOne({ type: "Categories" });
-    const categories = (categoriesLayout?.categories || []).map(
-      (item: any) => item.title
-    );
-
+    const categories = await CategoryModel.find().sort({ createdAt: -1 }).select("_id title");
     res.status(200).json({ success: true, categories });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

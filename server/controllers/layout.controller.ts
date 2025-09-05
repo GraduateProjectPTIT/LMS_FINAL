@@ -48,10 +48,11 @@ export const createLayout = CatchAsyncError(async (req: Request, res: Response, 
             }));
         }
         else if (type === "Categories") {
-            const { categories } = req.body
-            layoutData.categories = categories.map((item: any) => ({
-                title: item.title
-            }));
+            const { categories } = req.body;
+            if (!Array.isArray(categories)) {
+                return next(new ErrorHandler("Invalid data of Categories", 400));
+            }
+            layoutData.categories = categories;
         }
         else {
             return next(new ErrorHandler("Invalid layout type", 400));
@@ -146,14 +147,10 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
             const { categories } = req.body;
 
             if (!categories || !Array.isArray(categories)) {
-                return next(new ErrorHandler("Invalid data of Categories", 404));
+                return next(new ErrorHandler("Invalid data of Categories", 400));
             }
 
-            const categoriesItems = categories.map((item: any) => ({
-                title: item.title
-            }));
-
-            await LayoutModel.findByIdAndUpdate(categoriesData._id, { $set: { categories: categoriesItems } });
+            await LayoutModel.findByIdAndUpdate(categoriesData._id, { $set: { categories } });
         }
         else {
             return next(new ErrorHandler("Invalid layout type", 400));
@@ -171,7 +168,7 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
 // get layout by type
 export const getLayoutByType = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     const { type } = req.params
-    const layout = await LayoutModel.findOne({ type })
+    const layout = await LayoutModel.findOne({ type }).populate("categories")
     try {
         res.status(200).json({
             success: true,

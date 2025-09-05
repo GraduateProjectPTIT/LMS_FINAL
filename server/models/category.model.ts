@@ -1,5 +1,3 @@
-// file: category.model.ts
-
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICategory extends Document {
@@ -10,7 +8,7 @@ const categorySchema = new Schema<ICategory>({
   title: {
     type: String,
     required: true,
-    unique: true, // Nên có để đảm bảo các danh mục không trùng nhau
+    unique: true,
   },
 });
 
