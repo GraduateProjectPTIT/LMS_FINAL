@@ -11,7 +11,6 @@ import {
   addReview,
   deleteCourse,
   editCourse,
-  adminGetAllCourses,
   enrollCourse,
   getCourseOverview,
   searchCourses,
@@ -20,7 +19,9 @@ import {
   getAllLevels,
   generateUploadSignature,
   markLectureCompleted,
-  getMyCourses,
+  getTutorCourses,
+  getStudentEnrolledCourses,
+  getAdminCourses,
   getCourseStudents,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
@@ -56,9 +57,15 @@ courseRouter.get(
   getCourseStudents
 );
 courseRouter.get(
-  "/course/my_courses",
+  "/course/tutor/my_courses",
   isAuthenticated,
-  getMyCourses
+  authorizeRoles("tutor", "admin"),
+  getTutorCourses
+);
+courseRouter.get(
+  "/course/student/enrolled_courses",
+  isAuthenticated,
+  getStudentEnrolledCourses
 );
 courseRouter.put(
   "/course/add_question_to_lecture",
@@ -82,10 +89,10 @@ courseRouter.put(
   addReplyToReview
 );
 courseRouter.get(
-  "/course/get_admin_courses",
+  "/course/admin/courses",
   isAuthenticated,
   authorizeRoles("admin"),
-  adminGetAllCourses
+  getAdminCourses
 );
 courseRouter.delete(
   "/course/delete_course/:id",
