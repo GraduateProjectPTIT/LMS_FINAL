@@ -1,13 +1,22 @@
 // src/services/user.service.ts
-import userModel, { ITutor, IUser, UserRole } from "../models/user.model";
+import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
-import { ISetupProfileDto, IUpdateUserInfo } from "../types/user.types";
+import {
+  IStudent,
+  ITutor,
+  IUpdateStudentRegisterDto,
+  IUpdateTutorRegisterDto,
+  IUpdateUserInfo,
+} from "../types/user.types";
 import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
 import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
 import CategoryModel from "../models/category.model";
+import { tutorModel } from "../models/tutor.model";
+import { Types } from "mongoose";
+import { studentModel } from "../models/student.model";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -45,52 +54,66 @@ export const updateUserInfoService = async (
 
 // Cập nhật profile khi đăng ký
 
-export const setupProfileService = async (
+export const updateTutorRegisterService = async (
   userId: string,
-  data: ISetupProfileDto
-): Promise<IUser> => {
-  const { role, expertise } = data;
+  data: IUpdateTutorRegisterDto
+): Promise<ITutor> => {
+  const { expertise } = data;
 
-  // 1. Kiểm tra role hợp lệ
-  if (role !== UserRole.Student && role !== UserRole.Tutor) {
-    throw new ErrorHandler(
-      "Invalid role specified. Must be 'student' or 'tutor'.",
-      400
-    );
+  if (!expertise || expertise.length === 0) {
+    throw new ErrorHandler("Expertise is required for tutors.", 400);
   }
 
-  const user = await userModel.findById(userId);
-  if (!user) {
-    throw new ErrorHandler("User not found", 404);
+  const tutorProfile = await tutorModel.findOne({ userId });
+  if (!tutorProfile) {
+    throw new ErrorHandler("Tutor profile not found.", 404);
   }
 
-  // 2. Kiểm tra xem user đã setup profile trước đó chưa
+  const categoryCount = await CategoryModel.countDocuments({
+    _id: { $in: expertise },
+  });
 
-  // 3. Xử lý logic nếu vai trò là Tutor
-  if (role === UserRole.Tutor) {
-    // Bắt buộc phải có expertise
-    if (!expertise || expertise.length === 0) {
-      throw new ErrorHandler("Expertise is required for tutors.", 400);
-    }
+  if (categoryCount !== expertise.length) {
+    throw new ErrorHandler("One or more expertise IDs are invalid.", 400);
+  }
 
-    // Xác thực tất cả các ID trong mảng expertise
+  // Gán expertise mới - ÉP KIỂU ở đây
+  tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
+  await tutorProfile.save();
+
+  return tutorProfile;
+};
+
+export const updateStudentRegisterService = async (
+  userId: string,
+  data: IUpdateStudentRegisterDto
+): Promise<IStudent> => {
+  const { interests } = data;
+
+  if (!interests) {
+    throw new ErrorHandler("Interests field is required.", 400);
+  }
+
+  const studentProfile = await studentModel.findOne({ userId });
+  if (!studentProfile) {
+    throw new ErrorHandler("Student profile not found.", 404);
+  }
+
+  if (interests.length > 0) {
     const categoryCount = await CategoryModel.countDocuments({
-      _id: { $in: expertise },
+      _id: { $in: interests },
     });
 
-    if (categoryCount !== expertise.length) {
-      throw new ErrorHandler("One or more expertise IDs are invalid.", 404);
+    if (categoryCount !== interests.length) {
+      throw new ErrorHandler("One or more interest IDs are invalid.", 400);
     }
-
-    // Gán expertise cho user
-    (user as ITutor).expertise = expertise;
   }
 
-  // 4. Cập nhật vai trò và lưu
-  user.role = role;
-  await user.save({ validateBeforeSave: true });
+  // Gán interests mới - ÉP KIỂU ở đây
+  studentProfile.interests = interests as unknown as Types.ObjectId[];
+  await studentProfile.save();
 
-  return user;
+  return studentProfile;
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---

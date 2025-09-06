@@ -11,21 +11,25 @@ export interface IUpdateUserInfo {
   };
 }
 
-export interface ISetupProfileDto {
-  role?: UserRole;
-  expertise?: string[]; // Mảng các ID của Category, là optional
+export interface IUpdateTutorRegisterDto {
+  expertise: string[];
+}
+
+// DTO cho việc cập nhật interests của Student
+export interface IUpdateStudentRegisterDto {
+  interests: string[];
 }
 
 // Interface cho các vai trò cụ thể
 export interface IStudent extends Document {
   userId: Types.ObjectId;
-  interests?: string[];
+  interests?: Types.ObjectId[];
   // Thêm các trường khác của student ở đây...
 }
 
 export interface ITutor extends Document {
   userId: Types.ObjectId;
-  expertise: Types.ObjectId[];
+  expertise?: Types.ObjectId[];
   // Thêm các trường khác của tutor ở đây...
 }
 

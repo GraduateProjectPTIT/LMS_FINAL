@@ -35,10 +35,6 @@ export interface IUser extends Document {
   comparePassword: (password: string) => Promise<boolean>;
 }
 
-export interface ITutor extends IUser {
-  expertise?: (string | Types.ObjectId)[];
-}
-
 const userSchema: Schema<IUser> = new mongoose.Schema(
   {
     name: {
