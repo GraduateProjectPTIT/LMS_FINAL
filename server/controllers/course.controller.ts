@@ -5,7 +5,6 @@ import {
   createCourse,
   editCourseService,
   getCourseOverviewService,
-  adminGetAllCoursesService,
   enrollCourseService,
   searchCoursesService,
   addQuestionService,
@@ -17,8 +16,10 @@ import {
   getAllLevelsService,
   generateUploadSignatureService,
   markLectureCompletedService,
-  getMyCoursesService,
+  getTutorCoursesService,
+  getStudentEnrolledCoursesService,
   getCourseStudentsService,
+  getAdminCoursesService,
 } from "../services/course.service";
 import {
   IAddQuestionData,
@@ -60,10 +61,20 @@ export const getCourseStudents = CatchAsyncError(
   }
 );
 
-export const getMyCourses = CatchAsyncError(
+export const getTutorCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await getMyCoursesService(req.user, req.query, res, next);
+      await getTutorCoursesService(req.user, req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getStudentEnrolledCourses = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getStudentEnrolledCoursesService(req.user, req.query, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -180,10 +191,10 @@ export const deleteCourse = CatchAsyncError(
 );
 
 // get all courses for admin
-export const adminGetAllCourses = CatchAsyncError(
+export const getAdminCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      adminGetAllCoursesService(req.query, res);
+      getAdminCoursesService(req.query, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

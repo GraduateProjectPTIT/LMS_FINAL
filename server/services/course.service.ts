@@ -13,7 +13,16 @@ import EnrolledCourseModel from "../models/enrolledCourse.model";
 
 import ErrorHandler from "../utils/ErrorHandler";
 
-// create course
+/**
+ * Tạo khóa học mới.
+ * - Chỉ dành cho vai trò: admin, tutor
+ * - Xử lý upload thumbnail (nếu có) lên Cloudinary
+ * - Validate mảng categories và ánh xạ sang ObjectId
+ * @param data Thông tin khóa học gửi từ client (bao gồm creatorId)
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 201 { success, course } (đã populate creatorId, categories)
+ */
 export const createCourse = async (
   data: any,
   res: Response,
@@ -83,10 +92,14 @@ export const createCourse = async (
 
     const course = await CourseModel.create(data);
 
+    const populated = await CourseModel.findById(course._id)
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title");
+
     console.log("Course created successfully:", course._id);
     res.status(201).json({
       success: true,
-      course,
+      course: populated ?? course,
     });
   } catch (error: any) {
     console.error("Create course error:", error);
@@ -94,7 +107,16 @@ export const createCourse = async (
   }
 };
 
-export const getMyCoursesService = async (
+/**
+ * Lấy danh sách khóa học do một giảng viên (tutor) tạo, có phân trang.
+ * - Chỉ dành cho vai trò: tutor (được phép admin đi kèm tại route nếu muốn xem hộ)
+ * @param user Thông tin user từ middleware isAuthenticated
+ * @param query { page, limit }
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, courses, pagination }
+ */
+export const getTutorCoursesService = async (
   user: any,
   query: any,
   res: Response,
@@ -110,112 +132,140 @@ export const getMyCoursesService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
-    // Tutors: courses they created
-    if (user?.role === "tutor") {
-      const [courses, total] = await Promise.all([
-        CourseModel.find({ creatorId: user._id })
-          .select(
-            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
-          )
-          .populate("creatorId", "name avatar email")
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit),
-        CourseModel.countDocuments({ creatorId: user._id }),
-      ]);
-
-      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-      return res.status(200).json({
-        success: true,
-        courses,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNextPage: totalPages > 0 && page < totalPages,
-          hasPrevPage: totalPages > 0 && page > 1,
-        },
-      });
+    if (user?.role !== "tutor") {
+      return next(new ErrorHandler("Forbidden", 403));
     }
 
-    if (user?.role === "admin") {
-      const filter: any = {};
-      if (query?.creatorId) {
-        filter.creatorId = query.creatorId;
-      }
-      const [courses, total] = await Promise.all([
-        CourseModel.find(filter)
-          .select(
-            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
-          )
-          .populate("creatorId", "name avatar email")
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit),
-        CourseModel.countDocuments(filter),
-      ]);
+    const [courses, total] = await Promise.all([
+      CourseModel.find({ creatorId: user._id })
+        .select(
+          "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        )
+        .populate("creatorId", "name avatar email")
+        .populate("categories", "title")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      CourseModel.countDocuments({ creatorId: user._id }),
+    ]);
 
-      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-      return res.status(200).json({
-        success: true,
-        courses,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNextPage: totalPages > 0 && page < totalPages,
-          hasPrevPage: totalPages > 0 && page > 1,
-        },
-      });
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+    return res.status(200).json({
+      success: true,
+      courses,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: totalPages > 0 && page < totalPages,
+        hasPrevPage: totalPages > 0 && page > 1,
+      },
+    });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+/**
+ * Lấy danh sách khóa học mà học viên đã ghi danh (enrolled), có phân trang.
+ * - Chỉ dành cho vai trò: user (không phải admin)
+ * - Tự động loại bỏ enrollment trỏ tới khóa học đã bị xóa
+ * @param user Thông tin user từ middleware isAuthenticated
+ * @param query { page, limit }
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, courses: [{ course, progress, completed, enrolledAt }], pagination }
+ */
+export const getStudentEnrolledCoursesService = async (
+  user: any,
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const pageParam = query?.page;
+    const limitParam = query?.limit;
+    let page = Number.parseInt(String(pageParam), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    let limit = Number.parseInt(String(limitParam), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const skip = (page - 1) * limit;
+
+    if (!user?._id || user?.role === "admin") {
+      return next(new ErrorHandler("Forbidden", 403));
     }
 
-    if (user?._id) {
-      const [enrollments, total] = await Promise.all([
-        EnrolledCourseModel.find({ userId: user._id })
-          .select("courseId progress completed enrolledAt")
-          .populate({
-            path: "courseId",
-            select:
-              "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
-            populate: { path: "creatorId", select: "name avatar email" },
-          })
-          .sort({ enrolledAt: -1 })
-          .skip(skip)
-          .limit(limit),
-        EnrolledCourseModel.countDocuments({ userId: user._id }),
-      ]);
-
-      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-      const courses = enrollments.map((en) => ({
-        course: (en as any).courseId,
-        progress: (en as any).progress ?? 0,
-        completed: (en as any).completed ?? false,
-        enrolledAt: (en as any).enrolledAt,
-      }));
-
-      return res.status(200).json({
-        success: true,
-        courses,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNextPage: totalPages > 0 && page < totalPages,
-          hasPrevPage: totalPages > 0 && page > 1,
+    const [enrollments, totalAgg] = await Promise.all([
+      EnrolledCourseModel.find({ userId: user._id })
+        .select("courseId progress completed enrolledAt")
+        .populate({
+          path: "courseId",
+          select:
+            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
+          populate: [
+            { path: "creatorId", select: "name avatar email" },
+            { path: "categories", select: "title" },
+          ],
+        })
+        .sort({ enrolledAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      EnrolledCourseModel.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(String(user._id)) } },
+        {
+          $lookup: {
+            from: "courses",
+            localField: "courseId",
+            foreignField: "_id",
+            as: "course",
+          },
         },
-      });
-    }
+        { $unwind: "$course" },
+        { $count: "count" },
+      ]),
+    ]);
 
-    return next(new ErrorHandler("Forbidden", 403));
+    const validEnrollments = enrollments.filter((en: any) => Boolean(en.courseId));
+
+    const total = Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+    const courses = validEnrollments.map((en) => ({
+      course: (en as any).courseId,
+      progress: (en as any).progress ?? 0,
+      completed: (en as any).completed ?? false,
+      enrolledAt: (en as any).enrolledAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      courses,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: totalPages > 0 && page < totalPages,
+        hasPrevPage: totalPages > 0 && page > 1,
+      },
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };
 
 // edit course
+/**
+ * Cập nhật thông tin khóa học theo id.
+ * - Chỉ dành cho vai trò: admin, tutor (và phải sở hữu khóa học nếu là tutor)
+ * - Hỗ trợ thay đổi thumbnail, cập nhật danh mục, các trường khác
+ * @param courseId Id khóa học cần cập nhật
+ * @param data Dữ liệu cập nhật
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 201 { success, course } (đã populate creatorId, categories)
+ */
 export const editCourseService = async (
   courseId: string,
   data: any,
@@ -274,6 +324,11 @@ export const editCourseService = async (
       { new: true }
     );
 
+    if (course) {
+      await (course as any).populate("creatorId", "name avatar email");
+      await (course as any).populate("categories", "title");
+    }
+
     res.status(201).json({
       success: true,
       course,
@@ -284,6 +339,15 @@ export const editCourseService = async (
 };
 
 // get course overview
+/**
+ * Lấy thông tin tổng quan khóa học (không cần mua) theo id.
+ * - Dùng để hiển thị overview: mô tả, mục lục (courseData), đánh giá, v.v.
+ * - Populate: categories, creatorId, reviews và user trong hỏi đáp
+ * @param courseId Id khóa học
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, course } theo schema tổng quan đã chuẩn hóa
+ */
 export const getCourseOverviewService = async (
   courseId: string,
   res: Response,
@@ -293,7 +357,10 @@ export const getCourseOverviewService = async (
     const course = await CourseModel.findById(courseId)
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
-      .populate("categories", "title");
+      .populate("courseData.sectionContents.lectureQuestions.userId", "name avatar")
+      .populate("courseData.sectionContents.lectureQuestions.replies.userId", "name avatar")
+      .populate("categories", "title")
+      .populate("creatorId", "name avatar email");
 
     if (!course) {
       return next(new ErrorHandler("Course not found", 404));
@@ -305,13 +372,47 @@ export const getCourseOverviewService = async (
 
     const sections = course.courseData.map((section: any) => {
       const lectures = section.sectionContents.map((lecture: any) => ({
-        title: lecture.videoTitle,
-        time: lecture.videoLength, // minutes
+        _id: lecture._id,
+        videoTitle: lecture.videoTitle,
+        videoDescription: lecture.videoDescription,
+        video: lecture.video,
+        videoLength: lecture.videoLength,
+        videoLinks: (lecture.videoLinks || []).map((vl: any) => ({
+          _id: vl._id,
+          title: vl.title,
+          url: vl.url,
+        })),
+        lectureQuestions: (lecture.lectureQuestions || []).map((q: any) => ({
+          _id: q._id,
+          userId: q.userId
+            ? {
+                _id: q.userId._id,
+                name: q.userId.name,
+                avatar: q.userId.avatar,
+              }
+            : undefined,
+          question: q.question,
+          replies: (q.replies || []).map((rp: any) => ({
+            _id: rp._id,
+            userId: rp.userId
+              ? {
+                  _id: rp.userId._id,
+                  name: rp.userId.name,
+                  avatar: rp.userId.avatar,
+                }
+              : undefined,
+            answer: rp.answer,
+            createdAt: rp.createdAt,
+            updatedAt: rp.updatedAt,
+          })),
+          createdAt: q.createdAt,
+          updatedAt: q.updatedAt,
+        })),
       }));
 
       const sectionTotalLectures = lectures.length;
       const sectionTotalTime = lectures.reduce(
-        (acc: number, curr: any) => acc + (curr.time || 0),
+        (acc: number, curr: any) => acc + (curr.videoLength || 0),
         0
       );
 
@@ -319,10 +420,9 @@ export const getCourseOverviewService = async (
       totalTimeMinutes += sectionTotalTime;
 
       return {
+        _id: section._id,
         sectionTitle: section.sectionTitle,
-        totalLectures: sectionTotalLectures,
-        totalTime: sectionTotalTime,
-        lectures,
+        sectionContents: lectures,
       };
     });
 
@@ -342,27 +442,18 @@ export const getCourseOverviewService = async (
       categories: course.categories,
       price: course.price,
       estimatedPrice: course.estimatedPrice,
-      level: course.level,
-      tags: course.tags,
-      demoUrl: course.demoUrl,
       thumbnail: course.thumbnail,
+      tags: course.tags,
+      level: course.level,
+      demoUrl: course.demoUrl,
       benefits: course.benefits,
       prerequisites: course.prerequisites,
       totalSections,
       totalLectures,
       totalTime: formatTime(totalTimeMinutes),
-      sections: sections.map((section: any) => ({
-        sectionTitle: section.sectionTitle,
-        totalLectures: section.totalLectures,
-        totalTime: formatTime(section.totalTime),
-        lectures: section.lectures.map((lecture: any) => ({
-          title: lecture.title,
-          time: formatTime(lecture.time),
-        })),
-      })),
       reviews: course.reviews.map((review: any) => ({
         _id: review._id,
-        user: {
+        userId: {
           _id: review.userId._id,
           name: review.userId.name,
           avatar: review.userId.avatar,
@@ -371,7 +462,7 @@ export const getCourseOverviewService = async (
         comment: review.comment,
         replies: review.replies.map((reply: any) => ({
           _id: reply._id,
-          user: {
+          userId: {
             _id: reply.userId._id,
             name: reply.userId.name,
             avatar: reply.userId.avatar,
@@ -383,11 +474,17 @@ export const getCourseOverviewService = async (
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
       })),
+      courseData: sections,
+      ratings: course.ratings,
+      purchased: course.purchased,
+      creatorId: course.creatorId,
+      createdAt: (course as any).createdAt,
+      updatedAt: (course as any).updatedAt,
     };
 
     res.status(200).json({
       success: true,
-      courseData,
+      course: courseData,
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -395,7 +492,16 @@ export const getCourseOverviewService = async (
 };
 
 
-// enroll course
+/**
+ * Lấy toàn bộ nội dung chi tiết của khóa học cho người đủ điều kiện truy cập.
+ * - Điều kiện: đã mua/ghi danh, là creator hoặc admin
+ * - Populate đầy đủ dữ liệu để học (Q&A, reviews, creator, categories)
+ * @param courseId Id khóa học
+ * @param userId Thông tin user từ middleware isAuthenticated
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, course }
+ */
 export const enrollCourseService = async (
   courseId: string,
   userId: any,
@@ -428,7 +534,8 @@ export const enrollCourseService = async (
       )
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
-      .populate("creatorId", "name avatar email");
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title");
 
     res.status(200).json({
       success: true,
@@ -439,7 +546,15 @@ export const enrollCourseService = async (
   }
 };
 
-// search courses
+/**
+ * Tìm kiếm khóa học theo nhiều tiêu chí: từ khóa, categories, level, price, sort.
+ * - Không cần đăng nhập
+ * - Kết quả đã populate categories, creatorId (thông tin cơ bản)
+ * @param query { query, category, level, priceMin, priceMax, sort }
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, courses }
+ */
 export const searchCoursesService = async (
   query: any,
   res: Response,
@@ -551,7 +666,15 @@ export const searchCoursesService = async (
   }
 };
 
-// add question
+/**
+ * Thêm câu hỏi vào một bài giảng trong khóa học.
+ * - Điều kiện: đã ghi danh, là creator hoặc admin
+ * @param questionData { question, courseId, contentId }
+ * @param userId Thông tin user từ middleware isAuthenticated
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, message }
+ */
 export const addQuestionService = async (
   questionData: any,
   userId: any,
@@ -564,7 +687,6 @@ export const addQuestionService = async (
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
-    // Check if user is enrolled in this course
     const enrollmentForQuestion = await EnrolledCourseModel.findOne({
       userId: userId?._id,
       courseId,
@@ -591,14 +713,12 @@ export const addQuestionService = async (
 
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
-    // create a new question object
     const newQuestion: any = {
       userId: userId?._id,
       question,
       replies: [],
     };
 
-    // add this question to our course content
     content.lectureQuestions.push(newQuestion);
 
     await NotificationModel.create({
@@ -607,7 +727,6 @@ export const addQuestionService = async (
       message: `You have a new question in section: ${section?.sectionTitle}`,
     });
 
-    // save the updated course
     await course?.save();
 
     res.status(200).json({
@@ -619,7 +738,15 @@ export const addQuestionService = async (
   }
 };
 
-// add answer
+/**
+ * Thêm câu trả lời cho một câu hỏi trong bài giảng.
+ * - Điều kiện: đã ghi danh, là creator hoặc admin
+ * @param answerData { answer, courseId, contentId, questionId }
+ * @param userId Thông tin user từ middleware isAuthenticated
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, message }
+ */
 export const addAnswerService = async (
   answerData: any,
   userId: any,
@@ -632,7 +759,6 @@ export const addAnswerService = async (
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
-    // Check if user is enrolled in this course
     const enrollmentForAnswer = await EnrolledCourseModel.findOne({
       userId: userId?._id,
       courseId,
@@ -676,10 +802,8 @@ export const addAnswerService = async (
       answer,
     };
 
-    // add this question to our course content
     question.replies?.push(reply);
 
-    // save the updated course
     await course?.save();
 
     const data = {
@@ -712,7 +836,17 @@ export const addAnswerService = async (
   }
 };
 
-// add review
+/**
+ * Thêm đánh giá (review) cho khóa học.
+ * - Điều kiện: đã ghi danh, là creator hoặc admin
+ * - Tự động cập nhật điểm trung bình ratings
+ * @param courseId Id khóa học
+ * @param reviewData { review, rating }
+ * @param userId Thông tin user từ middleware isAuthenticated
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, course }
+ */
 export const addReviewService = async (
   courseId: string,
   reviewData: any,
@@ -748,7 +882,6 @@ export const addReviewService = async (
 
     course?.reviews.push(reviewDataObj);
 
-    // make avarage rating
     let avg = 0;
     course?.reviews.forEach((rev: any) => {
       avg += rev.rating;
@@ -774,7 +907,15 @@ export const addReviewService = async (
   }
 };
 
-// add reply to review
+/**
+ * Thêm phản hồi (reply) cho một review của khóa học.
+ * - Điều kiện: đã ghi danh, là creator hoặc admin
+ * @param replyData { comment, courseId, reviewId }
+ * @param userId Thông tin user từ middleware isAuthenticated
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, course }
+ */
 export const addReplyToReviewService = async (
   replyData: any,
   userId: any,
@@ -790,7 +931,6 @@ export const addReplyToReviewService = async (
       return next(new ErrorHandler("Course not found", 404));
     }
 
-    // Check if user is enrolled in this course
     const enrollmentForReviewReply = await EnrolledCourseModel.findOne({
       userId: userId?._id,
       courseId,
@@ -833,7 +973,14 @@ export const addReplyToReviewService = async (
   }
 };
 
-// delete course
+/**
+ * Xóa khóa học theo id.
+ * - Chỉ dành cho vai trò: admin, tutor (và phải sở hữu nếu là tutor)
+ * @param courseId Id khóa học
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, message }
+ */
 export const deleteCourseService = async (
   courseId: string,
   res: Response,
@@ -857,7 +1004,15 @@ export const deleteCourseService = async (
   }
 };
 
-export const adminGetAllCoursesService = async (
+/**
+ * Lấy danh sách tất cả khóa học cho Admin, có phân trang.
+ * - Chỉ dành cho vai trò: admin
+ * - Populate reviews.userId, creatorId, categories
+ * @param query { page, limit }
+ * @param res Express Response
+ * @returns 200 { success, courses, pagination }
+ */
+export const getAdminCoursesService = async (
   query: any,
   res: Response
 ) => {
@@ -877,6 +1032,7 @@ export const adminGetAllCoursesService = async (
     CourseModel.find()
       .populate("reviews.userId", "name avatar")
       .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -899,6 +1055,13 @@ export const adminGetAllCoursesService = async (
   });
 };
 
+/**
+ * Lấy danh sách học viên đã ghi danh vào một khóa học (chỉ dành cho admin/tutor sở hữu).
+ * @param courseId Id khóa học
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, students }
+ */
 export const getCourseStudentsService = async (
   courseId: string,
   res: Response,
@@ -915,6 +1078,12 @@ export const getCourseStudentsService = async (
   }
 };
 
+/**
+ * Lấy danh sách tất cả category (phục vụ filter trên client).
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, categories: [{ _id, title }] }
+ */
 export const getAllCategoriesService = async (
   res: Response,
   next: NextFunction
@@ -927,6 +1096,12 @@ export const getAllCategoriesService = async (
   }
 };
 
+/**
+ * Lấy danh sách tất cả level (distinct theo trường level của Course).
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, levels: string[] }
+ */
 export const getAllLevelsService = async (
   res: Response,
   next: NextFunction
@@ -939,6 +1114,12 @@ export const getAllLevelsService = async (
   }
 };
 
+/**
+ * Sinh chữ ký upload video lên Cloudinary (client-side upload).
+ * - Chỉ dành cho admin, tutor (được bảo vệ tại route)
+ * @param res Express Response
+ * @returns 200 { success, cloudName, apiKey, timestamp, folder, signature }
+ */
 export const generateUploadSignatureService = async (res: Response) => {
   const timestamp = Math.round(new Date().getTime() / 1000);
   const folder = process.env.CLOUDINARY_FOLDER || "videos_lms";
@@ -968,6 +1149,16 @@ export const generateUploadSignatureService = async (res: Response) => {
   });
 };
 
+/**
+ * Đánh dấu hoàn thành một bài giảng trong khóa học của học viên.
+ * - Tính toán và cập nhật progress (%) và trạng thái completed của khóa học
+ * - Admin có thể upsert record để demo/kiểm thử
+ * @param user Thông tin user
+ * @param data { courseId, lectureId }
+ * @param res Express Response
+ * @param next Express NextFunction
+ * @returns 200 { success, progress, completed, completedLectures, totalLectures }
+ */
 export const markLectureCompletedService = async (
   user: any,
   data: { courseId: string; lectureId: string },
