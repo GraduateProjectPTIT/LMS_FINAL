@@ -28,6 +28,10 @@ export interface IUser extends Document {
   activationCode?: string;
   activationToken?: string;
   isVerified: boolean;
+  studentProfile?: Types.ObjectId;
+  tutorProfile?: Types.ObjectId;
+  adminProfile?: Types.ObjectId;
+
   comparePassword: (password: string) => Promise<boolean>;
 }
 
@@ -86,6 +90,9 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     activationToken: {
       type: String,
     },
+    studentProfile: { type: Schema.Types.ObjectId, ref: "Student" },
+    tutorProfile: { type: Schema.Types.ObjectId, ref: "Tutor" },
+    adminProfile: { type: Schema.Types.ObjectId, ref: "Admin" },
   },
   {
     timestamps: true,

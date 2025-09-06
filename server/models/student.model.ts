@@ -17,7 +17,7 @@ const studentSchema: Schema<IStudent> = new Schema(
   { timestamps: true }
 );
 
-export const StudentModel: Model<IStudent> = mongoose.model<IStudent>(
+export const studentModel: Model<IStudent> = mongoose.model<IStudent>(
   "Student",
   studentSchema
 );

@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import { Response } from "express";
-import userModel, { IUser } from "../models/user.model";
+import userModel, { ITutor, IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -21,6 +21,11 @@ import {
   IUserResponse,
 } from "../types/auth.types";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import mongoose, { Types } from "mongoose";
+import { studentModel } from "../models/student.model";
+import { tutorModel } from "../models/tutor.model";
+import { adminModel } from "../models/admin.model";
+import { IStudent } from "../types/user.types";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
@@ -158,48 +163,119 @@ export const resetPasswordService = async (
 
 // --- NGHIỆP VỤ ĐĂNG KÝ ---
 export const registerUserService = async (body: IRegistrationBody) => {
-  const { name, email, password } = body;
+  // Destructure các thuộc tính từ body, gán role mặc định là student
+  const { name, email, password, role = UserRole.Student } = body;
+
+  // 1. Kiểm tra email tồn tại (nên làm trước khi bắt đầu transaction)
   const isEmailExist = await userModel.findOne({ email });
   if (isEmailExist) {
     throw new ErrorHandler("Email already exists", 400);
   }
 
-  const activationTokenData = createActivationToken({ name, email, password });
+  // 2. Bắt đầu một session cho transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const user = {
-    name,
-    email,
-    password, // Mật khẩu sẽ được hash bởi pre-save hook trong Model
-  };
-
-  const newUser = await userModel.create({
-    ...user,
-    activationCode: activationTokenData.activationCode,
-    activationToken: activationTokenData.token, // Lưu token để xác thực ở bước sau
-    isVerified: false, // Trạng thái mặc định
-  });
-
-  const data = {
-    user: { name },
-    activationCode: activationTokenData.activationCode,
-  };
-
-  // Render email template (không cần chờ)
-  ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data);
   try {
-    // Gửi email kích hoạt
-    await sendMail({
-      email: newUser.email,
-      subject: "Activate your account",
-      template: "activation-mail.ejs",
-      data,
+    // 3. Tạo activation token
+    const activationTokenData = createActivationToken({
+      name,
+      email,
+      password,
+      role,
     });
-    return {
-      success: true,
-      message: `Please check your email: ${email} to activate your account!`,
+
+    // 4. Tạo user và profile tương ứng BÊN TRONG TRANSACTION
+
+    // Tạo user mới, chưa lưu
+    const user = {
+      name,
+      email,
+      password, // Mật khẩu sẽ được hash bởi pre-save hook
+      role,
+      activationCode: activationTokenData.activationCode,
+      activationToken: activationTokenData.token,
+      isVerified: false,
     };
+
+    // Dùng create với session để đưa hành động này vào transaction
+    const newUserArray = await userModel.create([user], { session });
+    const newUser = newUserArray[0];
+
+    switch (role) {
+      case UserRole.Student: {
+        const newStudentDoc = new studentModel({ userId: newUser._id });
+        const savedProfile = await newStudentDoc.save({ session });
+
+        if (savedProfile && savedProfile._id) {
+          newUser.studentProfile = savedProfile._id as Types.ObjectId;
+        } else {
+          throw new ErrorHandler("Failed to create student profile.", 500);
+        }
+        break;
+      }
+
+      case UserRole.Tutor: {
+        const newTutorDoc = new tutorModel({ userId: newUser._id });
+        const savedProfile = await newTutorDoc.save({ session });
+
+        if (savedProfile && savedProfile._id) {
+          newUser.tutorProfile = savedProfile._id as Types.ObjectId;
+        } else {
+          throw new ErrorHandler("Failed to create tutor profile.", 500);
+        }
+        break;
+      }
+
+      default:
+        throw new ErrorHandler("Invalid role specified", 400);
+    }
+
+    // Lưu lại user với thông tin profile đã được liên kết
+    await newUser.save({ session });
+
+    // 5. Nếu mọi thứ thành công, commit transaction
+    await session.commitTransaction();
+
+    // 6. Gửi email (chỉ gửi khi transaction đã thành công)
+    const data = {
+      user: { name: newUser.name },
+      activationCode: activationTokenData.activationCode,
+    };
+
+    // Render email template (không cần chờ)
+
+    ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data);
+
+    try {
+      await sendMail({
+        email: newUser.email,
+        subject: "Activate your account",
+        template: "activation-mail.ejs",
+        data,
+      });
+
+      return {
+        success: true,
+        message: `Please check your email: ${email} to activate your account!`,
+        activationToken: activationTokenData.token, // Trả về token cho FE (nếu cần)
+      };
+    } catch (error: any) {
+      // Nếu gửi mail lỗi, không cần throw lỗi hệ thống, chỉ cần log lại
+      console.error("Failed to send activation email:", error);
+      // User vẫn được tạo thành công, có thể có chức năng "gửi lại email kích hoạt"
+      return {
+        success: true,
+        message: `Account created, but failed to send activation email. Please try the 'resend activation' feature.`,
+      };
+    }
   } catch (error: any) {
+    // 7. Nếu có bất kỳ lỗi nào trong quá trình, hủy bỏ transaction
+    await session.abortTransaction();
     throw new ErrorHandler(error.message, 400);
+  } finally {
+    // 8. Luôn kết thúc session
+    session.endSession();
   }
 };
 

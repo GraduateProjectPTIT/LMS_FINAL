@@ -18,7 +18,7 @@ const tutorSchema: Schema<ITutor> = new Schema(
   { timestamps: true }
 );
 
-export const TutorModel: Model<ITutor> = mongoose.model<ITutor>(
+export const tutorModel: Model<ITutor> = mongoose.model<ITutor>(
   "Tutor",
   tutorSchema
 );

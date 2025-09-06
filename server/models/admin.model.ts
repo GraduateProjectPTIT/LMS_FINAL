@@ -13,7 +13,7 @@ const adminSchema: Schema<IAdmin> = new Schema(
   { timestamps: true }
 );
 
-export const AdminModel: Model<IAdmin> = mongoose.model<IAdmin>(
+export const adminModel: Model<IAdmin> = mongoose.model<IAdmin>(
   "Admin",
   adminSchema
 );
