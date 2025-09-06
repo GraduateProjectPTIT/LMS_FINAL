@@ -1,7 +1,6 @@
 require("dotenv").config();
 import mongoose, { Document, Model, Schema, Types } from "mongoose";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 
 const emailRegexPattern: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -90,7 +89,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
   },
   {
     timestamps: true,
-    discriminatorKey: "role", // Quan trọng: key để phân biệt các model
   }
 );
 
@@ -119,21 +117,5 @@ userSchema.methods.comparePassword = async function (
 };
 
 const userModel: Model<IUser> = mongoose.model<IUser>("User", userSchema);
-
-const tutorSchema: Schema<ITutor> = new Schema({
-  expertise: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Category",
-      required: false,
-    },
-  ],
-});
-
-// MODEL TUTOR (TẠO TỪ DISCRIMINATOR)
-export const tutorModel = userModel.discriminator<ITutor>(
-  UserRole.Tutor,
-  tutorSchema
-);
 
 export default userModel;
