@@ -41,6 +41,13 @@ export const updateUserInfoService = async (
     throw new ErrorHandler("User not found", 404);
   }
 
+  if (data.bio) {
+    if (data.bio.length > 500) {
+      throw new ErrorHandler("Bio cannot be longer than 500 characters", 400);
+    }
+    user.bio = data.bio;
+  }
+
   if (data.name) {
     user.name = data.name;
   }

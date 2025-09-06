@@ -27,6 +27,7 @@ export interface IUser extends Document {
   resetToken?: string;
   activationCode?: string;
   activationToken?: string;
+  bio?: string;
   isVerified: boolean;
   studentProfile?: Types.ObjectId;
   tutorProfile?: Types.ObjectId;
@@ -52,6 +53,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       },
       unique: true,
     },
+    bio: {
+      type: String,
+      maxLength: [500, "Bio can't be over 500 characters."],
+    },
+
     password: {
       type: String,
       minlength: [6, "Password must be at least 6 characters"],

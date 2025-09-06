@@ -9,6 +9,7 @@ export interface IUpdateUserInfo {
     instagram?: string;
     tiktok?: string;
   };
+  bio?: string;
 }
 
 export interface IUpdateTutorRegisterDto {

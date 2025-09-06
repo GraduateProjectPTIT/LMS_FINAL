@@ -10,7 +10,6 @@ import {
   updatePasswordService,
   deleteMyAccountService,
   updateAvatarService,
-  setupProfileService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
