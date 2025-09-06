@@ -9,7 +9,8 @@ import {
   updatePassword,
   deleteMyAccount,
   updateAvatar,
-  setupProfile,
+  setupTutorProfile,
+  setupStudentProfile,
 } from "../controllers/user.controller";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
 const userRouter = express.Router();
@@ -19,7 +20,18 @@ userRouter.get("/user/me", isAuthenticated, getUserInfo);
 userRouter.put("/user/update_user_info", isAuthenticated, updateUserInfo);
 userRouter.put("/user/update_avatar", isAuthenticated, updateAvatar);
 userRouter.put("/user/update_password", isAuthenticated, updatePassword);
-userRouter.put("/user/setup-profile", isAuthenticated, setupProfile);
+userRouter.put(
+  "/user/tutor-profile-register",
+  isAuthenticated,
+  authorizeRoles("tutor"),
+  setupTutorProfile
+);
+userRouter.put(
+  "/user/student-profile-register",
+  isAuthenticated,
+  authorizeRoles("student"),
+  setupStudentProfile
+);
 
 // Các route cho quản trị viên (Admin)
 userRouter.get(

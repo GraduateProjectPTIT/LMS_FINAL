@@ -10,6 +10,8 @@ import {
   updatePasswordService,
   deleteMyAccountService,
   updateAvatarService,
+  updateTutorRegisterService,
+  updateStudentRegisterService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
@@ -109,31 +111,49 @@ export const getAllUsers = CatchAsyncError(
   }
 );
 
-// register setup profile
-export const setupProfile = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const userId = req.user?._id.toString(); // Lấy user id từ middleware 'isAuthenticated'
-    const { role, expertise } = req.body;
-
+// register setup profile cho tutor
+export const setupTutorProfile = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?._id.toString();
     if (!userId) {
-      return next(new ErrorHandler("User not found", 401));
+      return next(new ErrorHandler("Authentication required", 401));
     }
+    const { expertise } = req.body;
 
-    const user = await setupProfileService(userId, { role, expertise });
+    // 3. Gọi service với tên mới
+    const updatedTutorProfile = await updateTutorRegisterService(userId, {
+      expertise,
+    });
 
     res.status(200).json({
       success: true,
-      message: "Profile setup successful",
-      user,
+      message: "Tutor profile setup completed successfully.",
+      tutor: updatedTutorProfile,
     });
-  } catch (error) {
-    next(error);
   }
-};
+);
+
+// register setup profile cho student
+export const setupStudentProfile = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?._id.toString();
+    if (!userId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+    const { interests } = req.body;
+
+    // 3. Gọi service với tên mới
+    const updatedStudentProfile = await updateStudentRegisterService(userId, {
+      interests,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Student profile setup completed successfully.",
+      student: updatedStudentProfile,
+    });
+  }
+);
 
 // --- CẬP NHẬT VAI TRÒ (ADMIN) ---
 export const updateUserRole = CatchAsyncError(
