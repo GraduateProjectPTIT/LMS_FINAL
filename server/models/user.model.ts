@@ -1,7 +1,6 @@
 require("dotenv").config();
 import mongoose, { Document, Model, Schema, Types } from "mongoose";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 
 const emailRegexPattern: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,12 +27,13 @@ export interface IUser extends Document {
   resetToken?: string;
   activationCode?: string;
   activationToken?: string;
+  bio?: string;
   isVerified: boolean;
-  comparePassword: (password: string) => Promise<boolean>;
-}
+  studentProfile?: Types.ObjectId;
+  tutorProfile?: Types.ObjectId;
+  adminProfile?: Types.ObjectId;
 
-export interface ITutor extends IUser {
-  expertise?: (string | Types.ObjectId)[];
+  comparePassword: (password: string) => Promise<boolean>;
 }
 
 const userSchema: Schema<IUser> = new mongoose.Schema(
@@ -53,6 +53,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       },
       unique: true,
     },
+    bio: {
+      type: String,
+      maxLength: [500, "Bio can't be over 500 characters."],
+    },
+
     password: {
       type: String,
       minlength: [6, "Password must be at least 6 characters"],
@@ -87,10 +92,12 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     activationToken: {
       type: String,
     },
+    studentProfile: { type: Schema.Types.ObjectId, ref: "Student" },
+    tutorProfile: { type: Schema.Types.ObjectId, ref: "Tutor" },
+    adminProfile: { type: Schema.Types.ObjectId, ref: "Admin" },
   },
   {
     timestamps: true,
-    discriminatorKey: "role", // Quan trọng: key để phân biệt các model
   }
 );
 
@@ -119,21 +126,5 @@ userSchema.methods.comparePassword = async function (
 };
 
 const userModel: Model<IUser> = mongoose.model<IUser>("User", userSchema);
-
-const tutorSchema: Schema<ITutor> = new Schema({
-  expertise: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Category",
-      required: false,
-    },
-  ],
-});
-
-// MODEL TUTOR (TẠO TỪ DISCRIMINATOR)
-export const tutorModel = userModel.discriminator<ITutor>(
-  UserRole.Tutor,
-  tutorSchema
-);
 
 export default userModel;

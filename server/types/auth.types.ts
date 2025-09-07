@@ -58,6 +58,7 @@ export interface IRegistrationBody {
   name: string;
   email: string;
   password: string;
+  role?: UserRole;
 }
 
 // Dùng cho body của request kích hoạt tài khoản
