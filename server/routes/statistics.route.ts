@@ -14,7 +14,7 @@ const statisticsRouter = express.Router();
 
 // THÊM MỚI: Route lấy dữ liệu biểu đồ tăng trưởng
 statisticsRouter.get(
-  "/user-growth-chart",
+  "/statistics/user-growth-chart",
   isAuthenticated,
   authorizeRoles("admin"),
   getUserGrowthChart
