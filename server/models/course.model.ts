@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
+import { ECourseLevel } from "../constants/course-level.enum";
 
 export interface ICourse extends Document {
   name: string;
@@ -11,8 +12,11 @@ export interface ICourse extends Document {
     url?: string;
   };
   tags: string;
-  level: string;
-  demoUrl: string;
+  level: ECourseLevel;
+  videoDemo: {
+    public_id: string;
+    url: string;
+  };
   benefits: { title: string }[];
   prerequisites: { title: string }[];
   reviews: ICourseReview[];
@@ -168,11 +172,12 @@ const courseSchema = new Schema<ICourse>(
     },
     level: {
       type: String,
+      enum: Object.values(ECourseLevel),
       required: true,
     },
-    demoUrl: {
-      type: String,
-      required: true,
+    videoDemo: {
+      public_id: { type: String, required: true },
+      url: { type: String, required: true },
     },
     benefits: [{ title: String }],
     prerequisites: [{ title: String }],

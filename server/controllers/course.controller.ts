@@ -20,6 +20,8 @@ import {
   getStudentEnrolledCoursesService,
   getCourseStudentsService,
   getAdminCoursesService,
+  updateLectureVideoService,
+  getOwnerSingleCourseService,
 } from "../services/course.service";
 import {
   IAddQuestionData,
@@ -100,6 +102,18 @@ export const getCourseOverview = CatchAsyncError(
     try {
       const courseId = req.params.id;
       getCourseOverviewService(courseId, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// get course for edit (admin/tutor only; route ensures ownership/roles)
+export const getOwnerSingleCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await getOwnerSingleCourseService(courseId, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -231,6 +245,26 @@ export const markLectureCompleted = CatchAsyncError(
         return next(new ErrorHandler("courseId and lectureId are required", 400));
       }
       await markLectureCompletedService(req.user, { courseId, lectureId }, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// update lecture video
+export const updateLectureVideo = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId, lectureId, video, videoLength } = req.body || {};
+      if (!courseId || !lectureId || !video) {
+        return next(new ErrorHandler("courseId, lectureId and video are required", 400));
+      }
+      await updateLectureVideoService(
+        req.user,
+        { courseId, lectureId, video, videoLength },
+        res,
+        next
+      );
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
