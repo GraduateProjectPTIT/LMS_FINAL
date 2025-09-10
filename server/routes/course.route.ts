@@ -23,6 +23,8 @@ import {
   getStudentEnrolledCourses,
   getAdminCourses,
   getCourseStudents,
+  updateLectureVideo,
+  getOwnerSingleCourse,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -43,6 +45,13 @@ courseRouter.put(
 courseRouter.get(
   "/course/overview/:id",
   getCourseOverview
+);
+courseRouter.get(
+  "/course/data/:id",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
+  getOwnerSingleCourse
 );
 courseRouter.get(
   "/course/enroll/:id",
@@ -81,6 +90,13 @@ courseRouter.put(
   "/course/complete_lecture",
   isAuthenticated,
   markLectureCompleted
+);
+courseRouter.put(
+  "/course/update_lecture_video",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
+  updateLectureVideo
 );
 courseRouter.put("/course/add_review/:id", isAuthenticated, addReview);
 courseRouter.put(

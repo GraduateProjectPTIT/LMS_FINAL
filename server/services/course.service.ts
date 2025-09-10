@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import CourseModel from "../models/course.model";
+import { ECourseLevel } from "../constants/course-level.enum";
 import CategoryModel from "../models/category.model";
 import cloudinary from "cloudinary";
 import mongoose from "mongoose";
@@ -46,6 +47,31 @@ export const createCourse = async (
 
     if (!data.creatorId) {
       return next(new ErrorHandler("Creator ID is required", 400));
+    }
+
+    if (!data.videoDemo || !data.videoDemo.public_id || !data.videoDemo.url) {
+      return next(
+        new ErrorHandler(
+          "videoDemo is required and must include public_id and url (upload via client with signature)",
+          400
+        )
+      );
+    }
+
+    if (Array.isArray(data.courseData)) {
+      for (const section of data.courseData) {
+        if (!Array.isArray(section.sectionContents)) continue;
+        for (const lecture of section.sectionContents) {
+          if (!lecture?.video?.public_id || !lecture?.video?.url) {
+            return next(
+              new ErrorHandler(
+                "Each lecture must include video { public_id, url } (upload via client with signature)",
+                400
+              )
+            );
+          }
+        }
+      }
     }
 
     if (
@@ -123,45 +149,82 @@ export const getTutorCoursesService = async (
   next: NextFunction
 ) => {
   try {
-    const pageParam = query?.page;
-    const limitParam = query?.limit;
-    let page = Number.parseInt(String(pageParam), 10);
-    if (Number.isNaN(page) || page < 1) page = 1;
-    let limit = Number.parseInt(String(limitParam), 10);
-    if (Number.isNaN(limit) || limit < 1) limit = 10;
-    if (limit > 100) limit = 100;
-    const skip = (page - 1) * limit;
-
     if (user?.role !== "tutor") {
       return next(new ErrorHandler("Forbidden", 403));
     }
 
-    const [courses, total] = await Promise.all([
-      CourseModel.find({ creatorId: user._id })
-        .select(
-          "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
-        )
-        .populate("creatorId", "name avatar email")
-        .populate("categories", "title")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      CourseModel.countDocuments({ creatorId: user._id }),
-    ]);
+    const courses = await CourseModel.find({ creatorId: user._id })
+      .select(
+        "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+      )
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
+      .sort({ createdAt: -1 });
 
-    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    return res.status(200).json({
-      success: true,
-      courses,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNextPage: totalPages > 0 && page < totalPages,
-        hasPrevPage: totalPages > 0 && page > 1,
-      },
-    });
+    return res.status(200).json({ success: true, courses });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+/**
+ * Lấy dữ liệu khóa học phục vụ màn hình chỉnh sửa (edit) cho tutor/admin.
+ * - Bao gồm: thông tin khóa học và các lecture cần thiết để chỉnh sửa
+ * - Loại bỏ: lectureQuestions, reviews
+ */
+export const getOwnerSingleCourseService = async (
+  courseId: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const course = await CourseModel.findById(courseId)
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title");
+
+    if (!course) {
+      return next(new ErrorHandler("Course not found", 404));
+    }
+
+    const sections = (course as any).courseData.map((section: any) => ({
+      _id: section._id,
+      sectionTitle: section.sectionTitle,
+      sectionContents: (section.sectionContents || []).map((lecture: any) => ({
+        _id: lecture._id,
+        videoTitle: lecture.videoTitle,
+        videoDescription: lecture.videoDescription,
+        video: lecture.video,
+        videoLength: lecture.videoLength,
+        videoLinks: (lecture.videoLinks || []).map((vl: any) => ({
+          _id: vl._id,
+          title: vl.title,
+          url: vl.url,
+        })),
+      })),
+    }));
+
+    const data = {
+      _id: (course as any)._id,
+      name: (course as any).name,
+      description: (course as any).description,
+      categories: (course as any).categories,
+      price: (course as any).price,
+      estimatedPrice: (course as any).estimatedPrice,
+      thumbnail: (course as any).thumbnail,
+      tags: (course as any).tags,
+      level: (course as any).level,
+      videoDemo: (course as any).videoDemo,
+      benefits: (course as any).benefits,
+      prerequisites: (course as any).prerequisites,
+      courseData: sections,
+      ratings: (course as any).ratings,
+      purchased: (course as any).purchased,
+      creatorId: (course as any).creatorId,
+      createdAt: (course as any).createdAt,
+      updatedAt: (course as any).updatedAt,
+    };
+
+    return res.status(200).json({ success: true, course: data });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -303,6 +366,35 @@ export const editCourseService = async (
       data.thumbnail = availableCourseThumbnail;
     }
 
+    if (data.videoDemo) {
+      const existingDemo = (findCourse as any).videoDemo as
+        | { public_id?: string; url?: string }
+        | undefined;
+      if (
+        typeof data.videoDemo === "object" &&
+        data.videoDemo?.public_id &&
+        data.videoDemo?.url
+      ) {
+        if (
+          existingDemo?.public_id &&
+          existingDemo.public_id !== data.videoDemo.public_id
+        ) {
+          try {
+            await cloudinary.v2.uploader.destroy(existingDemo.public_id, {
+              resource_type: "video",
+            });
+          } catch {}
+        }
+      } else {
+        return next(
+          new ErrorHandler(
+            "videoDemo must be an object with public_id and url (upload via client with signature)",
+            400
+          )
+        );
+      }
+    }
+
     if (data.categories) {
       if (!Array.isArray(data.categories) || data.categories.length === 0) {
         return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
@@ -357,8 +449,6 @@ export const getCourseOverviewService = async (
     const course = await CourseModel.findById(courseId)
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
-      .populate("courseData.sectionContents.lectureQuestions.userId", "name avatar")
-      .populate("courseData.sectionContents.lectureQuestions.replies.userId", "name avatar")
       .populate("categories", "title")
       .populate("creatorId", "name avatar email");
 
@@ -375,39 +465,7 @@ export const getCourseOverviewService = async (
         _id: lecture._id,
         videoTitle: lecture.videoTitle,
         videoDescription: lecture.videoDescription,
-        video: lecture.video,
         videoLength: lecture.videoLength,
-        videoLinks: (lecture.videoLinks || []).map((vl: any) => ({
-          _id: vl._id,
-          title: vl.title,
-          url: vl.url,
-        })),
-        lectureQuestions: (lecture.lectureQuestions || []).map((q: any) => ({
-          _id: q._id,
-          userId: q.userId
-            ? {
-                _id: q.userId._id,
-                name: q.userId.name,
-                avatar: q.userId.avatar,
-              }
-            : undefined,
-          question: q.question,
-          replies: (q.replies || []).map((rp: any) => ({
-            _id: rp._id,
-            userId: rp.userId
-              ? {
-                  _id: rp.userId._id,
-                  name: rp.userId.name,
-                  avatar: rp.userId.avatar,
-                }
-              : undefined,
-            answer: rp.answer,
-            createdAt: rp.createdAt,
-            updatedAt: rp.updatedAt,
-          })),
-          createdAt: q.createdAt,
-          updatedAt: q.updatedAt,
-        })),
       }));
 
       const sectionTotalLectures = lectures.length;
@@ -445,7 +503,7 @@ export const getCourseOverviewService = async (
       thumbnail: course.thumbnail,
       tags: course.tags,
       level: course.level,
-      demoUrl: course.demoUrl,
+      demoUrl: (course as any).videoDemo?.url,
       benefits: course.benefits,
       prerequisites: course.prerequisites,
       totalSections,
@@ -609,7 +667,19 @@ export const searchCoursesService = async (
 
     // Add level filter if exists
     if (level) {
-      filter.level = { $regex: new RegExp(level as string, "i") };
+      const lv = String(level);
+      if (lv === ECourseLevel.All) {
+        // no filter for All Levels
+      } else {
+        // try to match enum case-insensitively
+        const match = (Object.values(ECourseLevel) as string[]).find(
+          (v) => v.toLowerCase() === lv.toLowerCase()
+        );
+        if (!match) {
+          return next(new ErrorHandler("Invalid level filter", 400));
+        }
+        filter.level = match;
+      }
     }
 
     // Add price range filter if exists
@@ -651,7 +721,7 @@ export const searchCoursesService = async (
     // Find courses with the filter and sort options
     const courses = await CourseModel.find(filter)
       .select(
-        "_id name description categories price estimatedPrice thumbnail tags level demoUrl rating purchased createdAt"
+        "_id name description categories price estimatedPrice thumbnail tags level videoDemo ratings purchased createdAt"
       )
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
@@ -1016,43 +1086,13 @@ export const getAdminCoursesService = async (
   query: any,
   res: Response
 ) => {
-  const pageParam = query?.page;
-  const limitParam = query?.limit;
+  const courses = await CourseModel.find()
+    .populate("reviews.userId", "name avatar")
+    .populate("creatorId", "name avatar email")
+    .populate("categories", "title")
+    .sort({ createdAt: -1 });
 
-  let page = Number.parseInt(String(pageParam), 10);
-  if (Number.isNaN(page) || page < 1) page = 1;
-
-  let limit = Number.parseInt(String(limitParam), 10);
-  if (Number.isNaN(limit) || limit < 1) limit = 10;
-  if (limit > 100) limit = 100;
-
-  const skip = (page - 1) * limit;
-
-  const [courses, total] = await Promise.all([
-    CourseModel.find()
-      .populate("reviews.userId", "name avatar")
-      .populate("creatorId", "name avatar email")
-      .populate("categories", "title")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    CourseModel.countDocuments(),
-  ]);
-
-  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-
-  res.status(200).json({
-    success: true,
-    courses,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: totalPages > 0 && page < totalPages,
-      hasPrevPage: totalPages > 0 && page > 1,
-    },
-  });
+  res.status(200).json({ success: true, courses });
 };
 
 /**
@@ -1107,7 +1147,7 @@ export const getAllLevelsService = async (
   next: NextFunction
 ) => {
   try {
-    const levels = await CourseModel.distinct("level");
+    const levels = Object.values(ECourseLevel);
     res.status(200).json({ success: true, levels });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1130,7 +1170,6 @@ export const generateUploadSignatureService = async (res: Response) => {
 
   const paramsToSign: Record<string, any> = {
     folder,
-    resource_type: "video",
     timestamp,
   };
 
@@ -1147,6 +1186,91 @@ export const generateUploadSignatureService = async (res: Response) => {
     folder,
     signature,
   });
+};
+
+/**
+ * Cập nhật video cho một bài giảng cụ thể trong khóa học.
+ * - Chỉ dành cho admin hoặc tutor là chủ sở hữu khóa học (route đã checkOwnership, ở đây double-check)
+ * @param user Thông tin user
+ * @param data { courseId, lectureId, video: { public_id, url }, videoLength? }
+ * @returns 200 { success, lecture }
+ */
+export const updateLectureVideoService = async (
+  user: any,
+  data: {
+    courseId: string;
+    lectureId: string;
+    video: { public_id: string; url: string };
+    videoLength?: number;
+  },
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { courseId, lectureId, video, videoLength } = data || ({} as any);
+
+    if (
+      !courseId ||
+      !lectureId ||
+      !video ||
+      !video.public_id ||
+      !video.url ||
+      !mongoose.Types.ObjectId.isValid(courseId) ||
+      !mongoose.Types.ObjectId.isValid(lectureId)
+    ) {
+      return next(
+        new ErrorHandler(
+          "Invalid payload: require valid courseId, lectureId and video { public_id, url }",
+          400
+        )
+      );
+    }
+
+    const course = await CourseModel.findById(courseId).select(
+      "creatorId courseData.sectionContents._id courseData.sectionContents.video courseData.sectionContents.videoLength"
+    );
+
+    if (!course) return next(new ErrorHandler("Course not found", 404));
+
+    const isOwner = course.creatorId && course.creatorId.toString() === String(user?._id);
+    if (user?.role !== "admin" && !isOwner) {
+      return next(new ErrorHandler("Forbidden", 403));
+    }
+
+    let targetLecture: any | null = null;
+    for (const section of (course as any).courseData || []) {
+      const found = (section.sectionContents || []).find((lec: any) =>
+        lec._id && lec._id.equals(lectureId)
+      );
+      if (found) {
+        targetLecture = found;
+        break;
+      }
+    }
+
+    if (!targetLecture) {
+      return next(new ErrorHandler("Lecture not found", 404));
+    }
+
+    const prevVid = targetLecture.video as { public_id?: string; url?: string } | undefined;
+    if (prevVid?.public_id && prevVid.public_id !== video.public_id) {
+      try {
+        await cloudinary.v2.uploader.destroy(prevVid.public_id, { resource_type: "video" });
+      } catch (e) {
+      }
+    }
+
+    targetLecture.video = { public_id: video.public_id, url: video.url };
+    if (typeof videoLength === "number") {
+      targetLecture.videoLength = videoLength;
+    }
+
+    await course.save();
+
+    res.status(200).json({ success: true, lecture: targetLecture });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
 };
 
 /**
