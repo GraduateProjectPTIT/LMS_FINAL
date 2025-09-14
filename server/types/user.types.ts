@@ -14,11 +14,13 @@ export interface IUpdateUserInfo {
 
 export interface IUpdateTutorRegisterDto {
   expertise: string[];
+  isSurveyCompleted: boolean;
 }
 
 // DTO cho việc cập nhật interests của Student
 export interface IUpdateStudentRegisterDto {
   interests: string[];
+  isSurveyCompleted: boolean;
 }
 
 // Interface cho các vai trò cụ thể

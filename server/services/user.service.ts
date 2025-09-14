@@ -65,7 +65,7 @@ export const updateTutorRegisterService = async (
   userId: string,
   data: IUpdateTutorRegisterDto
 ): Promise<ITutor> => {
-  const { expertise } = data;
+  const { expertise, isSurveyCompleted } = data;
 
   if (!expertise || expertise.length === 0) {
     throw new ErrorHandler("Expertise is required for tutors.", 400);
@@ -88,6 +88,21 @@ export const updateTutorRegisterService = async (
   tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
   await tutorProfile.save();
 
+  if (isSurveyCompleted) {
+    // Tìm user bằng userId
+    const user = await userModel.findById(userId);
+
+    // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
+    if (user) {
+      user.isSurveyCompleted = true;
+      await user.save();
+    } else {
+      console.warn(
+        `User with ID ${userId} not found while updating survey status.`
+      );
+    }
+  }
+
   return tutorProfile;
 };
 
@@ -95,7 +110,7 @@ export const updateStudentRegisterService = async (
   userId: string,
   data: IUpdateStudentRegisterDto
 ): Promise<IStudent> => {
-  const { interests } = data;
+  const { interests, isSurveyCompleted } = data;
 
   if (!interests) {
     throw new ErrorHandler("Interests field is required.", 400);
@@ -119,6 +134,21 @@ export const updateStudentRegisterService = async (
   // Gán interests mới - ÉP KIỂU ở đây
   studentProfile.interests = interests as unknown as Types.ObjectId[];
   await studentProfile.save();
+
+  if (isSurveyCompleted) {
+    // Tìm user bằng userId
+    const user = await userModel.findById(userId);
+
+    // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
+    if (user) {
+      user.isSurveyCompleted = true;
+      await user.save();
+    } else {
+      console.warn(
+        `User with ID ${userId} not found while updating survey status.`
+      );
+    }
+  }
 
   return studentProfile;
 };
