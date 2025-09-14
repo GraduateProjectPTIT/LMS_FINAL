@@ -12,12 +12,12 @@ export interface IUpdateUserInfo {
   bio?: string;
 }
 
-export interface IUpdateTutorRegisterDto {
+export interface IUpdateTutorExpertiseDto {
   expertise: string[];
 }
 
 // DTO cho việc cập nhật interests của Student
-export interface IUpdateStudentRegisterDto {
+export interface IUpdateStudentInterestDto {
   interests: string[];
 }
 

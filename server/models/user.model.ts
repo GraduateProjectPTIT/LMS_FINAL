@@ -29,6 +29,7 @@ export interface IUser extends Document {
   activationToken?: string;
   bio?: string;
   isVerified: boolean;
+  isSurveyCompleted: boolean;
   studentProfile?: Types.ObjectId;
   tutorProfile?: Types.ObjectId;
   adminProfile?: Types.ObjectId;
@@ -78,6 +79,10 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       tiktok: { type: String, default: "" },
     },
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isSurveyCompleted: {
       type: Boolean,
       default: false,
     },

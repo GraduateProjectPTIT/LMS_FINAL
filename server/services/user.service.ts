@@ -7,8 +7,8 @@ import { Request, Response } from "express";
 import {
   IStudent,
   ITutor,
-  IUpdateStudentRegisterDto,
-  IUpdateTutorRegisterDto,
+  IUpdateStudentInterestDto,
+  IUpdateTutorExpertiseDto,
   IUpdateUserInfo,
 } from "../types/user.types";
 import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
@@ -61,9 +61,9 @@ export const updateUserInfoService = async (
 
 // Cập nhật profile khi đăng ký
 
-export const updateTutorRegisterService = async (
+export const updateTutorExpertiseService = async (
   userId: string,
-  data: IUpdateTutorRegisterDto
+  data: IUpdateTutorExpertiseDto
 ): Promise<ITutor> => {
   const { expertise } = data;
 
@@ -88,12 +88,27 @@ export const updateTutorRegisterService = async (
   tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
   await tutorProfile.save();
 
+  // Tìm user bằng userId
+  const user = await userModel.findById(userId);
+
+  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
+  if (user) {
+    if (user.isSurveyCompleted === false) {
+      user.isSurveyCompleted = true;
+      await user.save();
+    }
+  } else {
+    console.warn(
+      `User with ID ${userId} not found while updating survey status.`
+    );
+  }
+
   return tutorProfile;
 };
 
-export const updateStudentRegisterService = async (
+export const updateStudentInterestService = async (
   userId: string,
-  data: IUpdateStudentRegisterDto
+  data: IUpdateStudentInterestDto
 ): Promise<IStudent> => {
   const { interests } = data;
 
@@ -119,6 +134,21 @@ export const updateStudentRegisterService = async (
   // Gán interests mới - ÉP KIỂU ở đây
   studentProfile.interests = interests as unknown as Types.ObjectId[];
   await studentProfile.save();
+
+  // Tìm user bằng userId
+  const user = await userModel.findById(userId);
+
+  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
+  if (user) {
+    if (user.isSurveyCompleted === false) {
+      user.isSurveyCompleted = true;
+      await user.save();
+    }
+  } else {
+    console.warn(
+      `User with ID ${userId} not found while updating survey status.`
+    );
+  }
 
   return studentProfile;
 };
