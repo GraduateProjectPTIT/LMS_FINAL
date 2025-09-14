@@ -10,8 +10,8 @@ import {
   updatePasswordService,
   deleteMyAccountService,
   updateAvatarService,
-  updateTutorRegisterService,
-  updateStudentRegisterService,
+  updateTutorExpertiseService,
+  updateStudentInterestService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
@@ -121,7 +121,7 @@ export const setupTutorProfile = CatchAsyncError(
     const { expertise } = req.body;
 
     // 3. Gọi service với tên mới
-    const updatedTutorProfile = await updateTutorRegisterService(userId, {
+    const updatedTutorProfile = await updateTutorExpertiseService(userId, {
       expertise,
     });
 
@@ -143,7 +143,7 @@ export const setupStudentProfile = CatchAsyncError(
     const { interests } = req.body;
 
     // 3. Gọi service với tên mới
-    const updatedStudentProfile = await updateStudentRegisterService(userId, {
+    const updatedStudentProfile = await updateStudentInterestService(userId, {
       interests,
     });
 
