@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import { Response } from "express";
-import userModel, { ITutor, IUser, UserRole } from "../models/user.model";
+import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -390,7 +390,12 @@ export const loginUserService = async (
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
 export const socialAuthService = async (body: ISocialAuthBody) => {
-  const { email, name, avatar } = body;
+  const { email, name, avatar, role } = body;
+  const isValidRole = Object.values(UserRole).includes(role as UserRole);
+  if (!isValidRole) {
+    throw new Error(`Vai trò "${role}" không hợp lệ.`);
+  }
+
   let user = await userModel.findOne({ email });
   if (!user) {
     // Kịch bản 1: Người dùng mới
@@ -401,6 +406,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
         public_id: "default_id", // Hoặc một ID mặc định nếu bạn muốn
         url: avatar,
       },
+      role: role,
       isVerified: true,
     });
   } else {
