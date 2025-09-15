@@ -30,14 +30,24 @@ import { IStudent } from "../types/user.types";
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
 const _toUserResponse = (user: IUser): IUserResponse => {
+  // 1. Chuyển Mongoose Document thành plain object
+  const userObject = user.toObject();
+
+  // 2. Tách các trường không cần thiết ra
+  const {
+    password,
+    resetToken,
+    activationCode,
+    activationToken,
+    ...userResponseData
+  } = userObject;
+
+  // 3. Xử lý các giá trị mặc định cho các trường có thể null/undefined
   return {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isVerified: user.isVerified ?? false,
-    avatar: user.avatar ?? { public_id: "", url: "" },
-    socials: user.socials ?? {
+    ...userResponseData,
+    isVerified: userResponseData.isVerified ?? false,
+    avatar: userResponseData.avatar ?? { public_id: "", url: "" },
+    socials: userResponseData.socials ?? {
       facebook: "",
       instagram: "",
       tiktok: "",
@@ -393,40 +403,87 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
   const { email, name, avatar, role } = body;
   const isValidRole = Object.values(UserRole).includes(role as UserRole);
   if (!isValidRole) {
-    throw new Error(`Vai trò "${role}" không hợp lệ.`);
+    throw new Error(`Role: "${role}" is invalid`);
   }
 
   let user = await userModel.findOne({ email });
+
   if (!user) {
-    // Kịch bản 1: Người dùng mới
-    user = await userModel.create({
-      email,
-      name,
-      avatar: {
-        public_id: "default_id", // Hoặc một ID mặc định nếu bạn muốn
-        url: avatar,
-      },
-      role: role,
-      isVerified: true,
-    });
+    // --- Kịch bản 1: Người dùng mới -> Áp dụng logic tạo profile ---
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // Dữ liệu người dùng mới
+      const newUserPayload = {
+        email,
+        name,
+        avatar: {
+          public_id: "social_login", // Đánh dấu đây là avatar từ social
+          url: avatar,
+        },
+        role: role,
+        isVerified: true, // User từ social login luôn được xác thực
+      };
+
+      // Tạo user mới BÊN TRONG TRANSACTION
+      const newUserArray = await userModel.create([newUserPayload], {
+        session,
+      });
+      const newUser = newUserArray[0];
+
+      // Tạo profile tương ứng với vai trò
+      switch (role) {
+        case UserRole.Student: {
+          const newStudentDoc = new studentModel({ userId: newUser._id });
+          const savedProfile = await newStudentDoc.save({ session });
+          newUser.studentProfile = savedProfile._id as Types.ObjectId;
+          break;
+        }
+        case UserRole.Tutor: {
+          const newTutorDoc = new tutorModel({ userId: newUser._id });
+          const savedProfile = await newTutorDoc.save({ session });
+          newUser.tutorProfile = savedProfile._id as Types.ObjectId;
+          break;
+        }
+        default:
+          throw new ErrorHandler("Invalid role", 400);
+      }
+
+      // Lưu lại user với thông tin profile đã liên kết
+      await newUser.save({ session });
+
+      // Commit transaction khi mọi thứ thành công
+      await session.commitTransaction();
+
+      // Gán newUser cho biến user để sử dụng ở bước tạo token
+      user = newUser;
+    } catch (error: any) {
+      // Nếu có lỗi, hủy bỏ mọi thay đổi
+      await session.abortTransaction();
+      throw new ErrorHandler(
+        `Error when creating account: ${error.message}`,
+        500
+      );
+    } finally {
+      // Luôn kết thúc session
+      session.endSession();
+    }
   } else {
-    // Kịch bản 2: Người dùng đã tồn tại -> Kiểm tra và cập nhật avatar
+    // --- Kịch bản 2: Người dùng đã tồn tại -> Chỉ cập nhật avatar nếu cần ---
     if (user.avatar?.url !== avatar) {
       user.avatar = {
-        // Giữ lại public_id cũ để có thể xóa ảnh cũ trên Cloudinary nếu cần
-        public_id: user.avatar?.public_id || "",
-        url: avatar, // Cập nhật url mới
+        public_id: user.avatar?.public_id || "social_login",
+        url: avatar,
       };
-      await user.save(); // Đừng quên lưu lại thay đổi
+      await user.save();
     }
   }
 
+  // Tạo và trả về tokens (dùng cho cả 2 kịch bản)
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  // await redis.set(user._id.toString(), JSON.stringify(user));
-
-  return { user, accessToken, refreshToken };
+  return { user: _toUserResponse(user), accessToken, refreshToken };
 };
 
 // --- NGHIỆP VỤ ĐĂNG XUẤT ---

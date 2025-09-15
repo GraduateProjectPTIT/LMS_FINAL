@@ -1,7 +1,7 @@
 // src/types/auth.types.ts
 
 import { Types } from "mongoose";
-import { UserRole } from "../models/user.model";
+import { IUser, UserRole } from "../models/user.model";
 
 // Dùng trong quá trình tạo token kích hoạt
 export interface IActivationToken {
@@ -9,23 +9,10 @@ export interface IActivationToken {
   activationCode: string;
 }
 
-export interface IUserResponse {
-  _id: Types.ObjectId;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatar: {
-    public_id: string;
-    url: string;
-  };
-  // ✅ Cập nhật ở đây
-  isVerified: boolean;
-  socials: {
-    facebook: string;
-    instagram: string;
-    tiktok: string;
-  };
-}
+export type IUserResponse = Omit<
+  IUser,
+  "password" | "resetToken" | "activationCode" | "activationToken"
+>;
 
 export interface IDecodedPayload {
   id: string;
