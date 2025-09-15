@@ -30,14 +30,24 @@ import { IStudent } from "../types/user.types";
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
 const _toUserResponse = (user: IUser): IUserResponse => {
+  // 1. Chuyển Mongoose Document thành plain object
+  const userObject = user.toObject();
+
+  // 2. Tách các trường không cần thiết ra
+  const {
+    password,
+    resetToken,
+    activationCode,
+    activationToken,
+    ...userResponseData
+  } = userObject;
+
+  // 3. Xử lý các giá trị mặc định cho các trường có thể null/undefined
   return {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isVerified: user.isVerified ?? false,
-    avatar: user.avatar ?? { public_id: "", url: "" },
-    socials: user.socials ?? {
+    ...userResponseData,
+    isVerified: userResponseData.isVerified ?? false,
+    avatar: userResponseData.avatar ?? { public_id: "", url: "" },
+    socials: userResponseData.socials ?? {
       facebook: "",
       instagram: "",
       tiktok: "",
