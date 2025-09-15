@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch } from 'react-redux';
-import { signUpFailure, updateStart, updateSuccess } from '@/redux/user/userSlice';
+import { updateStart, updateSuccess, updateFailure } from '@/redux/user/userSlice';
 import toast from 'react-hot-toast';
 
 interface PersonalProps {
@@ -22,166 +22,218 @@ interface PersonalProps {
 const updatePersonalInfoSchema = z.object({
     name: z.string().min(3, "Username must be at least 3 characters").optional(),
     email: z.string().email("Invalid email address").optional(),
+    socials: z.object({
+        facebook: z.string().url().or(z.literal('')).optional(),
+        instagram: z.string().url().or(z.literal('')).optional(),
+        tiktok: z.string().url().or(z.literal('')).optional(),
+    }).optional()
 })
 
 type UpdateFormValues = z.infer<typeof updatePersonalInfoSchema>
 
 const Personal = ({ user }: PersonalProps) => {
-    const [isEditing, setIsEditing] = useState(false); // to allow to edit
-    const [avatarFile, setAvatarFile] = useState<File | null>(null); // save user avatar file
-    const [avatarPreview, setAvatarPreview] = useState<string>(""); // to display the image in UI
+    const [isEditing, setIsEditing] = useState(false); // check xem người dùng có đang chỉnh sửa không
+    const [avatarPreview, setAvatarPreview] = useState<string>(""); // Lưu chuỗi base64 để hiển thị lên giao diện
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const dispatch = useDispatch();
 
+    // Khởi tạo react-hook-form với giá trị ban đầu
     const {
         register,
         handleSubmit,
-        formState: {
-            isSubmitting,
-            errors
-        }
+        formState: { isSubmitting },
+        reset
     } = useForm<UpdateFormValues>({
         resolver: zodResolver(updatePersonalInfoSchema),
+        defaultValues: {
+            name: user?.name || "",
+            email: user?.email || "",
+            socials: {
+                facebook: user?.socials?.facebook || "",
+                instagram: user?.socials?.instagram || "",
+                tiktok: user?.socials?.tiktok || "",
+            }
+        }
     })
 
-    const onSubmit = async (data: UpdateFormValues) => {
-
-        // No changes, no need to call the API
-        if (data.name === user?.name && data.email === user?.email && !avatarFile) {
-            toast("No changes detected.");
-            setIsEditing(false)
-            return;
-        }
-
-        if (data.name !== user?.name || data.email !== user?.email) {
-            dispatch(updateStart());
-
-            const bodyData: UpdateFormValues = {
-                name: data.name,
-            };
-
-            if (data.email !== user?.email) {
-                bodyData.email = data.email;
-            }
-
-            try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_user_info`, {
-                    method: "PUT",
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(bodyData),
-                    credentials: 'include',
-                });
-                const responseData = await res.json();
-                if (!res.ok) {
-                    dispatch(signUpFailure("Update user info failed"));
-                    toast.error(responseData.message);
-                    return;
-                } else {
-                    dispatch(updateSuccess(responseData.user));
-                    toast.success("Update information successfully");
-                }
-            } catch (error: any) {
-                console.log(error.message);
-                toast.error("Something went wrong. Please try again.");
-            }
-        }
-
-        if (avatarFile) {
-            await handleAvatarUpload();
-        }
-
+    // Xử lý khi người dùng bấm nút hủy
+    const handleCancel = () => {
+        reset({
+            name: user?.name,
+            email: user?.email,
+            socials: user?.socials
+        });
+        setAvatarPreview("");
         setIsEditing(false);
     }
 
+    // Kích hoạt thẻ input file đang bị ẩn
     const handleClickChangePhoto = () => {
         const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
         if (fileInput) {
-            fileInput.click(); // Only call click if fileInput is not null
+            fileInput.click();
         }
     }
 
-    const imageHandler = async (e: any) => {
+    // Xử lý khi người dùng chọn một file ảnh
+    const imageHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-        const file = e.target.files[0];
-
-        if (file) {
-            setAvatarFile(file);
-
-            const fileReader = new FileReader();
-
-            fileReader.onload = () => {
-                if (fileReader.readyState === 2) {
-                    setAvatarPreview(fileReader.result as string);
-                }
-            };
-            fileReader.readAsDataURL(file)
+        // Chỉ cho phép người dùng chọn file ảnh
+        if (!file.type.startsWith("image/")) {
+            toast.error("Chỉ được chọn file ảnh!");
+            return;
         }
-    }
 
-    const handleAvatarUpload = async () => {
-        if (!avatarFile) return;
+        // Giới hạn dung lượng ảnh tải lên
+        const maxMB = 2;
+        if (file.size > maxMB * 1024 * 1024) {
+            toast.error(`Ảnh vượt quá ${maxMB}MB!`);
+            return;
+        }
 
-        setIsUploadingImage(true);
+        // Đọc file và chuyển thành chuỗi base64
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setAvatarPreview(reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 
-        const formData = new FormData();
-        formData.append('avatar', avatarFile);
+    // Hàm gửi ảnh đại diện đã được mã hóa base64 lên server
+    const handleAvatarUpload = async (): Promise<{ ok: boolean; data: any }> => {
+        if (!avatarPreview) return Promise.resolve({ ok: true, data: null });
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_profile_picture`, {
+            // Gọi API để cập nhật ảnh đại diện
+            setIsUploadingImage(true);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_avatar`, {
                 method: 'PUT',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ avatar: avatarPreview }),
                 credentials: 'include',
             });
             const data = await res.json();
-            if (!res.ok) {
-                toast.error(data.message || 'Failed to update profile picture');
-                return;
-            } else {
-                dispatch(updateSuccess(data.user));
-                toast.success("Update profile picture successfully");
-            }
+            // Trả về kết quả có cấu trúc chuẩn hóa
+            return { ok: res.ok, data };
         } catch (error: any) {
-            console.error(error.message);
-            toast.error('Something went wrong while updating the profile picture.');
+            console.error("Avatar upload error:", error.message);
+            // Trả về lỗi nếu không gọi được API
+            return { ok: false, data: { message: 'Upload failed due to a network error.' } };
         } finally {
             setIsUploadingImage(false);
         }
-    }
+    };
+
+    // Hàm xử lý chính khi người dùng gửi form
+    const onSubmit = async (data: UpdateFormValues) => {
+        // Kiểm tra xem người dùng có thay đổi thông tin gì không
+        const hasInfoChanged = data.name !== user?.name ||
+            data.email !== user?.email ||
+            JSON.stringify(data.socials) !== JSON.stringify(user?.socials);
+
+        // Dừng lại nếu không có gì thay đổi
+        if (!hasInfoChanged && !avatarPreview) {
+            toast("No changes detected.");
+            setIsEditing(false);
+            return;
+        }
+
+        // Bắt đầu trạng thái loading
+        dispatch(updateStart());
+
+        // Tạo một danh sách để chứa các tác vụ cập nhật
+        const updateTasks: Promise<{ ok: boolean; data: any }>[] = [];
+
+        // Nếu thông tin thay đổi, thêm tác vụ cập nhật thông tin vào danh sách
+        if (hasInfoChanged) {
+            const infoPromise = fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_user_info`, {
+                method: "PUT",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+                credentials: 'include',
+            }).then(async (res) => ({ ok: res.ok, data: await res.json() }));
+
+            updateTasks.push(infoPromise);
+        }
+
+        // Nếu ảnh thay đổi, thêm tác vụ cập nhật ảnh vào danh sách
+        if (avatarPreview) {
+            updateTasks.push(handleAvatarUpload());
+        }
+
+        try {
+            // Chạy tất cả các tác vụ trong danh sách
+            const results = await Promise.all(updateTasks);
+
+            // Kiểm tra xem tất cả các tác vụ có thành công không
+            const allSucceeded = results.every(res => res.ok);
+
+            if (allSucceeded) {
+                // Lấy dữ liệu người dùng mới nhất từ kết quả cuối cùng
+                const latestUserData = results[results.length - 1]?.data?.user;
+                if (latestUserData) {
+                    dispatch(updateSuccess(latestUserData));
+                }
+                toast.success("Profile updated successfully!");
+                handleCancel(); // Reset lại form sau khi thành công
+            } else {
+                // Tìm lỗi đầu tiên và hiển thị cho người dùng
+                const failedResult = results.find(res => !res.ok);
+                const errorMessage = failedResult?.data?.message || "An update failed.";
+                dispatch(updateFailure(errorMessage));
+                toast.error(errorMessage);
+            }
+        } catch (error: any) {
+            // Xử lý các lỗi không mong muốn khác
+            const errorMessage = "Something went wrong. Please try again.";
+            dispatch(updateFailure(errorMessage));
+            toast.error(errorMessage);
+        }
+    };
+
+    useEffect(() => {
+        if (!user) return;
+        reset({
+            name: user.name || "",
+            email: user.email || "",
+            socials: {
+                facebook: user.socials?.facebook || "",
+                instagram: user.socials?.instagram || "",
+                tiktok: user.socials?.tiktok || "",
+            },
+        });
+    }, [user, reset])
 
     return (
-        <Card className="w-full border-gray-200 dark:border-slate-600 light-mode dark:dark-mode shadow-md dark:shadow-slate-600">
+        <Card className="w-full theme-mode border-gray-200 dark:border-slate-600 shadow-md dark:shadow-slate-600">
 
             <CardHeader className="flex gap-[20px] max-md:flex-col md:items-center md:justify-between pb-4">
                 <div>
                     <CardTitle className="text-2xl font-bold">Personal Information</CardTitle>
                     <CardDescription>Update your personal details and profile information</CardDescription>
                 </div>
-                <Button
-                    variant={isEditing ? "outline" : "default"}
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="flex items-center gap-2"
-                >
-                    {isEditing ? (
-                        <>
-                            <FaUserCheck size={16} />
-                            <span>Save</span>
-                        </>
-                    ) : (
-                        <>
-                            <FaUserEdit size={16} />
-                            <span>Edit</span>
-                        </>
-                    )}
-                </Button>
+
+                {!isEditing && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsEditing(!isEditing)}
+                        className="flex items-center gap-2 cursor-pointer"
+                    >
+                        <FaUserEdit size={16} /> Edit
+                    </Button>
+                )}
             </CardHeader>
 
             <form onSubmit={handleSubmit(onSubmit)}>
                 <CardContent className='flex flex-col gap-[20px]'>
                     <div className="flex flex-col md:flex-row gap-[20px] items-start">
-                        {/* avatar */}
+                        {/* Avatar */}
                         <div className="flex flex-col items-center gap-2">
                             <div className='relative'>
                                 <Avatar className="w-24 h-24 border border-gray-300 dark:border-slate-800 shadow-md">
@@ -222,27 +274,26 @@ const Personal = ({ user }: PersonalProps) => {
                             )}
                         </div>
 
-                        {/* name */}
+                        {/* Name + Email */}
                         <div className="flex-1 space-y-4 w-full">
+                            {/* Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">Full Name</Label>
                                 <Input
                                     id="name"
                                     {...register("name")}
-                                    defaultValue={user?.name}
                                     placeholder='Enter name'
                                     disabled={!isEditing}
                                     className="border-gray-300 dark:border-slate-600 w-full"
                                 />
                             </div>
 
-                            {/* email */}
+                            {/* Email */}
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email Address</Label>
                                 <Input
                                     id="email"
                                     {...register("email")}
-                                    defaultValue={user?.email}
                                     placeholder='Enter email'
                                     disabled={!isEditing}
                                     className="border-gray-300 dark:border-slate-600"
@@ -251,47 +302,34 @@ const Personal = ({ user }: PersonalProps) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* phone number */}
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Phone Number</Label>
-                            <Input
-                                id="phone"
-                                defaultValue={user?.phone}
-                                placeholder='Enter phone number'
-                                disabled={!isEditing}
-                                className="border-gray-300 dark:border-slate-600"
-                            />
-                        </div>
-                    </div>
-
+                    {/* Social Links */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="country">Country</Label>
+                            <Label htmlFor="facebook">Facebook</Label>
                             <Input
-                                id="country"
-                                defaultValue={user?.country}
-                                placeholder='Enter country'
+                                id="facebook"
+                                placeholder='Enter facebook link'
+                                {...register("socials.facebook")}
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="city">City</Label>
+                            <Label htmlFor="instagram">Instagram</Label>
                             <Input
-                                id="city"
-                                defaultValue={user?.city}
-                                placeholder='Enter city'
+                                id="instagram"
+                                placeholder='Enter instagram link'
+                                {...register("socials.instagram")}
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="zipCode">Zip Code</Label>
+                            <Label htmlFor="tiktok">TikTok</Label>
                             <Input
-                                id="zipCode"
-                                defaultValue={user?.zipCode}
-                                placeholder='Enter zip code'
+                                id="tiktok"
+                                placeholder='Enter tiktok link'
+                                {...register("socials.tiktok")}
                                 disabled={!isEditing}
                                 className="border-gray-300 dark:border-slate-600"
                             />
@@ -302,7 +340,7 @@ const Personal = ({ user }: PersonalProps) => {
                 <CardFooter className="flex justify-end gap-2 pt-4 ">
                     {isEditing && (
                         <>
-                            <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                             <Button type='submit' disabled={isSubmitting}>
                                 {isSubmitting ? "Saving..." : "Save changes"}
                             </Button>

@@ -11,6 +11,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { signInFailure, signInStart, signInSuccess } from '@/redux/user/userSlice';
 import { signIn, useSession } from "next-auth/react";
+import Loader from '@/components/Loader';
+import { getFieldStatus, getFieldBorderClass, getFieldIcon } from "@/utils/formFieldHelpers";
 
 import makeup2 from "@/assets/makeup2.webp"
 import toast from 'react-hot-toast';
@@ -24,7 +26,6 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { IoAlertCircleOutline } from "react-icons/io5";
 import { IoCheckmarkCircleOutline } from "react-icons/io5";
-import Loader from '@/components/Loader';
 
 const loginSchema = z.object({
     email: z.string().email("Invalid email address"),
@@ -80,39 +81,6 @@ const Login = () => {
 
     const watchedFields = watch();
 
-    const getFieldStatus = (fieldName: keyof LoginFormValues) => {
-        const isTouched = touchedFields[fieldName];
-        const hasError = errors[fieldName];
-        const hasValue = watchedFields[fieldName]?.length > 0;
-
-        if (!isTouched || !hasValue) return 'default';
-        if (hasError) return 'error';
-        return 'success';
-    }
-
-    const getFieldBorderClass = (fieldName: keyof LoginFormValues) => {
-        const status = getFieldStatus(fieldName);
-        switch (status) {
-            case 'error':
-                return 'border-red-400';
-            case 'success':
-                return 'border-green-400';
-            default:
-                return 'border-slate-400';
-        }
-    }
-
-    const getFieldIcon = (fieldName: keyof LoginFormValues) => {
-        const status = getFieldStatus(fieldName);
-        if (status === 'error') {
-            return <IoAlertCircleOutline className="text-red-500 text-lg" />;
-        }
-        if (status === 'success') {
-            return <IoCheckmarkCircleOutline className="text-green-500 text-lg" />;
-        }
-        return null;
-    }
-
     const onSubmit = async (data: LoginFormValues) => {
         dispatch(signInStart());
         try {
@@ -140,14 +108,11 @@ const Login = () => {
         }
     }
 
-    // handle login through Github or Google
+    // Login qua OAuth
     const handleOAuthLogin = async (provider: "google" | "github") => {
         try {
-            const res = await signIn(provider, { redirect: false });
-            if (res?.error) {
-                toast.error(`${provider} login failed`);
-                return;
-            }
+            // Redirect to /login?social=1 after OAuth
+            await signIn(provider, { callbackUrl: '/login?social=1' });
         } catch (error: any) {
             toast.error("Something went wrong. Please try again.");
         }
@@ -184,12 +149,23 @@ const Login = () => {
         }
     }
 
+    // Only trigger social login effect if coming from OAuth (social=1)
+    const isSocialLogin = searchParams?.get("social") === "1";
     useEffect(() => {
-        if (session?.user && !isCalled.current) {
+        if (session?.user && isSocialLogin && !isCalled.current) {
             sendUserToServer();
             isCalled.current = true;
         }
-    }, [session])
+    }, [session, isSocialLogin]);
+
+    const field = (name: keyof LoginFormValues) => {
+        const status = getFieldStatus(name, touchedFields, errors, watchedFields);
+        return {
+            border: getFieldBorderClass(status),
+            icon: getFieldIcon(status),
+        };
+    };
+
 
     return (
         <div className='w-[400px] md:w-[1000px] h-[600px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border border-slate-300 dark:border-slate-500 rounded-[10px] shadow-lg '>
@@ -209,7 +185,7 @@ const Login = () => {
 
                                     {/* Email Field */}
                                     <div className='w-full'>
-                                        <div className={`w-full border ${getFieldBorderClass('email')} rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}>
+                                        <div className={`w-full border ${field("email").border} rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}>
                                             <TfiEmail className='text-gray-400 mx-[10px]' />
                                             <input
                                                 {...register("email")}
@@ -219,7 +195,7 @@ const Login = () => {
                                                 className='outline-none bg-transparent w-full backdrop-blur-sm '
                                             />
                                             <div className="mx-[10px]">
-                                                {getFieldIcon('email')}
+                                                {field("email").icon}
                                             </div>
                                         </div>
                                         {errors.email && watchedFields.email && (
@@ -232,7 +208,7 @@ const Login = () => {
 
                                     {/* Password Field */}
                                     <div className='w-full'>
-                                        <div className={`w-full border ${getFieldBorderClass('password')} rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}>
+                                        <div className={`w-full border ${field("password").border} rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}>
                                             <div className='flex items-center w-[500px]'>
                                                 <RiLockPasswordLine className='text-gray-400 mx-[10px] text-[20px]' />
                                                 <input
@@ -243,8 +219,8 @@ const Login = () => {
                                                 />
                                             </div>
                                             <div className="flex items-center gap-2 mx-[10px]">
-                                                {getFieldIcon('password')}
-                                                <button onClick={handleShowPassword}>
+                                                {field("password").icon}
+                                                <button type='button' onClick={handleShowPassword}>
                                                     {showPassword ? (
                                                         <FaRegEyeSlash className='text-gray-400' />
                                                     ) : (
@@ -269,21 +245,21 @@ const Login = () => {
                                     </div>
 
                                 </div>
-                                <Button type='submit' disabled={isSubmitting} className='cursor-pointer w-full hover:bg-slate-600 dark:hover:bg-gray-400'>
+                                <button type='submit' disabled={isSubmitting} className='button-disabled'>
                                     {isSubmitting ? "Logging in..." : "Login"}
-                                </Button>
+                                </button>
                             </form>
                             <Separator className='mt-5 mb-2' />
                             <p className='text-center text-xs text'>Or join with</p>
                             <div className='flex flex-col md:flex-row justify-center items-center w-full gap-3 mt-3'>
-                                <Button onClick={() => handleOAuthLogin("google")} className=' w-full md:w-[200px] hover:bg-slate-600 dark:hover:bg-gray-400 rounded-[10px] cursor-pointer flex justify-center items-center gap-2'>
+                                <button onClick={() => handleOAuthLogin("google")} className='button gap-2'>
                                     <FcGoogle />
                                     Google
-                                </Button>
-                                <Button onClick={() => handleOAuthLogin("github")} className=' w-full md:w-[200px] hover:bg-slate-600 dark:hover:bg-gray-400 rounded-[10px] cursor-pointer flex justify-center items-center gap-2'>
+                                </button>
+                                <button onClick={() => handleOAuthLogin("github")} className='button gap-2'>
                                     <FaGithub />
                                     Github
-                                </Button>
+                                </button>
                             </div>
                         </div>
 

@@ -10,7 +10,7 @@ import { motion } from "motion/react"
 
 const LogoTicker = () => {
   return (
-    <section className="py-8 light-mode dark:dark-mode border shadow-md dark:shadow-slate-400">
+    <section className="py-8 theme-mode border shadow-md dark:shadow-slate-400">
       <div className="container">
         <div className="flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black,transparent)]">
           <motion.div

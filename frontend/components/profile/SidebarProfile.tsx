@@ -36,22 +36,13 @@ const sidebarLinks = [
     }
 ]
 
-const adminLinks = [
-    {
-        label: 'Admin Dashboard',
-        icon: <MdOutlineAdminPanelSettings />,
-        value: 'admin_dashboard'
-    },
-]
-
 interface SidebarProps {
-    user: any,
     activeSection: string;
     setActiveSection: (section: string) => void;
 }
 
 
-const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps) => {
+const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
 
     const router = useRouter();
 
@@ -69,7 +60,7 @@ const SidebarProfile = ({ user, activeSection, setActiveSection }: SidebarProps)
     }
 
     return (
-        <section className='flex flex-col w-full md:w-[280px] gap-[30px] h-full md:h-screen md:max-h-[1200px] theme-mode dark:theme-mode p-2 md:p-6 border max-md:border-none border-gray-300 dark:border-slate-700 border-r-0 rounded-l-[24px] '>
+        <section className='flex flex-col w-full md:w-[280px] gap-[30px] h-full md:h-screen md:max-h-[1200px] theme-mode p-2 md:p-6 border max-md:border-none border-gray-300 dark:border-slate-700 border-r-0 rounded-l-[24px] '>
 
             <h2 className='text-xl md:text-2xl font-bold'>Profile Management</h2>
 

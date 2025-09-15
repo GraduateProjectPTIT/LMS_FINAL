@@ -1,5 +1,6 @@
 import React from 'react';
 import { Filter, X, ChevronDown } from 'lucide-react';
+import { IBaseCategory } from '@/type';
 
 interface CourseFiltersProps {
     categoryFilter: string;
@@ -11,11 +12,11 @@ interface CourseFiltersProps {
     sortBy: string;
     onSortChange: (value: string) => void;
     onClearFilters: () => void;
-    categories: string[];
+    categories: IBaseCategory[];
     levels: string[];
 }
 
-const CourseFilters: React.FC<CourseFiltersProps> = ({
+const CourseFilters = ({
     categoryFilter,
     onCategoryChange,
     levelFilter,
@@ -27,8 +28,8 @@ const CourseFilters: React.FC<CourseFiltersProps> = ({
     onClearFilters,
     categories,
     levels,
-}) => {
-    // Check if any filters are active (excluding default values)
+}: CourseFiltersProps) => {
+    // Kiểm tra nếu có bộ lọc nào đang được áp dụng
     const hasActiveFilters =
         categoryFilter !== 'all' ||
         levelFilter !== 'all' ||
@@ -36,7 +37,7 @@ const CourseFilters: React.FC<CourseFiltersProps> = ({
         sortBy !== 'default';
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+        <div className="bg-white dark:bg-slate-800/30 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -68,8 +69,8 @@ const CourseFilters: React.FC<CourseFiltersProps> = ({
                         >
                             <option value="all">All Categories</option>
                             {categories.map((category) => (
-                                <option key={category} value={category}>
-                                    {category}
+                                <option key={category.title} value={category.title}>
+                                    {category.title}
                                 </option>
                             ))}
                         </select>
@@ -111,7 +112,6 @@ const CourseFilters: React.FC<CourseFiltersProps> = ({
                             className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 text-slate-900 dark:text-slate-100 appearance-none pr-10"
                         >
                             <option value="all">All Prices</option>
-                            <option value="free">Free</option>
                             <option value="0-25">$0 - $25</option>
                             <option value="25-50">$25 - $50</option>
                             <option value="50-100">$50 - $100</option>

@@ -168,13 +168,13 @@ const ForgotPassword = () => {
                     </div>
                 </div>
 
-                <Button
+                <button
                     type='submit'
                     disabled={isSubmitting}
-                    className='cursor-pointer w-full hover:bg-slate-600 dark:hover:bg-gray-400'
+                    className='button-disabled'
                 >
                     {isSubmitting ? "Sending..." : "Send Reset Code"}
-                </Button>
+                </button>
             </form>
 
             <div className='flex flex-col items-center gap-2 mt-2'>

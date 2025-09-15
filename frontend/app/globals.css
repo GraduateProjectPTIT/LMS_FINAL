@@ -89,16 +89,6 @@ body {
 }
 
 @layer utilities {
-  .light-mode {
-    color: var(--text-color);
-    background-color: var(--bg-color);
-  }
-
-  .dark-mode {
-    color: var(--text-color);
-    background-color: var(--bg-color);
-  }
-
   .theme-mode {
     color: var(--text-color);
     background-color: var(--bg-color);
@@ -113,6 +103,14 @@ body {
     padding: 0 1rem;
     max-width: 1500px;
     width: 100%;
+  }
+
+  .button {
+    @apply flex justify-center items-center p-1 w-full  rounded-[10px] bg-slate-800 dark:bg-slate-100 text-white dark:text-black hover:bg-slate-600 dark:hover:bg-gray-400 cursor-pointer;
+  }
+
+  .button-disabled {
+    @apply flex justify-center items-center p-1 w-full  rounded-[10px] bg-slate-800 dark:bg-slate-100 text-white dark:text-black hover:bg-slate-600 dark:hover:bg-gray-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   @media (max-width: 768px) {

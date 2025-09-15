@@ -1,6 +1,9 @@
 "use client"
 
 import React, { useState } from 'react';
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -8,19 +11,31 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { FaLock, FaEye, FaEyeSlash, FaEdit } from 'react-icons/fa';
+import { IoAlertCircleOutline, IoCheckmarkCircleOutline } from "react-icons/io5";
 import toast, { Toaster } from 'react-hot-toast';
+
+const passwordChangeSchema = z
+    .object({
+        oldPassword: z.string().min(1, "Current password is required").min(6, "Password must be at least 6 characters"),
+        newPassword: z.string().min(6, "New password must be at least 6 characters"),
+        confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters")
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+    })
+    .refine((data) => data.oldPassword !== data.newPassword, {
+        message: "New password must be different from current password",
+        path: ["newPassword"],
+    });
+
+type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>
 
 interface AuthenticationProps {
     user: any;
 }
 
 const Authentication = ({ user }: AuthenticationProps) => {
-
-    const [formPassword, setFormPassword] = useState({
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
     const [isEditing, setIsEditing] = useState(false);
     const [showPasswords, setShowPasswords] = useState({
         oldPassword: false,
@@ -28,8 +43,57 @@ const Authentication = ({ user }: AuthenticationProps) => {
         confirmPassword: false
     });
 
-    const handleChange = (e: any) => {
-        setFormPassword({ ...formPassword, [e.target.id]: e.target.value });
+    const {
+        register,
+        handleSubmit,
+        watch,
+        reset,
+        formState: {
+            isSubmitting,
+            errors,
+            touchedFields
+        }
+    } = useForm<PasswordChangeFormValues>({
+        resolver: zodResolver(passwordChangeSchema),
+        mode: "onChange"
+    });
+
+    const watchedFields = watch();
+
+    // Xác định trạng thái của trường input (lỗi, thành công, mặc định).
+    const getFieldStatus = (fieldName: keyof PasswordChangeFormValues) => {
+        const isTouched = touchedFields[fieldName];
+        const hasError = errors[fieldName];
+        const hasValue = watchedFields[fieldName]?.length > 0;
+
+        if (!isTouched || !hasValue) return 'default';
+        if (hasError) return 'error';
+        return 'success';
+    }
+
+    // Trả về class CSS cho viền input dựa trên trạng thái.
+    const getFieldBorderClass = (fieldName: keyof PasswordChangeFormValues) => {
+        const status = getFieldStatus(fieldName);
+        switch (status) {
+            case 'error':
+                return 'border-red-400';
+            case 'success':
+                return 'border-green-400';
+            default:
+                return 'border-gray-300 dark:border-slate-600';
+        }
+    }
+
+    // Trả về icon tương ứng với trạng thái của input.
+    const getFieldIcon = (fieldName: keyof PasswordChangeFormValues) => {
+        const status = getFieldStatus(fieldName);
+        if (status === 'error') {
+            return <IoAlertCircleOutline className="text-red-500 text-lg" />;
+        }
+        if (status === 'success') {
+            return <IoCheckmarkCircleOutline className="text-green-500 text-lg" />;
+        }
+        return null;
     }
 
     const togglePasswordVisibility = (field: string) => {
@@ -45,21 +109,10 @@ const Authentication = ({ user }: AuthenticationProps) => {
 
     const cancelEditing = () => {
         setIsEditing(false);
-        setFormPassword({
-            oldPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-        });
+        reset();
     }
 
-    const handleSubmitForm = async (e: any) => {
-        e.preventDefault();
-
-        if (formPassword.newPassword !== formPassword.confirmPassword) {
-            toast.error("Password do not match!");
-            return;
-        }
-
+    const onSubmit = async (data: PasswordChangeFormValues) => {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_password`, {
                 method: "PUT",
@@ -67,23 +120,19 @@ const Authentication = ({ user }: AuthenticationProps) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    oldPassword: formPassword.oldPassword,
-                    newPassword: formPassword.newPassword
+                    oldPassword: data.oldPassword,
+                    newPassword: data.newPassword
                 }),
                 credentials: 'include',
             });
-            const data = await res.json();
+            const responseData = await res.json();
             if (!res.ok) {
-                toast.error(data.message);
+                toast.error(responseData.message);
                 return;
             } else {
                 setIsEditing(false);
                 toast.success("Password updated successfully!");
-                setFormPassword({
-                    oldPassword: '',
-                    newPassword: '',
-                    confirmPassword: ''
-                });
+                reset();
             }
         } catch (error: any) {
             console.log(error.message);
@@ -92,7 +141,7 @@ const Authentication = ({ user }: AuthenticationProps) => {
     }
 
     return (
-        <Card className="w-full border-gray-200 dark:border-slate-600 light-mode dark:dark-mode shadow-md dark:shadow-slate-600">
+        <Card className="w-full theme-mode border-gray-200 dark:border-slate-600 shadow-md dark:shadow-slate-600">
             <CardHeader>
                 <div className="flex items-center gap-2">
                     <FaLock className="text-blue-500" size={20} />
@@ -101,7 +150,7 @@ const Authentication = ({ user }: AuthenticationProps) => {
                 <CardDescription>Manage your email and password settings</CardDescription>
             </CardHeader>
 
-            <form onSubmit={handleSubmitForm}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">Email Address</h3>
@@ -111,7 +160,13 @@ const Authentication = ({ user }: AuthenticationProps) => {
                                 <p className="font-medium">{user?.email || "john.doe@example.com"}</p>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Primary email</p>
                             </div>
-                            <Badge className="bg-green-500">Verified</Badge>
+                            {
+                                user?.isVerified ? (
+                                    <Badge className="bg-green-500">Verified</Badge>
+                                ) : (
+                                    <Badge className="bg-red-500">Unverified</Badge>
+                                )
+                            }
                         </div>
                     </div>
 
@@ -134,67 +189,94 @@ const Authentication = ({ user }: AuthenticationProps) => {
 
                         {isEditing ? (
                             <div className="space-y-4">
-                                <div className="space-y-2 relative">
+                                {/* Current Password Field */}
+                                <div className="space-y-2">
                                     <Label htmlFor="oldPassword">Current Password</Label>
                                     <div className="relative">
                                         <Input
-                                            onChange={handleChange}
+                                            {...register("oldPassword")}
                                             id="oldPassword"
                                             type={showPasswords.oldPassword ? "text" : "password"}
-                                            value={formPassword.oldPassword}
                                             placeholder="••••••••"
-                                            className="border-gray-300 dark:border-slate-600 pr-10"
+                                            className={`${getFieldBorderClass('oldPassword')} pr-16`}
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => togglePasswordVisibility('oldPassword')}
-                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400"
-                                        >
-                                            {showPasswords.oldPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                                        </button>
+                                        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                                            {getFieldIcon('oldPassword')}
+                                            <button
+                                                type="button"
+                                                onClick={() => togglePasswordVisibility('oldPassword')}
+                                                className="text-gray-500 dark:text-gray-400"
+                                            >
+                                                {showPasswords.oldPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
+                                    {errors.oldPassword && watchedFields.oldPassword && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                            <p className="text-red-400 text-[12px]">{errors.oldPassword.message}</p>
+                                        </div>
+                                    )}
                                 </div>
 
+                                {/* New Password Field */}
                                 <div className="space-y-2">
                                     <Label htmlFor="newPassword">New Password</Label>
                                     <div className="relative">
                                         <Input
-                                            onChange={handleChange}
+                                            {...register("newPassword")}
                                             id="newPassword"
                                             type={showPasswords.newPassword ? "text" : "password"}
-                                            value={formPassword.newPassword}
                                             placeholder="••••••••"
-                                            className="border-gray-300 dark:border-slate-600 pr-10"
+                                            className={`${getFieldBorderClass('newPassword')} pr-16`}
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => togglePasswordVisibility('newPassword')}
-                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400"
-                                        >
-                                            {showPasswords.newPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                                        </button>
+                                        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                                            {getFieldIcon('newPassword')}
+                                            <button
+                                                type="button"
+                                                onClick={() => togglePasswordVisibility('newPassword')}
+                                                className="text-gray-500 dark:text-gray-400"
+                                            >
+                                                {showPasswords.newPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
+                                    {errors.newPassword && watchedFields.newPassword && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                            <p className="text-red-400 text-[12px]">{errors.newPassword.message}</p>
+                                        </div>
+                                    )}
                                 </div>
 
+                                {/* Confirm New Password Field */}
                                 <div className="space-y-2">
                                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
                                     <div className="relative">
                                         <Input
-                                            onChange={handleChange}
+                                            {...register("confirmPassword")}
                                             id="confirmPassword"
                                             type={showPasswords.confirmPassword ? "text" : "password"}
-                                            value={formPassword.confirmPassword}
                                             placeholder="••••••••"
-                                            className="border-gray-300 dark:border-slate-600 pr-10"
+                                            className={`${getFieldBorderClass('confirmPassword')} pr-16`}
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => togglePasswordVisibility('confirmPassword')}
-                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400"
-                                        >
-                                            {showPasswords.confirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                                        </button>
+                                        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                                            {getFieldIcon('confirmPassword')}
+                                            <button
+                                                type="button"
+                                                onClick={() => togglePasswordVisibility('confirmPassword')}
+                                                className="text-gray-500 dark:text-gray-400"
+                                            >
+                                                {showPasswords.confirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
+                                    {errors.confirmPassword && watchedFields.confirmPassword && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                            <p className="text-red-400 text-[12px]">{errors.confirmPassword.message}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -210,11 +292,12 @@ const Authentication = ({ user }: AuthenticationProps) => {
                 {isEditing && (
                     <CardFooter className="flex justify-end gap-2 pt-4">
                         <Button type='button' variant="outline" onClick={cancelEditing}>Cancel</Button>
-                        <Button type='submit'>Update Password</Button>
+                        <Button type='submit' disabled={isSubmitting}>
+                            {isSubmitting ? "Updating..." : "Update Password"}
+                        </Button>
                     </CardFooter>
                 )}
             </form>
-
         </Card>
     );
 };

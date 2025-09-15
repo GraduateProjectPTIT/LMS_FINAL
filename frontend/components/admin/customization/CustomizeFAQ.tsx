@@ -1,282 +1,298 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { toast } from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
+import {
+    Card, CardContent, CardDescription, CardHeader, CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, Plus } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import SortableFAQItem, { type FAQ } from "./SortableFAQItem";
 
-const CustomizeFAQ = () => {
-    const [originalFaqs, setOriginalFaqs] = useState([]);
+// DND-KIT
+import {
+    DndContext, closestCenter,
+    KeyboardSensor, PointerSensor,
+    useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove, SortableContext,
+    sortableKeyboardCoordinates, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
-    const [faqs, setFaqs] = useState([
-        { question: '', answer: '', isOpen: true }
-    ]);
+// Helper tạo id tạm khi client thêm mới (chưa có _id từ DB)
+const genTempId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? `temp-${crypto.randomUUID()}`
+        : `temp-${Date.now()}-${Math.random()}`;
+
+const CustomizeFAQ: React.FC = () => {
+    // Danh sách FAQ
+    const [faqs, setFaqs] = useState<FAQ[]>([]);
+    // Snapshot bản gốc để so sánh thay đổi
+    const [originalFaqs, setOriginalFaqs] = useState<FAQ[]>([]);
 
     const [loading, setLoading] = useState(false);
     const [faqExists, setFaqExists] = useState(false);
-    const [expandedIndex, setExpandedIndex] = useState(-1);
 
+    // Multi-expand: lưu tập các ID đang mở 
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+    // DND-KIT: cảm biến (chuột + bàn phím)
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Fetch layout FAQ từ server khi mount
     useEffect(() => {
-        fetchFAQLayout();
+        void fetchFAQLayout();
     }, []);
 
+    // Fetch layout FAQ
     const fetchFAQLayout = async () => {
         try {
             setLoading(true);
-
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/get_layout/FAQ`, {
-                method: "GET",
-                credentials: "include"
-            });
-
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/get_layout/FAQ`,
+                { method: "GET", credentials: "include" }
+            );
             const data = await res.json();
-
             if (!res.ok) {
-                console.log(data.message);
-            } else {
-                const { layout } = data;
-                if (layout && layout.faq && layout.faq.length > 0) {
-                    setFaqExists(true);
-                    // Add isOpen property to each FAQ for accordion functionality
-                    const faqsWithOpenState = layout.faq.map((faq: any, index: any) => ({
-                        ...faq
-                    }));
-                    setFaqs(faqsWithOpenState);
-                    setOriginalFaqs(layout.faq);
-                }
+                console.log(data.message ?? "Failed to fetch FAQ layout");
+                return;
             }
-        } catch (error: any) {
-            console.log(error.message);
+
+            if (data.layout?.faq?.length > 0) {
+                setFaqExists(true);
+                const faqsWithId: FAQ[] = data.layout.faq.map((faq: any) => ({
+                    id: faq._id as string,
+                    question: faq.question as string,
+                    answer: faq.answer as string,
+                }));
+                setFaqs(faqsWithId);
+                setOriginalFaqs(faqsWithId.map((f) => ({ ...f })));
+                setExpandedIds(new Set()); // không auto mở gì
+            } else {
+                setFaqExists(false);
+                setFaqs([]);
+                setOriginalFaqs([]);
+                setExpandedIds(new Set());
+            }
+        } catch (err: any) {
+            console.log(err?.message ?? err);
         } finally {
             setLoading(false);
         }
-    }
-
-    const handleQuestionChange = (index: any, value: any) => {
-        const newFaqs = [...faqs];
-        newFaqs[index].question = value;
-        setFaqs(newFaqs);
     };
 
-    const handleAnswerChange = (index: any, value: any) => {
-        const newFaqs = [...faqs];
-        newFaqs[index].answer = value;
-        setFaqs(newFaqs);
+    // cập nhật question tại đúng vị trí được sửa
+    const handleQuestionChange = (index: number, value: string): void => {
+        setFaqs((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], question: value };
+            return next;
+        });
     };
 
-    const toggleAccordion = (index: any) => {
-        setExpandedIndex(expandedIndex === index ? -1 : index);
+    // cập nhật answer tại đúng vị trí được sửa
+    const handleAnswerChange = (index: number, value: string): void => {
+        setFaqs((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], answer: value };
+            return next;
+        });
     };
 
-    const addFAQ = () => {
-        setFaqs([...faqs, { question: '', answer: '', isOpen: true }]);
-        setExpandedIndex(faqs.length);
+    // Toggle theo ID: bật/tắt trong Set
+    const toggleAccordion = (id: string): void => {
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     };
 
-    const removeFAQ = (index: any) => {
-        if (faqs.length > 1) {
-            const newFaqs = faqs.filter((_, i) => i !== index);
-            setFaqs(newFaqs);
+    // Thêm 1 FAQ trống (id tạm). Mặc định MỞ item mới (xóa dòng setExpandedIds nếu không muốn auto mở)
+    const addFAQ = (): void => {
+        const newFaq: FAQ = { id: genTempId(), question: "", answer: "" };
+        setFaqs((prev) => [...prev, newFaq]);
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            next.add(newFaq.id);
+            return next;
+        });
+    };
 
-            // Adjust expandedIndex if needed
-            if (expandedIndex === index) {
-                setExpandedIndex(-1);
-            } else if (expandedIndex > index) {
-                setExpandedIndex(expandedIndex - 1);
-            }
-        } else {
+    // Xoá 1 FAQ theo index — nếu xoá item đang mở thì loại khỏi Set
+    const removeFAQ = (index: number): void => {
+        if (faqs.length <= 1) {
             toast.error("You need at least one FAQ item");
+            return;
         }
+        const removed = faqs[index];
+        setFaqs((prev) => prev.filter((_, i) => i !== index));
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(removed.id);
+            return next;
+        });
     };
 
-    const isFaqsChanges = (a: any[], b: any[]) => {
-        if (a.length !== b.length) return false;
-        return a.every((item, index) =>
-            item.question.trim() === b[index].question.trim() &&
-            item.answer.trim() === b[index].answer.trim()
+    // Kiểm tra có thay đổi không (so sánh theo thứ tự để coi reorder là “thay đổi”)
+    const isUnchanged = (current: FAQ[], original: FAQ[]): boolean => {
+        if (current.length !== original.length) return false;
+        return current.every(
+            (item, i) =>
+                item.question.trim() === original[i]?.question.trim() &&
+                item.answer.trim() === original[i]?.answer.trim()
         );
     };
 
-    const handleSubmit = async (e: any) => {
+    // Submit form (update toàn bộ danh sách)
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Validate inputs
-        const isValid = faqs.every(faq => faq.question.trim() !== '' && faq.answer.trim() !== '');
+        // Validate rỗng
+        const isValid = faqs.every(
+            (faq) => faq.question.trim() !== "" && faq.answer.trim() !== ""
+        );
         if (!isValid) {
             toast.error("All questions and answers must be filled out");
             return;
         }
 
-        if (isFaqsChanges(faqs, originalFaqs)) {
+        // Không có thay đổi gì
+        if (isUnchanged(faqs, originalFaqs)) {
             toast("No changes detected!");
             return;
         }
 
+        setLoading(true);
         try {
-            setLoading(true);
-
-            // Prepare data - remove isOpen property as it's not needed in the backend
             const faqData = {
-                type: 'FAQ',
-                faq: faqs.map(({ question, answer }) => ({ question, answer }))
+                type: "FAQ",
+                faq: faqs.map(({ question, answer }) => ({ question, answer })),
             };
 
-            if (faqExists) {
-                // Update existing FAQ
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/update_layout`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(faqData)
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    console.log(data.message);
-                    toast.error('Failed to update FAQs');
-                    return;
-                } else {
-                    toast.success('FAQs updated successfully');
-                    fetchFAQLayout();
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/update_layout`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(faqData),
                 }
+            );
+
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(`FAQs ${faqExists ? "updated" : "created"} successfully`);
+                await fetchFAQLayout();
             } else {
-                // Create new FAQ layout
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/create_layout`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(faqData)
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    console.log(data.message);
-                    toast.error('Failed to update FAQs');
-                    return;
-                } else {
-                    toast.success('FAQs created successfully');
-                    setFaqExists(true);
-                    fetchFAQLayout();
-                }
+                toast.error(data?.message ?? "Failed to save FAQs");
             }
-        } catch (error) {
-            console.error('Error saving FAQs:', error);
-            toast.error('Something went wrong');
+        } catch (err) {
+            console.error("Error saving FAQs:", err);
+            toast.error("Something went wrong");
         } finally {
             setLoading(false);
         }
     };
 
+    // Drag end (khi thả item) → reorder theo id
+    const handleDragEnd = (event: DragEndEvent): void => {
+        const { active, over } = event;
+        if (!over) return;
+
+        if (active.id !== over.id) {
+            setFaqs((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+                if (oldIndex === -1 || newIndex === -1) return items;
+                return arrayMove(items, oldIndex, newIndex);
+            });
+            // expandedIds giữ theo id → không cần xử lý thêm
+        }
+    };
+
     return (
         <div>
-            <Card className="w-full border border-gray-300 dark:border-slate-600 shadow-md light-mode dark:dark-mode">
+            <Card className="theme-mode w-full border border-gray-300 dark:border-slate-600 shadow-md">
                 <CardHeader className="pb-4">
-                    <CardTitle className="text-2xl font-bold text-center">Customize FAQ Section</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-center">
+                        Customize FAQ Section
+                    </CardTitle>
                     <CardDescription className="text-center dark:text-gray-400">
-                        {faqExists ? 'Update your website FAQs' : 'Create FAQs for your website'}
+                        {faqExists
+                            ? "Update and reorder your website FAQs"
+                            : "Create FAQs for your website"}
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-4">
-                            {faqs.map((faq, index) => (
-                                <div
-                                    key={index}
-                                    className="border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm"
-                                >
-                                    <div
-                                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-4 cursor-pointer"
-                                        onClick={() => toggleAccordion(index)}
-                                    >
-                                        <div className="flex-1">
-                                            <Input
-                                                placeholder="Enter question here ..."
-                                                value={faq.question}
-                                                onChange={(e) => handleQuestionChange(index, e.target.value)}
-                                                className="border-none pl-2 text-xs md:text-base font-medium  focus:ring-0 shadow-none focus:shadow-none dark:text-white"
-                                                onClick={(e) => e.stopPropagation()}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeFAQ(index);
-                                                }}
-                                                className="h-8 w-8 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                            {expandedIndex === index ?
-                                                <ChevronUp className="h-5 w-5 text-gray-500 hover:text-blue-500 cursor-pointer" /> :
-                                                <ChevronDown className="h-5 w-5 text-gray-500 hover:text-blue-500 cursor-pointer" />
-                                            }
-                                        </div>
-                                    </div>
+                        {/* Bọc danh sách bằng DndContext để cho phép drag-drop */}
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={faqs.map((faq) => faq.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {faqs.map((faq, index) => (
+                                    <SortableFAQItem
+                                        key={faq.id}
+                                        id={faq.id}
+                                        faq={faq}
+                                        index={index}
+                                        expanded={expandedIds.has(faq.id)}
+                                        onToggle={() => toggleAccordion(faq.id)}
+                                        handleQuestionChange={handleQuestionChange}
+                                        handleAnswerChange={handleAnswerChange}
+                                        removeFAQ={removeFAQ}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
 
-                                    {expandedIndex === index && (
-                                        <div className="p-4 bg-white dark:bg-gray-900">
-                                            <Label htmlFor={`answer-${index}`} className="block mb-2 text-sm font-medium dark:text-gray-200">
-                                                Answer
-                                            </Label>
-                                            <textarea
-                                                id={`answer-${index}`}
-                                                value={faq.answer}
-                                                onChange={(e) => handleAnswerChange(index, e.target.value)}
-                                                placeholder="Enter answer here ..."
-                                                className="w-full min-h-[100px] p-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white resize-y"
-                                                required
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
+                        {/* Nút thêm FAQ */}
                         <Button
                             type="button"
                             variant="outline"
                             onClick={addFAQ}
-                            className="w-full cursor-pointer border-dashed border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-slate-600 hover:bg-blue-50 dark:hover:bg-slate-700 dark:text-gray-200"
+                            className="w-full cursor-pointer border-dashed"
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Add New FAQ
                         </Button>
 
+                        {/* Nút submit */}
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full cursor-pointer font-medium transition-colors bg-blue-600 hover:bg-blue-600/70 dark:bg-blue-600 dark:hover:bg-blue-600/70"
+                            className="w-full bg-blue-600 hover:bg-blue-500"
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Processing...
                                 </>
+                            ) : faqExists ? (
+                                "Update FAQs"
                             ) : (
-                                faqExists ? 'Update FAQs' : 'Create FAQs'
+                                "Create FAQs"
                             )}
                         </Button>
                     </form>
                 </CardContent>
             </Card>
         </div>
-    )
-}
+    );
+};
 
-export default CustomizeFAQ
+export default CustomizeFAQ;

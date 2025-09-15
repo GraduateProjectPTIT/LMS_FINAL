@@ -1,15 +1,13 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { toYouTubeEmbedUrl, isYouTubeUrl } from "@/utils/youtube";
 
-interface CoursePreviewModalProps {
+interface PreviewVideoModalProps {
     showPreviewModal: boolean;
-    course: any | null;
+    videoUrl: string;
     onClose: () => void;
 }
 
-const CoursePreviewModal = ({ showPreviewModal, course, onClose }: CoursePreviewModalProps) => {
-
+const PreviewVideoModal = ({ showPreviewModal, videoUrl, onClose }: PreviewVideoModalProps) => {
     const handleEscape = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             onClose();
@@ -37,7 +35,7 @@ const CoursePreviewModal = ({ showPreviewModal, course, onClose }: CoursePreview
         };
     }, [showPreviewModal]);
 
-    if (!showPreviewModal || !course) return null;
+    if (!showPreviewModal || !videoUrl) return null;
 
     return (
         <div
@@ -54,20 +52,12 @@ const CoursePreviewModal = ({ showPreviewModal, course, onClose }: CoursePreview
 
                 {/* Video Section */}
                 <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                    {course.demoUrl && isYouTubeUrl(course.demoUrl) ? (
-                        <iframe
-                            src={toYouTubeEmbedUrl(course.demoUrl) || undefined}
-                            className="absolute top-0 left-0 w-full h-full"
-                            style={{ border: 0 }}
-                            allowFullScreen
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        />
-                    ) : course.demoUrl && course.demoUrl !== 'test url' && course.demoUrl !== 'test' ? (
+                    {videoUrl ? (
                         <video
                             className="w-full h-full object-cover"
                             controls
                             autoPlay
-                            src={course.demoUrl}
+                            src={videoUrl}
                         >
                             Your browser does not support the video tag.
                         </video>
@@ -89,4 +79,4 @@ const CoursePreviewModal = ({ showPreviewModal, course, onClose }: CoursePreview
     );
 };
 
-export default CoursePreviewModal;
+export default PreviewVideoModal;

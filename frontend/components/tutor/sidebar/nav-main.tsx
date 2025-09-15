@@ -30,7 +30,7 @@ const NavMain = ({ sectionItems, pathname }: NavMainProps) => {
 
             <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
             <Link
-                href="/admin"
+                href="/tutor"
             >
                 <SidebarMenuButton className={clsx(
                     "cursor-pointer hover:bg-gray-200 hover:text-blue-500 dark:hover:bg-slate-700 dark:hover:text-blue-400",

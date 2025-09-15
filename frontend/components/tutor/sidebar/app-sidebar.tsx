@@ -73,11 +73,6 @@ const sectionData = {
                     url: "/tutor/courses/create_course",
                     value: "create_course",
                 },
-                {
-                    title: "Edit Courses",
-                    url: "/tutor/courses/edit_course/",
-                    value: "edit_course",
-                },
             ],
         },
     ]

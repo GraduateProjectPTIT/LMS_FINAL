@@ -1,20 +1,29 @@
-"use client"
-import React, { useState } from 'react'
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+"use client";
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FiPlusCircle } from "react-icons/fi";
 import { Separator } from '@/components/ui/separator';
-
-import { CourseDataProps, CourseLectureProps, VideoLinkProps } from "@/type"
+import SectionItem from './SectionItem';
+import { ICreateSection, ICreateLecture } from "@/type";
+import ConfirmDeleteModal from './ConfirmDeleteModal';
+import {
+    DndContext, closestCenter,
+    KeyboardSensor, PointerSensor,
+    useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove, SortableContext,
+    sortableKeyboardCoordinates, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { generateTempId } from '@/utils/generateId';
 
 interface CourseContentProps {
-    active: number,
-    setActive: (active: number) => void,
-    courseData: CourseDataProps[], // This should be an array of CourseDataProps
-    setCourseData: (newData: CourseDataProps[]) => void, // This also should be an array
+    active: number;
+    setActive: (active: number) => void;
+    courseData: ICreateSection[];
+    setCourseData: (newData: ICreateSection[]) => void;
 }
 
 interface CollapsedState {
@@ -22,358 +31,284 @@ interface CollapsedState {
 }
 
 const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseContentProps) => {
-    const [isCollapsed, setIsCollapsed] = useState<CollapsedState>({});
+    const [collapsedStates, setCollapsedStates] = useState<CollapsedState>({});
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        sectionIndex: number | null;
+        sectionTitle: string;
+    }>({
+        isOpen: false,
+        sectionIndex: null,
+        sectionTitle: ''
+    });
 
-    const handleSubmit = (e: any) => {
-        e.preventDefault();
+    // Hàm kiểm tra xem lecture có đầy đủ thông tin bắt buộc không
+    const isLectureComplete = (lecture: ICreateLecture): boolean => {
+        return !!(
+            lecture.videoTitle.trim() &&
+            lecture.videoDescription.trim() &&
+            lecture.video.url &&
+            lecture.video.public_id &&
+            lecture.videoLength > 0
+        );
+    };
 
-        let isValid = true;
-        courseData.forEach((section: CourseDataProps) => {
-            if (!section.sectionTitle) {
-                isValid = false;
-                return;
+    // Hàm kiểm tra xem section có đầy đủ thông tin bắt buộc không
+    const isSectionComplete = (section: ICreateSection): boolean => {
+        if (!section.sectionTitle.trim()) {
+            return false;
+        }
+
+        // Kiểm tra tất cả lectures trong section đã hoàn thành chưa
+        return section.sectionContents.every(lecture => isLectureComplete(lecture));
+    };
+
+    // Hàm kiểm tra xem có section nào chưa hoàn thành không
+    const hasIncompleteSections = (): boolean => {
+        return courseData.some(section => !isSectionComplete(section));
+    };
+
+    const validateCourseData = (courseData: ICreateSection[]): string | null => {
+        for (let sectionIndex = 0; sectionIndex < courseData.length; sectionIndex++) {
+            const section = courseData[sectionIndex];
+
+            if (!section.sectionTitle.trim()) {
+                return `Section ${sectionIndex + 1} title is required`;
             }
 
-            section.sectionContents.forEach((content: CourseLectureProps) => {
-                if (!content.videoTitle || !content.videoDescription || !content.videoUrl || !content.videoLength) {
-                    isValid = false;
-                    return;
-                }
-            });
-        });
+            for (let lectureIndex = 0; lectureIndex < section.sectionContents.length; lectureIndex++) {
+                const lecture = section.sectionContents[lectureIndex];
 
-        if (!isValid) {
-            toast.error("Please fill all required fields for each section");
+                // Xác thực tiêu đề, mô tả, video và độ dài video
+                if (!lecture.videoTitle.trim()) {
+                    return `Lecture title is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                }
+                if (!lecture.videoDescription.trim()) {
+                    return `Lecture description is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                }
+                if (!lecture.video?.url || !lecture.video?.public_id) {
+                    return `Video is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                }
+                if (!lecture.videoLength || lecture.videoLength <= 0) {
+                    return `Video length is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                }
+
+                // Xác thực các link tài nguyên (nếu có)
+                if (lecture.videoLinks && lecture.videoLinks.length > 0) {
+                    for (let linkIndex = 0; linkIndex < lecture.videoLinks.length; linkIndex++) {
+                        const link = lecture.videoLinks[linkIndex];
+
+                        if (!link.title.trim()) {
+                            return `Resource link title is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                        }
+                        if (!link.url.trim()) {
+                            return `Resource link URL is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                        }
+
+                        // Optional: Validate URL format
+                        const urlPattern = /^https?:\/\/.+/;
+                        if (!urlPattern.test(link.url.trim())) {
+                            return `Resource link URL must be a valid URL (starting with http:// or https://) in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // 1) Chặn nếu còn video đang upload
+        const hasUploading = courseData.some(s =>
+            s.sectionContents.some(l => l.isUploading)
+        );
+        if (hasUploading) {
+            toast.error("Please wait for all uploads to finish");
+            return;
+        }
+
+        // 2) Xác thực dữ liệu
+        const errorMessage = validateCourseData(courseData);
+        if (errorMessage) {
+            toast.error(errorMessage);
             return;
         }
 
         setActive(active + 1);
     };
 
-    const handleCollapseToggle = (sectionIndex: number, contentIndex: number) => {
-        const key = `${sectionIndex}-${contentIndex}`;
-        setIsCollapsed({
-            ...isCollapsed,
-            [key]: !isCollapsed[key]
-        });
+    const handleToggleLectureCollapse = (sectionIndex: number, lectureIndex: number) => {
+        const key = `${sectionIndex}-${lectureIndex}`;
+        setCollapsedStates(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    // DND-KIT: cảm biến (chuột + bàn phím)
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Drag end (khi thả section) → reorder theo id
+    const handleDragEnd = (event: DragEndEvent): void => {
+        const { active, over } = event;
+        if (!over) return;
+
+        if (active.id !== over.id) {
+            const oldIndex = courseData.findIndex((item) => item.id === active.id);
+            const newIndex = courseData.findIndex((item) => item.id === over.id);
+            if (oldIndex === -1 || newIndex === -1) return;
+            setCourseData(arrayMove(courseData, oldIndex, newIndex));
+        }
     };
 
     const handleAddNewSection = () => {
-        setCourseData([
-            ...courseData,
-            {
-                sectionTitle: `Untitled Section ${courseData.length + 1}`,
-                sectionContents: [
-                    {
-                        videoTitle: "",
-                        videoDescription: "",
-                        videoUrl: "",
-                        videoLength: 0,
-                        videoLinks: [
-                            {
-                                title: "",
-                                url: "",
-                            },
-                        ]
-                    }
-                ]
-            }
-        ]);
+        // Kiểm tra xem có section nào chưa hoàn thành không
+        if (hasIncompleteSections()) {
+            toast.error("Please complete all existing sections before adding a new one");
+            return;
+        }
+
+        const newSection: ICreateSection = {
+            id: generateTempId(),
+            sectionTitle: "",
+            sectionContents: [
+                {
+                    id: generateTempId(),
+                    videoTitle: "",
+                    videoDescription: "",
+                    video: { public_id: "", url: "" },
+                    videoLength: 0,
+                    isUploading: false,
+                    uploadProgress: 0
+                }
+            ]
+        };
+
+        setCourseData([...courseData, newSection]);
     };
 
-    const handleRemoveSection = (sectionIndex: number) => {
+    const handleRemoveSection = (sectionId: string) => {
         if (courseData.length === 1) {
             toast.error("You need at least one section");
             return;
         }
 
-        const updatedData = [...courseData];
-        updatedData.splice(sectionIndex, 1);
-        setCourseData(updatedData);
-    };
-
-    const handleAddNewContent = (sectionIndex: number) => {
-        const updatedData = [...courseData];
-        updatedData[sectionIndex].sectionContents.push({
-            videoTitle: "",
-            videoDescription: "",
-            videoUrl: "",
-            videoLength: 0,
-            videoLinks: [
-                {
-                    title: "",
-                    url: "",
-                },
-            ]
+        const sectionIndex = courseData.findIndex(s => s.id === sectionId);
+        setDeleteModal({
+            isOpen: true,
+            sectionIndex,
+            sectionTitle: courseData[sectionIndex].sectionTitle || `Section ${sectionIndex + 1}`
         });
-        setCourseData(updatedData);
     };
 
-    const handleRemoveContent = (sectionIndex: number, contentIndex: number) => {
-        const updatedData = [...courseData];
-
-        // If it's the last content in the section and there's only one section
-        if (updatedData[sectionIndex].sectionContents.length === 1 && updatedData.length === 1) {
-            toast.error("You need at least one content item");
-            return;
+    const confirmDeleteSection = () => {
+        if (deleteModal.sectionIndex !== null) {
+            const updatedData = courseData.filter((_, index) => index !== deleteModal.sectionIndex);
+            setCourseData(updatedData);
+            toast.success("Section deleted successfully");
         }
+    };
 
-        // If it's the last content in the section, remove the entire section
-        if (updatedData[sectionIndex].sectionContents.length === 1) {
-            updatedData.splice(sectionIndex, 1);
-        } else {
-            // Otherwise just remove the content
-            updatedData[sectionIndex].sectionContents.splice(contentIndex, 1);
-        }
-
+    const handleSectionChange = (sectionId: string, updatedSection: ICreateSection) => {
+        const updatedData = courseData.map((section) =>
+            section.id === sectionId ? updatedSection : section
+        );
         setCourseData(updatedData);
     };
 
-    const handleSectionTitleChange = (sectionIndex: number, value: string) => {
-        const updatedData = [...courseData];
-        updatedData[sectionIndex].sectionTitle = value;
-        setCourseData(updatedData);
-    };
-
-    const handleContentChange = (sectionIndex: number, contentIndex: number, field: keyof CourseLectureProps, value: string | number) => {
-        const updatedData = [...courseData];
-        if (field === 'videoLength') {
-            updatedData[sectionIndex].sectionContents[contentIndex][field] = Number(value);
-        } else if (field === 'videoTitle' || field === 'videoDescription' || field === 'videoUrl') {
-            updatedData[sectionIndex].sectionContents[contentIndex][field] = value as string;
-        }
-        setCourseData(updatedData);
-    };
-
-    const handleAddNewLink = (sectionIndex: number, contentIndex: number) => {
-        const updatedData = [...courseData];
-        updatedData[sectionIndex].sectionContents[contentIndex].videoLinks.push({
-            title: "",
-            url: "",
-        });
-        setCourseData(updatedData);
-    };
-
-    const handleRemoveLink = (sectionIndex: number, contentIndex: number, linkIndex: number) => {
-        const updatedData = [...courseData];
-        updatedData[sectionIndex].sectionContents[contentIndex].videoLinks.splice(linkIndex, 1);
-        setCourseData(updatedData);
-    };
-
-    const handleLinkChange = (sectionIndex: number, contentIndex: number, linkIndex: number, field: keyof VideoLinkProps, value: string) => {
-        const updatedData = [...courseData];
-        updatedData[sectionIndex].sectionContents[contentIndex].videoLinks[linkIndex][field] = value;
-        setCourseData(updatedData);
-    };
+    // Đếm số section đã hoàn thành
+    const completedSectionsCount = courseData.filter(isSectionComplete).length;
+    const totalSectionsCount = courseData.length;
 
     return (
         <div className="rounded-lg border border-gray-400 dark:border-slate-500 shadow-md dark:shadow-slate-700 flex flex-col gap-8 p-4">
             <h1 className="text-2xl text-black dark:text-white font-bold">Course Content</h1>
+
+            {/* Course Statistics */}
+            {courseData.length > 0 && (
+                <div className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-slate-800 p-3 rounded border">
+                    <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                            {totalSectionsCount} section{totalSectionsCount !== 1 ? 's' : ''} in this course
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${completedSectionsCount === totalSectionsCount
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                            }`}>
+                            {completedSectionsCount}/{totalSectionsCount} sections completed
+                        </span>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className='flex flex-col gap-6'>
                 {courseData.length === 0 ? (
-                    <div className="text-center text-gray-500 dark:text-gray-300">
-                        No content added yet. Click below to add sections and content.
+                    <div className="text-center text-gray-500 dark:text-gray-300 py-8">
+                        No sections added yet. Click below to add your first section.
                     </div>
                 ) : (
-                    <>
-                        {courseData.map((section: CourseDataProps, sectionIndex: number) => (
-                            <div key={sectionIndex} className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 md:p-6 flex flex-col gap-4">
-                                {/* course title */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <Label htmlFor={`section-${sectionIndex}`} className="text-sm font-medium mb-1 block">
-                                            Section Title*
-                                        </Label>
-                                        <Input
-                                            id={`section-${sectionIndex}`}
-                                            value={section.sectionTitle}
-                                            onChange={(e) => handleSectionTitleChange(sectionIndex, e.target.value)}
-                                            placeholder="Enter section title"
-                                            className="border-gray-300 dark:border-gray-500"
-                                        />
-                                    </div>
-                                    {courseData.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
-                                            size="icon"
-                                            onClick={() => handleRemoveSection(sectionIndex)}
-                                            className="ml-2 mt-6 cursor-pointer hover:bg-red-500/50"
-                                        >
-                                            <Trash2 size={18} />
-                                        </Button>
-                                    )}
-                                </div>
-
-                                <div className="mt-2">
-                                    {section.sectionContents.map((content: CourseLectureProps, contentIndex: number) => (
-                                        <div key={contentIndex} className="border border-gray-300 dark:border-slate-700 rounded-lg p-4 mb-4 bg-white dark:bg-slate-700">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-md font-medium">Content #{contentIndex + 1}</h3>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        type="button"
-                                                        size="icon"
-                                                        onClick={() => handleCollapseToggle(sectionIndex, contentIndex)}
-                                                        className='bg-gray-200 dark:bg-slate-500  hover:bg-gray-300 dark:hover:bg-slate-400 text-black dark:text-white cursor-pointer'
-                                                    >
-                                                        {isCollapsed[`${sectionIndex}-${contentIndex}`] ?
-                                                            <ChevronDown size={18} /> :
-                                                            <ChevronUp size={18} />}
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() => handleRemoveContent(sectionIndex, contentIndex)}
-                                                        className='cursor-pointer hover:bg-red-500/50'
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            {!isCollapsed[`${sectionIndex}-${contentIndex}`] && (
-                                                <div className="flex flex-col gap-5 mt-[10px]">
-                                                    {/* title */}
-                                                    <div className='flex flex-col gap-2'>
-                                                        <Label htmlFor={`title-${sectionIndex}-${contentIndex}`} className="text-sm font-medium">
-                                                            Content Title*
-                                                        </Label>
-                                                        <Input
-                                                            id={`title-${sectionIndex}-${contentIndex}`}
-                                                            value={content.videoTitle}
-                                                            onChange={(e) => handleContentChange(sectionIndex, contentIndex, "videoTitle", e.target.value)}
-                                                            placeholder="Enter content title"
-                                                            className="border-gray-300 dark:border-gray-500"
-                                                        />
-                                                    </div>
-
-                                                    {/* description */}
-                                                    <div className='flex flex-col gap-2'>
-                                                        <Label htmlFor={`description-${sectionIndex}-${contentIndex}`} className="text-sm font-medium">
-                                                            Content Description*
-                                                        </Label>
-                                                        <textarea
-                                                            id={`description-${sectionIndex}-${contentIndex}`}
-                                                            value={content.videoDescription}
-                                                            onChange={(e) => handleContentChange(sectionIndex, contentIndex, "videoDescription", e.target.value)}
-                                                            placeholder="Enter content description"
-                                                            className="border border-gray-300 dark:border-gray-500 p-3 rounded-lg"
-                                                            rows={3}
-                                                        ></textarea>
-                                                    </div>
-
-                                                    {/* video */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {/* video url */}
-                                                        <div className='flex flex-col gap-2'>
-                                                            <Label htmlFor={`videoUrl-${sectionIndex}-${contentIndex}`} className="text-sm font-medium">
-                                                                Video URL*
-                                                            </Label>
-                                                            <Input
-                                                                id={`videoUrl-${sectionIndex}-${contentIndex}`}
-                                                                value={content.videoUrl}
-                                                                onChange={(e) => handleContentChange(sectionIndex, contentIndex, "videoUrl", e.target.value)}
-                                                                placeholder="Enter video URL"
-                                                                className="border-gray-300 dark:border-gray-500"
-                                                            />
-                                                        </div>
-
-                                                        {/* video length */}
-                                                        <div className='flex flex-col gap-2'>
-                                                            <Label htmlFor={`videoLength-${sectionIndex}-${contentIndex}`} className="text-sm font-medium">
-                                                                Video Length (in minutes)*
-                                                            </Label>
-                                                            <Input
-                                                                id={`videoLength-${sectionIndex}-${contentIndex}`}
-                                                                type="number"
-                                                                value={content.videoLength}
-                                                                onChange={(e) => handleContentChange(sectionIndex, contentIndex, "videoLength", e.target.value)}
-                                                                placeholder="15"
-                                                                className="border-gray-300 dark:border-gray-500"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* resources */}
-                                                    <div className='flex flex-col gap-2'>
-                                                        <Label>Additional Resources & Links</Label>
-                                                        <div>
-                                                            {content.videoLinks.map((link: VideoLinkProps, linkIndex: number) => (
-                                                                <div key={linkIndex} className="flex gap-2 mb-2">
-                                                                    <Input
-                                                                        value={link.title}
-                                                                        onChange={(e) => handleLinkChange(sectionIndex, contentIndex, linkIndex, "title", e.target.value)}
-                                                                        placeholder="Resource Title"
-                                                                        className="border-gray-300 dark:border-gray-500"
-                                                                    />
-                                                                    <Input
-                                                                        value={link.url}
-                                                                        onChange={(e) => handleLinkChange(sectionIndex, contentIndex, linkIndex, "url", e.target.value)}
-                                                                        placeholder="Resource URL"
-                                                                        className="border-gray-300 dark:border-gray-500"
-                                                                    />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="destructive"
-                                                                        size="icon"
-                                                                        onClick={() => handleRemoveLink(sectionIndex, contentIndex, linkIndex)}
-                                                                        className='cursor-pointer hover:bg-red-500/50'
-                                                                    >
-                                                                        <Trash2 size={16} />
-                                                                    </Button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            onClick={() => handleAddNewLink(sectionIndex, contentIndex)}
-                                                            className="bg-gray-200 dark:bg-slate-500  hover:bg-gray-300 dark:hover:bg-slate-400 text-black dark:text-white cursor-pointer"
-                                                        >
-                                                            <FiPlusCircle size={16} className="mr-2" />
-                                                            Add Resource Link
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => handleAddNewContent(sectionIndex)}
-                                        className="w-full mb-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30"
-                                    >
-                                        <FiPlusCircle size={18} className="mr-2" />
-                                        Add Content to This Section
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </>
+                    <div className="space-y-6">
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={courseData.map((section) => section.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {courseData.map((section: ICreateSection, sectionIndex: number) => (
+                                    <SectionItem
+                                        key={section.id}
+                                        id={section.id}
+                                        section={section}
+                                        sectionIndex={sectionIndex}
+                                        canRemoveSection={courseData.length > 1}
+                                        collapsedStates={collapsedStates}
+                                        onSectionChange={(updatedSection) => handleSectionChange(section.id, updatedSection)}
+                                        onRemoveSection={() => handleRemoveSection(section.id)}
+                                        onToggleLectureCollapse={handleToggleLectureCollapse}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+                    </div>
                 )}
 
-                {/* Add new section button */}
+                {/* Add New Section Button */}
                 <Button
                     type="button"
                     variant="outline"
                     onClick={handleAddNewSection}
-                    className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-800/30"
+                    disabled={hasIncompleteSections()}
+                    className={`w-full border-dashed border-2 py-6 ${hasIncompleteSections()
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300 dark:border-gray-700 cursor-not-allowed'
+                        : 'bg-green-100/70 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-800/30 cursor-pointer'
+                        }`}
+                    title={hasIncompleteSections() ? "Complete all existing sections first" : "Add new section"}
                 >
                     <FiPlusCircle size={18} className="mr-2" />
                     Add New Section
+                    {hasIncompleteSections() && (
+                        <span className="ml-2 text-sm">
+                            (Complete existing sections first)
+                        </span>
+                    )}
                 </Button>
 
                 <Separator className="border border-gray-300 dark:border-slate-500 mt-6" />
 
-                {/* button navigate */}
+                {/* Navigation Buttons */}
                 <div className="flex justify-between mt-2">
                     <Button
                         type="button"
                         onClick={() => setActive(active - 1)}
+                        variant="outline"
                         className='w-[100px] bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-black dark:text-white rounded-lg cursor-pointer'
                     >
                         Back
@@ -386,6 +321,15 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
                     </Button>
                 </div>
             </form>
+
+            <ConfirmDeleteModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, sectionIndex: null, sectionTitle: '' })}
+                onConfirm={confirmDeleteSection}
+                title="Delete Section"
+                description="Are you sure you want to delete this section? This action cannot be undone and will remove all lectures in this section."
+                itemName={deleteModal.sectionTitle}
+            />
         </div>
     );
 };

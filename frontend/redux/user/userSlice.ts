@@ -4,7 +4,6 @@ interface UserState {
     currentUser: any | null;
     error: string | null;
     loading: boolean;
-    activationToken: any;
     accessToken: any;
     isLoggedIn: boolean;
     resetToken: any;
@@ -14,7 +13,6 @@ const initialState: UserState = {
     currentUser: null,
     error: null,
     loading: false,
-    activationToken: null,
     accessToken: null,
     isLoggedIn: false,
     resetToken: null
@@ -30,9 +28,10 @@ const userSlice = createSlice({
             state.error = null;
         },
         signInSuccess: (state, action: PayloadAction<any>) => {
-            state.currentUser = action.payload.user;
+            state.currentUser = action.payload.userResponse;
             state.accessToken = action.payload.accessToken;
             state.isLoggedIn = true;
+            state.resetToken = null;
             state.loading = false;
             state.error = null;
         },
@@ -46,28 +45,25 @@ const userSlice = createSlice({
         signUpStart: (state) => {
             state.loading = true;
             state.error = null;
-            state.activationToken = null;
         },
-        signUpSuccess: (state, action: PayloadAction<any>) => {
+        signUpSuccess: (state) => {
             state.loading = false;
             state.error = null;
-            state.activationToken = action.payload;
         },
         signUpFailure: (state, action: PayloadAction<any>) => {
             state.error = action.payload;
             state.loading = false;
-            state.activationToken = null;
         },
         signOutSuccess: (state) => {
             state.currentUser = null;
             state.accessToken = null;
-            state.activationToken = null;
             state.isLoggedIn = false;
+            state.resetToken = null;
             state.loading = false;
             state.error = null;
         },
         forgotPasswordStart: (state) => {
-            state.loading = false;
+            state.loading = true;
             state.error = null;
             state.resetToken = null;
         },

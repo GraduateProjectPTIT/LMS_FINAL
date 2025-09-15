@@ -143,9 +143,9 @@ const ResetPassword = () => {
                 </div>
 
                 <Link href="/forgot-password" className="w-full">
-                    <Button className='w-full hover:bg-slate-600 dark:hover:bg-gray-400'>
+                    <button className='button'>
                         Request New Reset Link
-                    </Button>
+                    </button>
                 </Link>
             </div>
         );
@@ -223,13 +223,13 @@ const ResetPassword = () => {
                     </div>
                 </div>
 
-                <Button
+                <button
                     type='submit'
                     disabled={isSubmitting}
-                    className='cursor-pointer w-full hover:bg-slate-600 dark:hover:bg-gray-400'
+                    className='button-disabled'
                 >
                     {isSubmitting ? "Resetting..." : "Reset Password"}
-                </Button>
+                </button>
             </form>
 
             <div className='flex flex-col items-center gap-2 mt-2'>

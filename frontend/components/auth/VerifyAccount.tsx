@@ -6,36 +6,41 @@ import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux'
 import toast from 'react-hot-toast';
 
-const Verification = () => {
+interface VerifyAccountProps {
+    email: string | null;
+    setRegistrationStep: (step: number) => void;
+}
+
+const VerifyAccount = ({ email, setRegistrationStep }: VerifyAccountProps) => {
 
     const [code, setCode] = useState<string[]>(['', '', '', '']);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    // Properly typed refs array
+    console.log(email)
+
     const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-    // Initialize the refs array
     if (inputRefs.current.length === 0) {
         inputRefs.current = Array(4).fill(null);
     }
 
     const handleChange = (index: number, value: string): void => {
-        // Only allow digits
+        // Chỉ cho phép nhập số
         if (value && !/^\d+$/.test(value)) return;
 
         const newCode = [...code];
-        // Take only the last character if user pastes multiple digits
+        // Chỉ lấy ký tự cuối cùng nếu người dùng dán nhiều số
         newCode[index] = value.slice(-1);
         setCode(newCode);
 
-        // Move to next input if current one is filled
+        // Chuyển sang ô nhập tiếp theo nếu ô hiện tại đã được điền
         if (value && index < 3 && inputRefs.current[index + 1]) {
             inputRefs.current[index + 1]?.focus();
         }
     };
 
     const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>): void => {
-        // Move to previous input on backspace if current is empty
+        // Quay lại ô trước nếu nhấn backspace khi ô hiện tại đang trống
         if (e.key === 'Backspace' && !code[index] && index > 0 && inputRefs.current[index - 1]) {
             inputRefs.current[index - 1]?.focus();
         }
@@ -45,12 +50,12 @@ const Verification = () => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text/plain').trim();
 
-        // Check if pasted content is a 4-digit number
+        // Kiểm tra nếu nội dung dán vào là một số gồm 4 chữ số
         if (/^\d{4}$/.test(pastedData)) {
             const digits = pastedData.split('');
             setCode(digits);
 
-            // Focus the last input after paste
+            // Đưa con trỏ đến ô nhập cuối cùng sau khi dán
             if (inputRefs.current[3]) {
                 inputRefs.current[3]?.focus();
             }
@@ -58,8 +63,6 @@ const Verification = () => {
     };
 
     const router = useRouter();
-
-    const { activationToken } = useSelector((state: RootState) => state.user);
 
     const handleVerify = async (e: any) => {
         e.preventDefault();
@@ -72,7 +75,7 @@ const Verification = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    activation_token: activationToken,
+                    email: email,
                     activation_code: code.join(''),
                 }),
                 credentials: 'include',
@@ -84,9 +87,7 @@ const Verification = () => {
                 return;
             } else {
                 toast.success("Verify account success")
-                setTimeout(() => {
-                    router.push('/login');
-                }, 1500);
+                setRegistrationStep(4);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -97,14 +98,40 @@ const Verification = () => {
     }
 
     const handleResendCode = async () => {
-        toast.success("Verification code resent successfully!");
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/auth/resend_activation_code`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email
+                }),
+                credentials: 'include',
+            });
+            const responseData = await res.json();
+            if (!res.ok) {
+                toast.error(responseData.message);
+                return;
+            } else {
+                toast.success("Verification code resent successfully!");
+                setCode(['', '', '', '']); // Xóa mã hiện tại
+            }
+        } catch (error: any) {
+            console.log(error.message);
+            toast.error("Something went wrong. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
+
     return (
         <div className="w-full max-w-md p-8 space-y-8 bg-slate-100 dark:bg-slate-700 rounded-lg shadow-md">
             <div className="text-center">
                 <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">Verification</h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    Please enter the 4-digit code we sent to your device
+                    Please enter the 4-digit code we sent to your email
                 </p>
             </div>
 
@@ -142,7 +169,7 @@ const Verification = () => {
                                 Verifying...
                             </div>
                         ) : (
-                            'Verify'
+                            'Verify Account'
                         )}
                     </button>
 
@@ -160,10 +187,9 @@ const Verification = () => {
                         </p>
                     </div>
                 </div>
-
             </div>
         </div>
     )
 }
 
-export default Verification
+export default VerifyAccount

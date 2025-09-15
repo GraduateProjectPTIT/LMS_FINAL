@@ -101,7 +101,7 @@ const Header = () => {
     e.preventDefault();
     if (searchTerm.trim()) {
       addHistory(searchTerm.trim());
-      router.push(`/courses/search?query=${searchTerm}`);
+      router.push(`/courses/search?keyword=${searchTerm}`);
       setIsDesktopSearchHistoryVisible(false);
     }
   };
@@ -109,7 +109,7 @@ const Header = () => {
   const handleDesktopHistoryClick = (term: string) => {
     addHistory(term);
     setSearchTerm(term);
-    router.push(`/courses/search?query=${term}`);
+    router.push(`/courses/search?keyword=${term}`);
     setIsDesktopSearchHistoryVisible(false);
   };
 
@@ -146,7 +146,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 backdrop-blur-sm z-20 theme-mode dark:theme-mode shadow-sm dark:shadow-slate-700">
+      <header className="sticky top-0 backdrop-blur-sm z-20 theme-mode shadow-sm dark:shadow-slate-700">
         <div className='container'>
           <div className="flex justify-between items-center p-5">
             {/* Left Side: Menu (mobile) & Logo */}

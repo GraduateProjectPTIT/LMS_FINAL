@@ -1,44 +1,113 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import EditCourseInformation from "@/components/tutor/course/edit/EditCourseInformation";
-import EditCourseData from "@/components/tutor/course/edit/EditCourseData";
-import EditCourseContent from "@/components/tutor/course/edit/EditCourseContent";
-import EditCoursePreview from "@/components/tutor/course/edit/EditCoursePreview";
-import EditCourseOptions from "@/components/tutor/course/edit/EditCourseOptions";
+import EditCourseInformation from './EditCourseInformation';
+import EditCourseOptions from './EditCourseOptions';
+import EditCourseContent from './EditCourseContent';
+import EditCoursePreview from './EditCoursePreview';
+import EditCourseSteps from './EditCourseSteps';
+import { useVideoUpload } from '@/hooks/useVideoUpload';
+import toast from 'react-hot-toast';
 
-import { CourseInfoProps, BenefitsProps, PrerequisitesProps, CourseDataProps } from "@/type"
-
-interface EditCourseProps {
-    courseId: string;
-    courseInfo: CourseInfoProps;
-    setCourseInfo: (courseInfo: any) => void;
-    benefits: BenefitsProps[];
-    setBenefits: (benefits: { title: string }[]) => void;
-    prerequisites: PrerequisitesProps[];
-    setPrerequisites: (prerequisites: { title: string }[]) => void;
-    courseData: CourseDataProps[];
-    setCourseData: (newData: CourseDataProps[]) => void;
-    thumbnailPreview: string;
-    setThumbnailPreview: (thumbnailPreview: string) => void;
-
-}
-
-const EditCourse = ({
-    courseId,
-    courseInfo,
-    setCourseInfo,
-    benefits,
-    setBenefits,
-    prerequisites,
-    setPrerequisites,
-    courseData,
-    setCourseData,
-    thumbnailPreview,
-    setThumbnailPreview
-}: EditCourseProps) => {
+const EditCourse = ({ courseId }: { courseId: string }) => {
 
     const [active, setActive] = useState(0);
+
+    const [courseInfo, setCourseInfo] = useState<any>({});
+    const [thumbnailPreview, setThumbnailPreview] = useState<string>(''); // sử dụng khi người dùng upload thumbnail mới
+
+    const [allCategories, setAllCategories] = useState<any[]>([]);
+    const [allLevels, setAllLevels] = useState<string[]>([]);
+
+    const [benefits, setBenefits] = useState<any[]>([]);
+    const [prerequisites, setPrerequisites] = useState<any[]>([]);
+
+    const [courseData, setCourseData] = useState<any[]>([]);
+
+    const [isUploadingDemo, setIsUploadingDemo] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    const { uploadVideo, cancelCurrentUpload } = useVideoUpload();
+
+    const handleFetchCourse = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/data/${courseId}`, {
+                method: "GET",
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error("Fetching course data failed");
+                console.log("Fetching course data failed: ", data.message);
+                return;
+            } else {
+                setCourseInfo({
+                    _id: data.course._id,
+                    name: data.course.name,
+                    description: data.course.description,
+                    categories: data.course.categories.map((cat: any) => cat._id),
+                    price: data.course.price,
+                    estimatedPrice: data.course.estimatedPrice,
+                    thumbnail: data.course.thumbnail,
+                    tags: data.course.tags,
+                    level: data.course.level,
+                    videoDemo: data.course.videoDemo,
+                });
+                setBenefits(data.course.benefits);
+                setPrerequisites(data.course.prerequisites);
+                setCourseData(data.course.courseData);
+            }
+        } catch (error: any) {
+            console.log(error.message);
+        }
+    }
+
+    const handleGetAllLevels = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/levels`, {
+                method: "GET",
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                console.log("Fetching levels failed: ", data.message);
+                return;
+            } else {
+                setAllLevels(data.levels);
+            }
+        } catch (error: any) {
+            console.log(error.message);
+        }
+    }
+
+    const handleGetAllCategories = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/category/get_all_categories`, {
+                method: "GET",
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                console.log("Fetching categories failed: ", data.message);
+                return;
+            } else {
+                setAllCategories(data.categories);
+            }
+        } catch (error: any) {
+            console.log(error.message);
+        }
+    }
+
+    console.log("courseInfo: ", courseInfo);
+    console.log("benefits: ", benefits);
+    console.log("prerequisites: ", prerequisites);
+    console.log("courseData: ", courseData);
+
+    useEffect(() => {
+        handleGetAllLevels();
+        handleGetAllCategories();
+        handleFetchCourse();
+    }, [courseId]);
 
     const renderCreateCourseStep = () => {
         switch (active) {
@@ -50,9 +119,17 @@ const EditCourse = ({
                     setActive={setActive}
                     thumbnailPreview={thumbnailPreview}
                     setThumbnailPreview={setThumbnailPreview}
+                    allCategories={allCategories}
+                    allLevels={allLevels}
+                    isUploadingDemo={isUploadingDemo}
+                    setIsUploadingDemo={setIsUploadingDemo}
+                    uploadProgress={uploadProgress}
+                    setUploadProgress={setUploadProgress}
+                    uploadVideo={uploadVideo}
+                    cancelCurrentUpload={cancelCurrentUpload}
                 />
             case 1:
-                return <EditCourseData
+                return <EditCourseOptions
                     benefits={benefits}
                     setBenefits={setBenefits}
                     prerequisites={prerequisites}
@@ -76,7 +153,8 @@ const EditCourse = ({
                     prerequisites={prerequisites}
                     courseData={courseData}
                     thumbnailPreview={thumbnailPreview}
-                    courseId={courseId}
+                    setThumbnailPreview={setThumbnailPreview}
+                    courseId={courseInfo._id}
                 />
             default:
                 return <EditCourseInformation
@@ -86,6 +164,14 @@ const EditCourse = ({
                     setActive={setActive}
                     thumbnailPreview={thumbnailPreview}
                     setThumbnailPreview={setThumbnailPreview}
+                    allCategories={allCategories}
+                    allLevels={allLevels}
+                    isUploadingDemo={isUploadingDemo}
+                    setIsUploadingDemo={setIsUploadingDemo}
+                    uploadProgress={uploadProgress}
+                    setUploadProgress={setUploadProgress}
+                    uploadVideo={uploadVideo}
+                    cancelCurrentUpload={cancelCurrentUpload}
                 />
         }
     }
@@ -93,13 +179,13 @@ const EditCourse = ({
     return (
         <div className='w-full p-[10px] flex flex-col gap-[30px] md:grid md:grid-cols-5 md:p-[50px]'>
             <div className='md:hidden'>
-                <EditCourseOptions active={active} setActive={setActive} />
+                <EditCourseSteps active={active} setActive={setActive} />
             </div>
             <div className='col-span-4'>
                 {renderCreateCourseStep()}
             </div>
             <div className='hidden md:block md:col-span-1 '>
-                <EditCourseOptions active={active} setActive={setActive} />
+                <EditCourseSteps active={active} setActive={setActive} />
             </div>
 
         </div>

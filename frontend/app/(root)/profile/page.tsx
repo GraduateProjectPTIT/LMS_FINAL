@@ -18,7 +18,7 @@ const ProfilePage = () => {
             <Layout>
                 <div className='container w-full'>
                     <div className='flex flex-col  md:flex-row py-[20px] w-full'>
-                        <SidebarProfile user={currentUser} activeSection={activeSection} setActiveSection={setActiveSection} />
+                        <SidebarProfile activeSection={activeSection} setActiveSection={setActiveSection} />
                         <Profile user={currentUser} activeSection={activeSection} />
                     </div>
                 </div>

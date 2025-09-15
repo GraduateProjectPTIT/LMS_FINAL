@@ -168,7 +168,7 @@ const CustomizeHero = () => {
 
     return (
         <div className=''>
-            <Card className="w-full border border-gray-300 dark:border-slate-600 shadow-md light-mode dark:dark-mode">
+            <Card className="w-full theme-mode border border-gray-300 dark:border-slate-600 shadow-md">
                 <CardHeader className="pb-4">
                     <CardTitle className="text-2xl font-bold text-center">Customize Hero Section</CardTitle>
                     <CardDescription className="text-center dark:text-gray-400">

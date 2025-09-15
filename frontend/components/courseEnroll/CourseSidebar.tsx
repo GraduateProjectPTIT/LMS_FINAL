@@ -1,55 +1,17 @@
 import React, { useState } from 'react';
 import { FaRegPlayCircle, FaCheckCircle } from "react-icons/fa";
 import { RiArrowDropDownLine } from "react-icons/ri";
-
-interface CourseSection {
-    _id: string;
-    sectionTitle: string;
-    sectionContents: LectureContent[];
-}
-
-interface LectureContent {
-    _id: string;
-    videoTitle: string;
-    videoDescription: string;
-    videoUrl: string;
-    videoLength: number;
-    videoLinks: VideoLink[];
-    questions: LectureQuestions[];
-}
-
-interface LectureQuestionsReply {
-    _id: string;
-    user: string;
-    answer: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface LectureQuestions {
-    _id: string;
-    user: string;
-    question: string;
-    replies: LectureQuestionsReply[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface VideoLink {
-    _id: string;
-    title: string;
-    url: string;
-}
+import { CourseSection, SectionLecture } from "@/type";
 
 interface CourseSidebarProps {
     courseData: CourseSection[];
-    setSelectedVideo: (video: LectureContent) => void;
+    setSelectedVideo: (lecture: SectionLecture) => void;
     selectedVideoId: string | undefined;
 }
 
 const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId }: CourseSidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>(
-        courseData.reduce((acc, _, index) => ({ ...acc, [index]: false }), {})
+        courseData.reduce((acc, _, index) => ({ ...acc, [index]: index === 0 }), {}) // First section expanded by default
     );
 
     const toggleSection = (sectionIndex: number) => {
@@ -90,7 +52,7 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId }: Course
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
                         <div
-                            className="bg-indigo-600 h-2 rounded-full"
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${calculateProgress()}%` }}
                         ></div>
                     </div>
@@ -99,7 +61,7 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId }: Course
 
             <div className="flex-1">
                 {courseData.map((section, index) => (
-                    <div key={section._id} className="border-b border-gray-300 dark:border-slate-700 ">
+                    <div key={section._id} className="border-b border-gray-300 dark:border-slate-700">
                         <button
                             className="w-full px-4 py-3 flex justify-between items-center focus:outline-none hover:bg-gray-100 dark:hover:bg-black/20 cursor-pointer"
                             onClick={() => toggleSection(index)}
@@ -107,39 +69,41 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId }: Course
                             <span className="font-semibold text-[16px] text-gray-900 dark:text-white text-left">
                                 {index + 1}. {section.sectionTitle}
                             </span>
-                            <RiArrowDropDownLine className={`text-4xl mr-2 text-gray-500 dark:text-gray-400 transform ${expandedSections[index] ? 'rotate-180' : 'rotate-0'} transition-transform duration-200`} />
+                            <RiArrowDropDownLine
+                                className={`text-4xl mr-2 text-gray-500 dark:text-gray-400 transform ${expandedSections[index] ? 'rotate-180' : 'rotate-0'
+                                    } transition-transform duration-200`}
+                            />
                         </button>
 
                         {expandedSections[index] && (
                             <>
-                                {section.sectionContents.map((content) => (
+                                {section.sectionContents.map((lecture) => (
                                     <div
-                                        key={content._id}
+                                        key={lecture._id}
                                         className={`px-4 py-3 cursor-pointer border-t border-gray-300 dark:border-slate-600 flex justify-between items-center
-                                            ${selectedVideoId === content._id
-                                                ? 'bg-gray-200/60 dark:bg-indigo-900/20 border-l-4'
+                                            ${selectedVideoId === lecture._id
+                                                ? 'bg-gray-200/60 dark:bg-indigo-900/20 border-l-4 border-l-indigo-500'
                                                 : 'hover:bg-gray-100 dark:hover:bg-black/20'}`}
-                                        onClick={() => setSelectedVideo(content)}
+                                        onClick={() => setSelectedVideo(lecture)}
                                     >
                                         <div className='flex gap-3 items-center'>
                                             <FaRegPlayCircle className='text-sm text-gray-400 dark:text-gray-500' />
 
                                             <div className="flex flex-col">
-                                                <span className={`text-[14px] ${selectedVideoId === content._id
-                                                    ? 'text-indigo-700 dark:text-indigo-300'
+                                                <span className={`text-[14px] ${selectedVideoId === lecture._id
+                                                    ? 'text-indigo-700 dark:text-indigo-300 font-medium'
                                                     : 'text-black dark:text-white'
                                                     }`}>
-                                                    {content.videoTitle}
+                                                    {lecture.videoTitle}
                                                 </span>
                                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {formatTime(content.videoLength)}
+                                                    {formatTime(lecture.videoLength)}
                                                 </span>
                                             </div>
                                         </div>
-                                        <FaCheckCircle className='text-green-500' />
-
+                                        {/* Placeholder for completed status - in real app would be based on user progress */}
+                                        <FaCheckCircle className='text-green-500 opacity-30' />
                                     </div>
-
                                 ))}
                             </>
                         )}

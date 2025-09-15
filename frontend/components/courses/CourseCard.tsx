@@ -4,14 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, Users, Play, Clock, Award, Eye } from 'lucide-react';
-import { Course } from '@/type';
+import { ICourseSearchResponse } from '@/type';
 import MissingImage from '@/public/missing_image.jpg'
 
 interface CourseCardProps {
-    course: Course;
+    course: ICourseSearchResponse;
     viewMode: 'grid' | 'list';
     setShowPreviewModal: React.Dispatch<React.SetStateAction<boolean>>;
-    setSelectedCourse: React.Dispatch<React.SetStateAction<{}>>;
+    setSelectedCourse: React.Dispatch<React.SetStateAction<ICourseSearchResponse | null>>;
 }
 
 const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }: CourseCardProps) => {
@@ -38,7 +38,7 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
         router.push(`/course-overview/${courseId}`)
     }
 
-    const handleClickPreview = (course: any) => {
+    const handleClickPreview = (course: ICourseSearchResponse) => {
         setSelectedCourse(course);
         setShowPreviewModal(true);
     }
@@ -97,7 +97,7 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-slate-500 dark:text-slate-400">Category:</span>
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                        {course.categories}
+                                        {course.categories.map(cat => cat.title).join(', ')}
                                     </span>
                                 </div>
                                 <div className='flex justify-center items-center gap-2'>
@@ -151,11 +151,11 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                 </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 line-clamp-1 mb-2 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 line-clamp-2 h-[60px] mb-2 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
                     {course.name}
                 </CardTitle>
-                <div className='h-[100px]'>
-                    <CardDescription className="text-sm text-slate-600 dark:text-slate-400  line-clamp-3 leading-relaxed">
+                <div className='h-[70px]'>
+                    <CardDescription className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
                         {course.description}
                     </CardDescription>
                 </div>
@@ -169,14 +169,12 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                     <span className="font-medium">: {course.purchased.toLocaleString()} students</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="h-[50px]">
                     <span className="text-sm text-slate-500 dark:text-slate-400">Category : </span>
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {course.categories}
+                        {course.categories.map(cat => cat.title).join(', ')}
                     </span>
                 </div>
-
-
 
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-4 ">
                     <div className="flex items-center gap-3">

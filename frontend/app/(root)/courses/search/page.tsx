@@ -6,16 +6,16 @@ import CourseFilters from '@/components/courses/CourseFilters';
 import CourseViewControls from '@/components/courses/CourseViewControls';
 import CourseGrid from '@/components/courses/CourseGrid';
 import CoursePagination from '@/components/courses/CoursePagination';
-import CoursePreviewModal from '@/components/courses/CoursePreviewModal';
+import PreviewVideoModal from '@/components/courses/PreviewVideoModal';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Search } from 'lucide-react';
-import { Course } from '@/type';
+import { IBaseCategory, ICourseSearchResponse } from '@/type';
 import toast from 'react-hot-toast';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Loader from '@/components/Loader';
 
 interface SearchFilters {
-    query: string;
+    keyword: string;
     category: string;
     level: string;
     priceMin: string;
@@ -35,7 +35,7 @@ const sortMapping: Record<string, string> = {
 
 const buildQueryString = (f: SearchFilters, mapSortForApi = false) => {
     const params = new URLSearchParams();
-    if (f.query.trim()) params.set('query', f.query.trim());
+    if (f.keyword.trim()) params.set('keyword', f.keyword.trim());
     if (f.category !== 'all') params.set('category', f.category);
     if (f.level !== 'all') params.set('level', f.level);
     if (f.priceMin) params.set('priceMin', f.priceMin);
@@ -46,17 +46,21 @@ const buildQueryString = (f: SearchFilters, mapSortForApi = false) => {
     return params.toString();
 };
 
-const CoursesPage = () => {
+const SearchCoursesPage = () => {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [courses, setCourses] = useState<ICourseSearchResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // AbortController refs
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const [filters, setFilters] = useState<SearchFilters>({
-        query: searchParams?.get('query') || '',
+        keyword: searchParams?.get('keyword') || '',
         category: searchParams?.get('category') || 'all',
         level: searchParams?.get('level') || 'all',
         priceMin: searchParams?.get('priceMin') || '',
@@ -64,12 +68,35 @@ const CoursesPage = () => {
         sort: searchParams?.get('sort') || 'default'
     });
 
+    const [categories, setCategories] = useState<IBaseCategory[]>([]);
+    const [levels, setLevels] = useState<string[]>([]);
+
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(8);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-    const [categories, setCategories] = useState<string[]>([]);
-    const [levels, setLevels] = useState<string[]>([]);
+    // Cleanup function for AbortController and debounce timeout
+    const cleanup = useCallback(() => {
+        // Cancel previous request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+
+        // Clear debounce timeout
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+        }
+    }, []);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            cleanup();
+        };
+    }, [cleanup]);
+
 
     // update URL khi filter thay đổi
     const updateURL = useCallback(
@@ -81,8 +108,9 @@ const CoursesPage = () => {
         [pathname, router]
     );
 
-    const handleSearchCourses = useCallback(async (searchFilters: SearchFilters) => {
-        if (!searchFilters.query.trim()) {
+    const handleSearchCourses = useCallback(async (searchFilters: SearchFilters, signal?: AbortSignal) => {
+        // Nếu không có từ khóa, clear kết quả và không gọi API
+        if (!searchFilters.keyword.trim()) {
             setCourses([]);
             setLoading(false);
             setError(null);
@@ -101,24 +129,52 @@ const CoursesPage = () => {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
+                signal,
             });
+
+            if (signal?.aborted) {
+                return;
+            }
 
             const data = await res.json();
 
             if (!res.ok) {
                 toast.error(data.message || "Failed to search courses");
                 console.log("Fail to search courses")
+                setError(data.message || "Failed to search courses");
             } else {
                 setCourses(data.courses || []);
             }
         } catch (error: any) {
+            if (error.name === 'AbortError') {
+                console.log('Request was aborted');
+                return;
+            }
+
             toast.error("Failed to search courses");
             console.error("Error searching courses:", error.message);
             setError(error.message);
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) {
+                setLoading(false);
+            }
         }
-    }, [])
+    }, []);
+
+    // Debounced search function
+    const debouncedSearch = useCallback((searchFilters: SearchFilters) => {
+        cleanup(); // Cancel previous request and timeout
+
+        // For non-keyword filters, search immediately
+        const isKeywordChange = searchFilters.keyword !== filters.keyword;
+        const delay = isKeywordChange ? 500 : 0; // 500ms delay for keyword, immediate for other filters
+
+        debounceTimeoutRef.current = setTimeout(() => {
+            // Create new AbortController for this request
+            abortControllerRef.current = new AbortController();
+            handleSearchCourses(searchFilters, abortControllerRef.current.signal);
+        }, delay);
+    }, [filters.keyword, handleSearchCourses, cleanup]);
 
     const handleGetAllCategories = useCallback(async () => {
         try {
@@ -166,22 +222,26 @@ const CoursesPage = () => {
     // Chỉ setFilters nếu khác với state hiện tại
     useEffect(() => {
         const urlFilters: SearchFilters = {
-            query: searchParams?.get('query') || '',
+            keyword: searchParams?.get('keyword') || searchParams?.get('query') || '',
             category: searchParams?.get('category') || 'all',
             level: searchParams?.get('level') || 'all',
             priceMin: searchParams?.get('priceMin') || '',
             priceMax: searchParams?.get('priceMax') || '',
             sort: searchParams?.get('sort') || 'default',
         };
-        if (JSON.stringify(urlFilters) !== JSON.stringify(filters)) {
-            setFilters(urlFilters);
-        }
-    }, [searchParams, filters]);
 
-    // Gọi search khi filters đổi
+        setFilters(prev => {
+            if (JSON.stringify(urlFilters) !== JSON.stringify(prev)) {
+                return urlFilters;
+            }
+            return prev;
+        });
+    }, [searchParams]);
+
+    // Gọi debounced search khi filters đổi
     useEffect(() => {
-        handleSearchCourses(filters);
-    }, [filters, handleSearchCourses]);
+        debouncedSearch(filters);
+    }, [filters, debouncedSearch]);
 
     const totalResults = courses.length;
     const totalPages = useMemo(() => Math.max(1, Math.ceil(totalResults / itemsPerPage)), [totalResults, itemsPerPage]);
@@ -202,7 +262,6 @@ const CoursesPage = () => {
 
     const handlePriceFilterChange = useCallback((priceRange: string) => {
         const ranges: Record<string, { priceMin: string; priceMax: string }> = {
-            free: { priceMin: '0', priceMax: '0' },
             '0-25': { priceMin: '0', priceMax: '25' },
             '25-50': { priceMin: '25', priceMax: '50' },
             '50-100': { priceMin: '50', priceMax: '100' },
@@ -218,7 +277,6 @@ const CoursesPage = () => {
     const getCurrentPriceFilter = useCallback(() => {
         const { priceMin, priceMax } = filters;
         if (!priceMin && !priceMax) return 'all';
-        if (priceMin === '0' && priceMax === '0') return 'free';
         if (priceMin === '0' && priceMax === '25') return '0-25';
         if (priceMin === '25' && priceMax === '50') return '25-50';
         if (priceMin === '50' && priceMax === '100') return '50-100';
@@ -226,9 +284,9 @@ const CoursesPage = () => {
         return 'all';
     }, [filters]);
 
-    const clearFilters = useCallback(() => {
+    const clearFiltersExceptKeyword = useCallback(() => {
         const cleared: SearchFilters = {
-            query: filters.query,
+            keyword: filters.keyword,
             category: 'all',
             level: 'all',
             priceMin: '',
@@ -237,19 +295,16 @@ const CoursesPage = () => {
         };
         setFilters(cleared);
         updateURL(cleared);
-    }, [filters.query, updateURL]);
+    }, [filters.keyword, updateURL]);
 
-    const isNotFound = !loading && !error && !!filters.query && totalResults === 0;
+    const isNotFound = !loading && !error && totalResults === 0 && filters.keyword.trim();
 
     const [showPreviewModal, setShowPreviewModal] = useState(false);
-    const [selectedCourse, setSelectedCourse] = useState({});
-
-    console.log(selectedCourse)
-    console.log(showPreviewModal)
+    const [selectedCourse, setSelectedCourse] = useState<ICourseSearchResponse | null>(null);
 
     return (
         <Layout>
-            <div className='min-h-screen theme-mode dark:theme-mode'>
+            <div className='min-h-screen theme-mode'>
                 <div className="container">
                     {loading && <Loader />}
                     {!loading && error && (
@@ -268,10 +323,10 @@ const CoursesPage = () => {
                     )}
                     {!loading && !error && (
                         <div className='space-y-6 py-6'>
-                            {filters.query && (
+                            {filters.keyword && (
                                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
                                     <p className="text-blue-800 dark:text-blue-200">
-                                        Search results for: <strong>"{filters.query}"</strong>
+                                        Search results for: <strong>"{filters.keyword}"</strong>
                                         {totalResults > 0 && (
                                             <span className="ml-2 text-sm text-blue-600 dark:text-blue-300">
                                                 ({totalResults} courses found)
@@ -290,7 +345,7 @@ const CoursesPage = () => {
                                 onPriceChange={handlePriceFilterChange}
                                 sortBy={filters.sort}
                                 onSortChange={(value) => handleFilterChange('sort', value)}
-                                onClearFilters={clearFilters}
+                                onClearFilters={clearFiltersExceptKeyword}
                                 categories={categories}
                                 levels={levels}
                             />
@@ -305,7 +360,7 @@ const CoursesPage = () => {
                                         Try adjusting your search terms or filters to find what you're looking for.
                                     </p>
                                     <button
-                                        onClick={clearFilters}
+                                        onClick={clearFiltersExceptKeyword}
                                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mt-2"
                                     >
                                         Clear Filters
@@ -341,10 +396,10 @@ const CoursesPage = () => {
                     )}
                 </div>
 
-                {showPreviewModal && (
-                    <CoursePreviewModal
+                {showPreviewModal && selectedCourse?.videoDemo.url && (
+                    <PreviewVideoModal
                         showPreviewModal={showPreviewModal}
-                        course={selectedCourse}
+                        videoUrl={selectedCourse?.videoDemo.url}
                         onClose={() => setShowPreviewModal(false)}
                     />
                 )}
@@ -353,4 +408,4 @@ const CoursesPage = () => {
     );
 };
 
-export default CoursesPage;
+export default SearchCoursesPage;

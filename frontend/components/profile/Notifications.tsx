@@ -12,7 +12,7 @@ interface NotificationProps {
 
 const Notification = ({ user }: NotificationProps) => {
     return (
-        <Card className="w-full border-gray-200 dark:border-slate-600 light-mode dark:dark-mode shadow-md dark:shadow-slate-600">
+        <Card className="w-full theme-mode border-gray-200 dark:border-slate-600 shadow-md dark:shadow-slate-600">
             <CardHeader>
                 <div className="flex items-center gap-2">
                     <MdNotificationsActive className="text-blue-500" size={22} />

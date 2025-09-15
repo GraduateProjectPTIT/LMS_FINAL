@@ -2,40 +2,60 @@
 
 import React, { useState, useEffect } from 'react'
 import CourseInformation from '@/components/tutor/course/create/CourseInformation';
-import CourseData from '@/components/tutor/course/create/CourseData';
+import CourseOptions from '@/components/tutor/course/create/CourseOptions';
 import CourseContent from '@/components/tutor/course/create/CourseContent';
 import CoursePreview from '@/components/tutor/course/create/CoursePreview';
-import CourseOptions from '@/components/tutor/course/create/CourseOptions';
+import CourseSteps from '@/components/tutor/course/create/CourseSteps';
+import { useVideoUpload } from '@/hooks/useVideoUpload';
 
-import { CourseInfoProps, BenefitsProps, PrerequisitesProps, CourseDataProps } from "@/type"
+import { IBaseCategory, ICreateCourseInformation, ICreateBenefits, ICreatePrerequisites, ICreateSection } from "@/type"
 
 const CreateCourse = () => {
     const [active, setActive] = useState(0);
 
-    const [courseInfo, setCourseInfo] = useState<CourseInfoProps>({
+    const [courseInfo, setCourseInfo] = useState<ICreateCourseInformation>({
         name: "",
         description: "",
-        categories: "",
-        price: 0,
-        estimatedPrice: 0,
+        categories: [],
+        price: null,
+        estimatedPrice: null,
         tags: "",
         level: "",
-        demoUrl: "",
-        thumbnail: "",
+        videoDemo: { public_id: "", url: "" },
+        thumbnail: ""
     });
 
     const [thumbnailPreview, setThumbnailPreview] = useState<string>(""); // to display the image in UI before upload into cloudinary
 
-    const [benefits, setBenefits] = useState<BenefitsProps[]>([]);
-    const [prerequisites, setPrerequisites] = useState<PrerequisitesProps[]>([]);
+    const [benefits, setBenefits] = useState<ICreateBenefits[]>([]);
+    const [prerequisites, setPrerequisites] = useState<ICreatePrerequisites[]>([]);
 
-    const [courseData, setCourseData] = useState<CourseDataProps[]>([]);
+    const [courseData, setCourseData] = useState<ICreateSection[]>([]);
 
-    const [allCategories, setAllCategories] = useState([]);
+    const [allCategories, setAllCategories] = useState<IBaseCategory[]>([]);
+    const [allLevels, setAllLevels] = useState<string[]>([]);
+
+    const handleGetAllLevels = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/levels`, {
+                method: "GET",
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                console.log("Fetching levels failed: ", data.message);
+                return;
+            } else {
+                setAllLevels(data.levels);
+            }
+        } catch (error: any) {
+            console.log(error.message);
+        }
+    }
 
     const handleGetAllCategories = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/get_layout/Categories`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/category/get_all_categories`, {
                 method: "GET",
                 credentials: "include"
             });
@@ -44,8 +64,7 @@ const CreateCourse = () => {
                 console.log("Fetching categories failed: ", data.message);
                 return;
             } else {
-                const categoryTitle = data.layout.categories.map((category: { title: string }) => category.title);
-                setAllCategories(categoryTitle);
+                setAllCategories(data.categories);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -54,7 +73,13 @@ const CreateCourse = () => {
 
     useEffect(() => {
         handleGetAllCategories();
-    }, [])
+        handleGetAllLevels();
+    }, []);
+
+    const [isUploadingDemo, setIsUploadingDemo] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    const { uploadVideo, cancelCurrentUpload } = useVideoUpload();
 
     const renderCreateCourseStep = () => {
         switch (active) {
@@ -67,9 +92,16 @@ const CreateCourse = () => {
                     thumbnailPreview={thumbnailPreview}
                     setThumbnailPreview={setThumbnailPreview}
                     allCategories={allCategories}
+                    allLevels={allLevels}
+                    isUploadingDemo={isUploadingDemo}
+                    setIsUploadingDemo={setIsUploadingDemo}
+                    uploadProgress={uploadProgress}
+                    setUploadProgress={setUploadProgress}
+                    uploadVideo={uploadVideo}
+                    cancelCurrentUpload={cancelCurrentUpload}
                 />
             case 1:
-                return <CourseData
+                return <CourseOptions
                     benefits={benefits}
                     setBenefits={setBenefits}
                     prerequisites={prerequisites}
@@ -104,6 +136,13 @@ const CreateCourse = () => {
                     thumbnailPreview={thumbnailPreview}
                     setThumbnailPreview={setThumbnailPreview}
                     allCategories={allCategories}
+                    allLevels={allLevels}
+                    isUploadingDemo={isUploadingDemo}
+                    setIsUploadingDemo={setIsUploadingDemo}
+                    uploadProgress={uploadProgress}
+                    setUploadProgress={setUploadProgress}
+                    uploadVideo={uploadVideo}
+                    cancelCurrentUpload={cancelCurrentUpload}
                 />
         }
     }
@@ -111,13 +150,13 @@ const CreateCourse = () => {
     return (
         <div className='w-full p-[10px] flex flex-col gap-[30px] md:grid md:grid-cols-5 md:p-[50px]'>
             <div className='md:hidden'>
-                <CourseOptions active={active} setActive={setActive} />
+                <CourseSteps active={active} setActive={setActive} />
             </div>
             <div className='col-span-4'>
                 {renderCreateCourseStep()}
             </div>
             <div className='hidden md:block md:col-span-1 '>
-                <CourseOptions active={active} setActive={setActive} />
+                <CourseSteps active={active} setActive={setActive} />
             </div>
 
         </div>

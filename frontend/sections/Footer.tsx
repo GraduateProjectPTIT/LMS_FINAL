@@ -9,7 +9,7 @@ import LogoImage from "@/assets/logo-lms.png"
 
 const Footer = () => {
   return (
-    <footer className="theme-mode dark:theme-mode text-sm py-10 text-center border-t-[1px] border-theme">
+    <footer className="theme-mode text-sm py-10 text-center border-t-[1px] border-theme">
       <div className="container">
         <div className="inline-flex">
           <Image src={LogoImage.src} width={100} height={100} alt="logo" className="relative" />

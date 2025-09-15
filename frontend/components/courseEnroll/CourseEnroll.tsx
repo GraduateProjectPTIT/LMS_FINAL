@@ -1,88 +1,38 @@
 "use client"
-
 import React, { useEffect, useState } from 'react'
-import Loader from '../Loader';
+import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
 import VideoPlayer from './VideoPlayer';
 import CourseSidebar from './CourseSidebar';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface Course {
-    name: string;
-    description: string;
-    level: string;
-    categories: string;
-    courseData: CourseSection[];
-}
-
-interface CourseSection {
-    _id: string;
-    sectionTitle: string;
-    sectionContents: LectureContent[];
-}
-
-interface LectureContent {
-    _id: string;
-    videoTitle: string;
-    videoDescription: string;
-    videoUrl: string;
-    videoLength: number;
-    videoLinks: VideoLink[];
-    questions: LectureQuestions[];
-}
-
-interface LectureQuestionsReply {
-    _id: string;
-    user: string;
-    answer: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface LectureQuestions {
-    _id: string;
-    user: string;
-    question: string;
-    replies: LectureQuestionsReply[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface VideoLink {
-    _id: string;
-    title: string;
-    url: string;
-}
+import { CourseEnrollResponse, SectionLecture } from "@/type";
 
 const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [course, setCourse] = useState<Course | null>(null);
-    const [selectedVideo, setSelectedVideo] = useState<LectureContent | null>(null);
+    const [course, setCourse] = useState<CourseEnrollResponse | null>(null);
+    const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
-    const handleGetCourse = async () => {
+    const handleEnrollCourse = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/get_course_content/${courseId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/enroll/${courseId}`, {
                 method: "GET",
                 credentials: "include"
             });
             const data = await res.json();
             if (!res.ok) {
-                console.log(data.message);
+                console.log("Fetching course data failed: ", data.message);
                 return;
-            } else {
-                setCourse(data.course);
+            }
+            setCourse(data.course);
 
-                // Set first video as selected by default if there are videos
-                if (data.course.courseData && data.course.courseData.length > 0 &&
-                    data.course.courseData[0].sectionContents.length > 0) {
-                    setSelectedVideo(data.course.courseData[0].sectionContents[0]);
-                }
+            // Auto-select first lecture if available
+            if (data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
+                setSelectedLecture(data.course.courseData[0].sectionContents[0]);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -93,9 +43,15 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
 
     useEffect(() => {
         if (courseId) {
-            handleGetCourse();
+            handleEnrollCourse();
         }
     }, [courseId]);
+
+    const setSelectedVideo = (lecture: SectionLecture) => {
+        setSelectedLecture(lecture);
+    };
+
+    const courseCategories = course?.categories.map(cat => cat.title).join(', ') || '';
 
     return (
         <>
@@ -107,12 +63,12 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                         courseId={courseId}
                         name={course.name}
                         level={course.level}
-                        categories={course.categories}
+                        categories={courseCategories}
                     />
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Main content area */}
                         <div className="flex-grow p-4 overflow-auto">
-                            <VideoPlayer video={selectedVideo} />
+                            <VideoPlayer lecture={selectedLecture} />
                         </div>
 
                         {/* Right sidebar - with transition */}
@@ -123,10 +79,26 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                 <CourseSidebar
                                     courseData={course.courseData}
                                     setSelectedVideo={setSelectedVideo}
-                                    selectedVideoId={selectedVideo?._id}
+                                    selectedVideoId={selectedLecture?._id}
                                 />
                             )}
                         </div>
+
+                        {/* Toggle sidebar button */}
+                        <button
+                            onClick={toggleSidebar}
+                            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-l-md p-2 shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 z-10"
+                        >
+                            {isSidebarOpen ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            )}
+                        </button>
                     </div>
                 </div>
             ) : (

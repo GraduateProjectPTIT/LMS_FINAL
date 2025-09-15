@@ -1,46 +1,14 @@
 import React, { useState } from 'react';
-
-interface VideoLink {
-    title: string;
-    url: string;
-    _id: string;
-}
-
-interface LectureQuestions {
-    _id: string;
-    user: string;
-    question: string;
-    replies: LectureQuestionsReply[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface LectureQuestionsReply {
-    _id: string;
-    user: string;
-    answer: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface CourseContent {
-    _id: string;
-    videoTitle: string;
-    videoDescription: string;
-    videoUrl: string;
-    videoLength: number;
-    videoLinks: VideoLink[];
-    questions: LectureQuestions[];
-}
+import { SectionLecture, IVideoLinkResponse } from "@/type";
 
 interface VideoPlayerProps {
-    video: CourseContent | null;
+    lecture: SectionLecture | null;
 }
 
-const VideoPlayer = ({ video }: VideoPlayerProps) => {
+const VideoPlayer = ({ lecture }: VideoPlayerProps) => {
     const [activeTab, setActiveTab] = useState<'description' | 'resources' | 'questions'>('description');
 
-    if (!video) {
+    if (!lecture) {
         return (
             <div className="flex flex-col h-full">
                 <div className="bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center aspect-video">
@@ -72,44 +40,22 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
         );
     }
 
-    // Function to extract YouTube video ID
-    const getYoutubeVideoId = (url: string) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return match && match[2].length === 11 ? match[2] : null;
-    };
-
-    const isYoutubeVideo = video.videoUrl.includes('youtube.com') || video.videoUrl.includes('youtu.be');
-    const youtubeVideoId = isYoutubeVideo ? getYoutubeVideoId(video.videoUrl) : null;
-
     return (
         <div className="flex flex-col h-screen overflow-y-scroll">
             <div className="bg-black rounded-lg overflow-hidden aspect-video">
-                {isYoutubeVideo && youtubeVideoId ? (
-                    <iframe
-                        width="100%"
-                        height="100%"
-                        src={`https://www.youtube.com/embed/${youtubeVideoId}?rel=0`}
-                        title={video.videoTitle}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full aspect-video"
-                    ></iframe>
-                ) : (
-                    <video
-                        src={video.videoUrl}
-                        controls
-                        className="w-full h-full"
-                        poster="/video-placeholder.jpg"
-                    >
-                        Your browser does not support the video tag.
-                    </video>
-                )}
+                <video
+                    src={lecture.video.url}
+                    controls
+                    className="w-full h-full"
+                    poster="/video-placeholder.jpg"
+                    key={lecture._id} // Force re-render when lecture changes
+                >
+                    Your browser does not support the video tag.
+                </video>
             </div>
 
             <div className="mt-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{video.videoTitle}</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lecture.videoTitle}</h2>
 
                 {/* Tabs */}
                 <div className="border-b border-gray-300 dark:border-slate-700 mb-4">
@@ -130,7 +76,7 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
                                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
                                 }`}
                         >
-                            Resources {video.videoLinks.length > 0 && `(${video.videoLinks.length})`}
+                            Resources {lecture.videoLinks.length > 0 && `(${lecture.videoLinks.length})`}
                         </button>
                         <button
                             onClick={() => setActiveTab('questions')}
@@ -139,7 +85,7 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
                                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
                                 }`}
                         >
-                            Q&A {video.questions.length > 0 && `(${video.questions.length})`}
+                            Q&A {lecture.lectureQuestions.length > 0 && `(${lecture.lectureQuestions.length})`}
                         </button>
                     </nav>
                 </div>
@@ -148,15 +94,15 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
                 <div className="pb-8">
                     {activeTab === 'description' && (
                         <div className="prose dark:prose-invert max-w-none">
-                            <p className="text-gray-700 dark:text-gray-300">{video.videoDescription}</p>
+                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{lecture.videoDescription}</p>
                         </div>
                     )}
 
                     {activeTab === 'resources' && (
                         <div>
-                            {video.videoLinks && video.videoLinks.length > 0 ? (
+                            {lecture.videoLinks && lecture.videoLinks.length > 0 ? (
                                 <ul className="space-y-3">
-                                    {video.videoLinks.map((link) => (
+                                    {lecture.videoLinks.map((link: IVideoLinkResponse) => (
                                         <li key={link._id} className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-300 dark:border-slate-600">
                                             <a
                                                 href={link.url}
@@ -193,9 +139,9 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
 
                     {activeTab === 'questions' && (
                         <div>
-                            {video.questions && video.questions.length > 0 ? (
+                            {lecture.lectureQuestions && lecture.lectureQuestions.length > 0 ? (
                                 <div className="space-y-4">
-                                    {video.questions.map((item) => (
+                                    {lecture.lectureQuestions.map((item: any) => (
                                         <div key={item._id} className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg border border-gray-300 dark:border-slate-600">
                                             <div className="mb-4">
                                                 <div className="flex justify-between mb-2">
@@ -209,7 +155,7 @@ const VideoPlayer = ({ video }: VideoPlayerProps) => {
 
                                             {item.replies && item.replies.length > 0 && (
                                                 <div className="mt-3 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
-                                                    {item.replies.map((reply, index) => (
+                                                    {item.replies.map((reply: any, index: number) => (
                                                         <div key={index} className="mb-3">
                                                             <div className="flex justify-between mb-1">
                                                                 <h4 className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Reply:</h4>

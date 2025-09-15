@@ -4,7 +4,7 @@ import ArrowRight from "@/assets/arrow-right.svg"
 const CallToAction = () => {
 
   return (
-    <section className="bg-gradient-to-b from-white to-[#F0F3FF] dark:from-[#1a1a2e] dark:to-[#121212] py-24 overflow-x-clip transition-colors">
+    <section className="bg-gradient-to-b from-white to-[#F0F3FF] dark:from-[#1a1a2e] dark:to-[#121212] py-24 overflow-x-clip transition-colors border">
       <div className="container">
         <div className="max-w-[540px] mx-auto relative">
           <h2 className="section-title dark:text-white">Sign up for free today</h2>
