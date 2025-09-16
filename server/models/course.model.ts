@@ -1,5 +1,4 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
-import { ECourseLevel } from "../constants/course-level.enum";
 
 export interface ICourse extends Document {
   name: string;
@@ -12,7 +11,7 @@ export interface ICourse extends Document {
     url?: string;
   };
   tags: string;
-  level: ECourseLevel;
+  level: string;
   videoDemo: {
     public_id: string;
     url: string;
@@ -172,7 +171,6 @@ const courseSchema = new Schema<ICourse>(
     },
     level: {
       type: String,
-      enum: Object.values(ECourseLevel),
       required: true,
     },
     videoDemo: {
