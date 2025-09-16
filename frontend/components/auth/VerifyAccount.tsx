@@ -87,7 +87,7 @@ const VerifyAccount = ({ email, setRegistrationStep }: VerifyAccountProps) => {
                 return;
             } else {
                 toast.success("Verify account success")
-                setRegistrationStep(4);
+                router.push("/login");
             }
         } catch (error: any) {
             console.log(error.message);
