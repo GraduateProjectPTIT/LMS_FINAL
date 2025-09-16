@@ -1,7 +1,6 @@
 import { Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import CourseModel from "../models/course.model";
-import { ECourseLevel } from "../constants/course-level.enum";
 import CategoryModel from "../models/category.model";
 import cloudinary from "cloudinary";
 import mongoose from "mongoose";
@@ -115,6 +114,158 @@ export const createCourse = async (
       }
       data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
+
+    // Preserve _id for FE drag-and-drop arrays
+    if (Array.isArray(data.benefits)) {
+      data.benefits = data.benefits.map((b: any) => ({
+        ...(b && b._id ? { _id: b._id } : {}),
+        title: b?.title,
+      }));
+    }
+
+    if (Array.isArray(data.prerequisites)) {
+      data.prerequisites = data.prerequisites.map((p: any) => ({
+        ...(p && p._id ? { _id: p._id } : {}),
+        title: p?.title,
+      }));
+    }
+
+    if (Array.isArray(data.courseData)) {
+      data.courseData = data.courseData.map((section: any) => ({
+        ...(section && section._id ? { _id: section._id } : {}),
+        sectionTitle: section?.sectionTitle,
+        sectionContents: Array.isArray(section?.sectionContents)
+          ? section.sectionContents.map((lecture: any) => ({
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
+          : [],
+      }));
+    }
+
+    if (Array.isArray(data.benefits)) {
+      data.benefits = data.benefits.map((b: any) => ({
+        ...(b && b._id ? { _id: b._id } : {}),
+        title: b?.title,
+      }));
+    }
+
+    if (Array.isArray(data.prerequisites)) {
+      data.prerequisites = data.prerequisites.map((p: any) => ({
+        ...(p && p._id ? { _id: p._id } : {}),
+        title: p?.title,
+      }));
+    }
+
+    if (Array.isArray(data.courseData)) {
+      data.courseData = data.courseData.map((section: any) => ({
+        ...(section && section._id ? { _id: section._id } : {}),
+        sectionTitle: section?.sectionTitle,
+        sectionContents: Array.isArray(section?.sectionContents)
+          ? section.sectionContents.map((lecture: any) => ({
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
+          : [],
+      }));
+    }
+
+    if (Array.isArray(data.benefits)) {
+      data.benefits = data.benefits.map((b: any) => ({
+        ...(b && b._id ? { _id: b._id } : {}),
+        title: b?.title,
+      }));
+    }
+
+    if (Array.isArray(data.prerequisites)) {
+      data.prerequisites = data.prerequisites.map((p: any) => ({
+        ...(p && p._id ? { _id: p._id } : {}),
+        title: p?.title,
+      }));
+    }
+
+    if (Array.isArray(data.courseData)) {
+      data.courseData = data.courseData.map((section: any) => ({
+        ...(section && section._id ? { _id: section._id } : {}),
+        sectionTitle: section?.sectionTitle,
+        sectionContents: Array.isArray(section?.sectionContents)
+          ? section.sectionContents.map((lecture: any) => ({
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
+          : [],
+      }));
+    }
+
+    // Preserve _id for FE drag-and-drop arrays
+    if (Array.isArray(data.benefits)) {
+      data.benefits = data.benefits.map((b: any) => ({
+        ...(b && b._id ? { _id: b._id } : {}),
+        title: b?.title,
+      }));
+    }
+
+    if (Array.isArray(data.prerequisites)) {
+      data.prerequisites = data.prerequisites.map((p: any) => ({
+        ...(p && p._id ? { _id: p._id } : {}),
+        title: p?.title,
+      }));
+    }
+
+    if (Array.isArray(data.courseData)) {
+      data.courseData = data.courseData.map((section: any) => ({
+        ...(section && section._id ? { _id: section._id } : {}),
+        sectionTitle: section?.sectionTitle,
+        sectionContents: Array.isArray(section?.sectionContents)
+          ? section.sectionContents.map((lecture: any) => ({
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
+          : [],
+      }));
+    }
+
+    
 
     const course = await CourseModel.create(data);
 
@@ -410,6 +561,43 @@ export const editCourseService = async (
       data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
+    if (Array.isArray(data.benefits)) {
+      data.benefits = data.benefits.map((b: any) => ({
+        ...(b && b._id ? { _id: b._id } : {}),
+        title: b?.title,
+      }));
+    }
+
+    if (Array.isArray(data.prerequisites)) {
+      data.prerequisites = data.prerequisites.map((p: any) => ({
+        ...(p && p._id ? { _id: p._id } : {}),
+        title: p?.title,
+      }));
+    }
+
+    if (Array.isArray(data.courseData)) {
+      data.courseData = data.courseData.map((section: any) => ({
+        ...(section && section._id ? { _id: section._id } : {}),
+        sectionTitle: section?.sectionTitle,
+        sectionContents: Array.isArray(section?.sectionContents)
+          ? section.sectionContents.map((lecture: any) => ({
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
+          : [],
+      }));
+    }
+
     const course = await CourseModel.findByIdAndUpdate(
       courseId,
       { $set: data },
@@ -628,36 +816,29 @@ export const searchCoursesService = async (
       sort,
     } = query;
 
-    // Build the filter object
     const filter: any = {};
 
-    // Add text search if query exists
-    if (searchQuery) {
-      const regexPattern = new RegExp(searchQuery as string, "i");
+    if (typeof searchQuery !== "undefined") {
+      const keyword = String(searchQuery ?? "").trim();
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regexPattern = new RegExp(escaped, "i");
 
-      // Check if query is a valid ObjectId
-      const isValidObjectId = mongoose.Types.ObjectId.isValid(
-        searchQuery as string
-      );
+        const searchConditions: any[] = [
+          { name: { $regex: regexPattern } },
+          { description: { $regex: regexPattern } },
+          { tags: { $regex: regexPattern } },
+        ];
 
-      const searchConditions: any[] = [
-        { name: { $regex: regexPattern } },
-        { description: { $regex: regexPattern } },
-        { categories: { $regex: regexPattern } },
-        { tags: { $regex: regexPattern } },
-        { level: { $regex: regexPattern } },
-      ];
+        if (mongoose.Types.ObjectId.isValid(keyword)) {
+          searchConditions.push({ _id: keyword });
+        }
 
-      if (isValidObjectId) {
-        searchConditions.push({ _id: searchQuery });
-      }
-
-      filter.$or = searchConditions;
+        filter.$or = searchConditions;
     }
 
     if (category) {
-      const raw = Array.isArray(category) ? category.join(",") : String(category);
-      const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      const keyword = Array.isArray(category) ? category.join(",") : String(category);
+      const ids = keyword.split(",").map((s) => s.trim()).filter(Boolean);
       const areValid = ids.every((id) => mongoose.Types.ObjectId.isValid(id));
       if (!areValid) {
         return next(new ErrorHandler("Invalid category id in filter", 400));
@@ -665,24 +846,14 @@ export const searchCoursesService = async (
       filter.categories = { $in: ids };
     }
 
-    // Add level filter if exists
     if (level) {
-      const lv = String(level);
-      if (lv === ECourseLevel.All) {
-        // no filter for All Levels
-      } else {
-        // try to match enum case-insensitively
-        const match = (Object.values(ECourseLevel) as string[]).find(
-          (v) => v.toLowerCase() === lv.toLowerCase()
-        );
-        if (!match) {
-          return next(new ErrorHandler("Invalid level filter", 400));
-        }
-        filter.level = match;
+      const lv = String(level).trim();
+      if (lv.length > 0 && lv.toLowerCase() !== "all levels") {
+        const escapedLv = lv.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        filter.level = new RegExp(`^${escapedLv}$`, "i");
       }
     }
 
-    // Add price range filter if exists
     if (priceMin || priceMax) {
       filter.price = {};
       if (priceMin) filter.price.$gte = Number(priceMin);
@@ -712,10 +883,10 @@ export const searchCoursesService = async (
           sortOption = { ratings: -1 };
           break;
         default:
-          sortOption = { createdAt: -1 }; // Default to newest
+          sortOption = { createdAt: -1 };
       }
     } else {
-      sortOption = { createdAt: -1 }; // Default to newest
+      sortOption = { createdAt: -1 };
     }
 
     // Find courses with the filter and sort options
@@ -1147,7 +1318,8 @@ export const getAllLevelsService = async (
   next: NextFunction
 ) => {
   try {
-    const levels = Object.values(ECourseLevel);
+    const levels = (await CourseModel.distinct("level")) as string[];
+    levels.sort((a, b) => String(a).localeCompare(String(b)));
     res.status(200).json({ success: true, levels });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

@@ -132,6 +132,7 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
                 return next(new ErrorHandler("Invalid data of FAQ", 404));
             }
             const faqs = faq.map((item: any) => ({
+                ...(item && item._id ? { _id: item._id } : {}),
                 question: item.question,
                 answer: item.answer
             }));
