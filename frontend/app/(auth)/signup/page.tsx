@@ -1,9 +1,7 @@
-// src/app/(auth)/register/page.tsx
-
 "use client";
 
-import React, { useState, useEffect } from "react"; // Thêm useEffect
-import { useSearchParams } from "next/navigation"; // Thêm useSearchParams
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import RegisterStep from "@/components/auth/RegisterStep";
 import SelectAccount from "@/components/auth/SelectAccount";
 import RegisterForm from "@/components/auth/RegisterForm";
@@ -18,10 +16,8 @@ const SignUpPage = () => {
     null
   );
 
-  // Lấy các tham số từ URL
   const searchParams = useSearchParams();
 
-  // SỬA ĐỔI QUAN TRỌNG: Thêm useEffect này
   useEffect(() => {
     // Kiểm tra xem URL có tham số `social=1` không
     const isSocialReturn = searchParams?.get("social") === "1";
@@ -45,8 +41,6 @@ const SignUpPage = () => {
           />
         );
       case 2:
-        // Khi quay về, selectedRole sẽ là null, nhưng không sao
-        // vì RegisterForm sẽ đọc role từ cookie mà nó đã lưu trước đó.
         return (
           <RegisterForm
             selectedRole={selectedRole}

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
+  signInSuccess,
   signUpFailure,
   signUpStart,
   signUpSuccess,
@@ -141,7 +142,7 @@ const RegisterForm = ({
     }
   };
 
-  // ===== Resolve role (ưu tiên session.user.role đã gắn ở NextAuth callbacks) =====
+  // Resolve role (ưu tiên session.user.role đã gắn ở NextAuth callbacks) 
   const getResolvedRole = (): string | null => {
     const roleFromSession = (session?.user as any)?.role ?? null;
     const cookieMatch =
@@ -151,33 +152,30 @@ const RegisterForm = ({
     const roleFromCookie = cookieMatch
       ? decodeURIComponent(cookieMatch[1])
       : null;
-    const roleFromLocal =
-      typeof window !== "undefined"
-        ? localStorage.getItem("pending_role")
-        : null;
-    const roleFromQuery = searchParams?.get("role");
 
     const resolved =
       roleFromSession ??
       selectedRole ??
       roleFromCookie ??
-      roleFromLocal ??
-      roleFromQuery ??
       null;
 
-    console.log("[RegisterForm] Role sources:", {
-      roleFromSession,
-      selectedRole,
-      roleFromCookie,
-      roleFromLocal,
-      roleFromQuery,
-      resolved,
-    });
+    // --- debug xem lấy role từ nguồn nào ---
+    let source = "null"; // Giá trị mặc định
+    if (roleFromSession) {
+      source = "session";
+    } else if (selectedRole) {
+      source = "state"; // 
+    } else if (roleFromCookie) {
+      source = "cookie";
+    }
+
+    console.log(
+      `[RegisterForm] Resolved role '${resolved}' from source: ${source}`
+    );
     return resolved;
   };
 
-  // RegisterForm.tsx
-
+  // ===== Xử lý OAuth đăng ký =====
   const handleOAuthLogin = async (provider: "google" | "github") => {
     try {
       if (!selectedRole) {
@@ -199,12 +197,6 @@ const RegisterForm = ({
 
       // Lưu role tạm
       document.cookie = `pending_role=${selectedRole}; Max-Age=600; Path=/; SameSite=Lax`;
-      localStorage.setItem("pending_role", selectedRole);
-
-      console.log(
-        "[RegisterForm] Starting OAuth login. Redirecting back to:",
-        nextAuthCallbackUrl.toString()
-      );
 
       // 3. Sử dụng URL đã tạo
       await signIn(provider, {
@@ -217,50 +209,23 @@ const RegisterForm = ({
       setIsLoading(false);
     }
   };
-  // 1. Sử dụng localStorage thay vì useRef để persist qua page reload
-  const getCallStatus = () => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("oauth_processing") === "true";
-  };
 
-  const setCallStatus = (status: boolean) => {
-    if (typeof window === "undefined") return;
-    if (status) {
-      localStorage.setItem("oauth_processing", "true");
-    } else {
-      localStorage.removeItem("oauth_processing");
-    }
-  };
-
-  // 2. Thay đổi useEffect chính
+  // Xử lý tự động gửi user lên server khi quay về từ social login
   useEffect(() => {
-    console.log("[RegisterForm] useEffect triggered:", {
-      sessionExists: !!session?.user,
-      sessionStatus: status,
-      isSocialLogin,
-      alreadyProcessing: getCallStatus(),
-    });
-
-    // Chỉ xử lý khi có đủ điều kiện và chưa processing
     if (
       isSocialLogin &&
       status === "authenticated" &&
-      session?.user &&
-      !getCallStatus()
+      session?.user
     ) {
-      console.log(
-        "[RegisterForm] All conditions met, calling sendUserToServer"
-      );
-      setCallStatus(true); // Đánh dấu đang xử lý
       sendUserToServer();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, status, isSocialLogin]);
 
-  // 3. Cập nhật sendUserToServer để clear status
+  // Cập nhật sendUserToServer để clear status
   const sendUserToServer = async () => {
     if (!session?.user) {
       console.log("[RegisterForm] No session user; abort sendUserToServer.");
-      setCallStatus(false); // Clear status nếu không có session
       return;
     }
 
@@ -270,16 +235,9 @@ const RegisterForm = ({
         "Missing account type. Please select Student or Tutor again."
       );
       setRegistrationStep(1);
-      setCallStatus(false); // Clear status
       return;
     }
 
-    console.log(
-      "[RegisterForm] Sending user to server:",
-      session.user,
-      "with role:",
-      resolvedRole
-    );
     setIsLoading(true);
 
     try {
@@ -299,7 +257,6 @@ const RegisterForm = ({
       );
 
       const data = await res.json();
-      console.log("[RegisterForm] Server response:", data);
 
       if (!res.ok) {
         throw new Error(data?.message || "Failed to authenticate user");
@@ -307,10 +264,9 @@ const RegisterForm = ({
 
       // dọn tạm
       document.cookie = "pending_role=; Max-Age=0; Path=/; SameSite=Lax";
-      localStorage.removeItem("pending_role");
-      setCallStatus(false); // Clear processing status
 
       toast.success("Registration successful!");
+      dispatch(signInSuccess(data));
       router.replace(callbackUrl);
     } catch (err: any) {
       console.error(
@@ -318,18 +274,17 @@ const RegisterForm = ({
         err?.message || err
       );
       toast.error(err?.message || "Something went wrong.");
-      setCallStatus(false); // Clear status on error
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 4. Cleanup khi component unmount
+  // Cleanup khi component unmount
   useEffect(() => {
     return () => {
-      // Nếu không phải social login, clear processing status
+      // Xóa cookie pending_role nếu không phải social login
       if (!isSocialLogin) {
-        setCallStatus(false);
+        document.cookie = "pending_role=; Max-Age=0; Path=/; SameSite=Lax";
       }
     };
   }, [isSocialLogin]);
@@ -360,9 +315,8 @@ const RegisterForm = ({
             {/* Username Field */}
             <div className="w-full">
               <div
-                className={`w-full border ${
-                  field("name").border
-                } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
+                className={`w-full border ${field("name").border
+                  } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
               >
                 <MdOutlineDriveFileRenameOutline className="text-gray-400 mx-[10px]" />
                 <input
@@ -387,9 +341,8 @@ const RegisterForm = ({
             {/* Email Field */}
             <div className="w-full">
               <div
-                className={`w-full border ${
-                  field("email").border
-                } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
+                className={`w-full border ${field("email").border
+                  } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
               >
                 <TfiEmail className="text-gray-400 mx-[10px]" />
                 <input
@@ -414,9 +367,8 @@ const RegisterForm = ({
             {/* Password Field */}
             <div className="w-full">
               <div
-                className={`w-full border ${
-                  field("password").border
-                } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
+                className={`w-full border ${field("password").border
+                  } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
               >
                 <div className="flex items-center w-[500px]">
                   <RiLockPasswordLine className="text-gray-400 mx-[10px] text-[20px]" />
@@ -452,9 +404,8 @@ const RegisterForm = ({
             {/* Confirm Password Field */}
             <div className="w-full">
               <div
-                className={`w-full border ${
-                  field("confirmPassword").border
-                } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
+                className={`w-full border ${field("confirmPassword").border
+                  } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
               >
                 <div className="flex items-center w-[500px]">
                   <RiLockPasswordLine className="text-gray-400 mx-[10px] text-[20px]" />
