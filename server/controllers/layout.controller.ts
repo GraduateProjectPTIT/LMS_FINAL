@@ -47,13 +47,6 @@ export const createLayout = CatchAsyncError(async (req: Request, res: Response, 
                 answer: item.answer
             }));
         }
-        else if (type === "Categories") {
-            const { categories } = req.body;
-            if (!Array.isArray(categories)) {
-                return next(new ErrorHandler("Invalid data of Categories", 400));
-            }
-            layoutData.categories = categories;
-        }
         else {
             return next(new ErrorHandler("Invalid layout type", 400));
         }
@@ -139,20 +132,6 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
 
             await LayoutModel.findByIdAndUpdate(faqData._id, { $set: { faq: faqs } });
         }
-        else if (type === "Categories") {
-            const categoriesData = await LayoutModel.findOne({ type: "Categories" });
-            if (!categoriesData) {
-                return next(new ErrorHandler("Categories layout not found", 404));
-            }
-
-            const { categories } = req.body;
-
-            if (!categories || !Array.isArray(categories)) {
-                return next(new ErrorHandler("Invalid data of Categories", 400));
-            }
-
-            await LayoutModel.findByIdAndUpdate(categoriesData._id, { $set: { categories } });
-        }
         else {
             return next(new ErrorHandler("Invalid layout type", 400));
         }
@@ -169,7 +148,7 @@ export const updateLayout = CatchAsyncError(async (req: Request, res: Response, 
 // get layout by type
 export const getLayoutByType = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     const { type } = req.params
-    const layout = await LayoutModel.findOne({ type }).populate("categories")
+    const layout = await LayoutModel.findOne({ type })
     try {
         res.status(200).json({
             success: true,

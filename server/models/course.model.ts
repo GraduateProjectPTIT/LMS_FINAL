@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface ICourse extends Document {
   name: string;
   description: string;
+  overview: string;
   categories: mongoose.Types.ObjectId[];
   price: number;
   estimatedPrice?: number;
@@ -140,6 +141,10 @@ const courseSchema = new Schema<ICourse>(
       required: true,
     },
     description: {
+      type: String,
+      required: true,
+    },
+    overview: {
       type: String,
       required: true,
     },
