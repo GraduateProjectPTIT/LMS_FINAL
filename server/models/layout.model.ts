@@ -12,7 +12,6 @@ interface Layout extends Document {
   type: string;
   faq: Faq[];
   url: string;
-  categories: Schema.Types.ObjectId[];
 
   banner: {
     image: BannerImage;
@@ -32,12 +31,6 @@ const bannerImageSchema = new Schema<BannerImage>({
 const layoutSchema = new Schema<Layout>({
   type: { type: String },
   faq: [faqSchema],
-  categories: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Category",
-    },
-  ],
   banner: {
     image: bannerImageSchema,
     title: { type: String },

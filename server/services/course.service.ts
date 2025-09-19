@@ -10,6 +10,8 @@ import sendMail from "../utils/sendMail";
 import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
+import { ECourseLevel } from "../constants/course-level.enum";
+import { normalizeLevel, formatTime } from "../utils/course.helpers";
 
 import ErrorHandler from "../utils/ErrorHandler";
 
@@ -37,6 +39,11 @@ export const createCourse = async (
     if (!data.description) {
       console.log("Course description is missing");
       return next(new ErrorHandler("Course description is required", 400));
+    }
+
+    if (!data.overview) {
+      console.log("Course overview is missing");
+      return next(new ErrorHandler("Course overview is required", 400));
     }
 
     if (!data.price) {
@@ -306,13 +313,18 @@ export const getTutorCoursesService = async (
 
     const courses = await CourseModel.find({ creatorId: user._id })
       .select(
-        "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
       )
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({ success: true, courses });
+    const mapped = courses.map((c: any) => ({
+      ...c.toObject(),
+      level: normalizeLevel(c.level),
+    }));
+
+    return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -358,6 +370,7 @@ export const getOwnerSingleCourseService = async (
       _id: (course as any)._id,
       name: (course as any).name,
       description: (course as any).description,
+      overview: (course as any).overview,
       categories: (course as any).categories,
       price: (course as any).price,
       estimatedPrice: (course as any).estimatedPrice,
@@ -417,7 +430,7 @@ export const getStudentEnrolledCoursesService = async (
         .populate({
           path: "courseId",
           select:
-            "_id name description categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
+            "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
           populate: [
             { path: "creatorId", select: "name avatar email" },
             { path: "categories", select: "title" },
@@ -445,12 +458,19 @@ export const getStudentEnrolledCoursesService = async (
 
     const total = Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    const courses = validEnrollments.map((en) => ({
-      course: (en as any).courseId,
-      progress: (en as any).progress ?? 0,
-      completed: (en as any).completed ?? false,
-      enrolledAt: (en as any).enrolledAt,
-    }));
+    const courses = validEnrollments.map((en) => {
+      const courseDoc = (en as any).courseId as any;
+      const courseObj = courseDoc?.toObject ? courseDoc.toObject() : courseDoc;
+      if (courseObj) {
+        courseObj.level = normalizeLevel(courseObj.level);
+      }
+      return {
+        course: courseObj,
+        progress: (en as any).progress ?? 0,
+        completed: (en as any).completed ?? false,
+        enrolledAt: (en as any).enrolledAt,
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -495,24 +515,36 @@ export const editCourseService = async (
 
     const availableCourseThumbnail = findCourse?.thumbnail;
 
-    if (data.thumbnail && data.thumbnail !== availableCourseThumbnail?.url) {
-      if (availableCourseThumbnail?.public_id) {
-        await cloudinary.v2.uploader.destroy(
-          availableCourseThumbnail.public_id
-        );
+    if (data.thumbnail) {
+      if (typeof data.thumbnail === "string") {
+        if (
+          availableCourseThumbnail?.url &&
+          data.thumbnail.startsWith("http") &&
+          data.thumbnail === availableCourseThumbnail.url
+        ) {
+          data.thumbnail = availableCourseThumbnail;
+        } else {
+          if (availableCourseThumbnail?.public_id) {
+            await cloudinary.v2.uploader.destroy(
+              availableCourseThumbnail.public_id
+            );
+          }
+
+          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
+            folder: "courses",
+            width: 750,
+            height: 422,
+            crop: "fill",
+          });
+
+          data.thumbnail = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url,
+          };
+        }
+      } else if (typeof data.thumbnail === "object" && data.thumbnail.url) {
+        data.thumbnail = availableCourseThumbnail;
       }
-
-      const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
-        folder: "courses",
-        width: 750,
-        height: 422,
-        crop: "fill",
-      });
-
-      data.thumbnail = {
-        public_id: myCloud.public_id,
-        url: myCloud.secure_url,
-      };
     } else {
       data.thumbnail = availableCourseThumbnail;
     }
@@ -685,13 +717,14 @@ export const getCourseOverviewService = async (
       _id: course._id,
       name: course.name,
       description: course.description,
+      overview: (course as any).overview,
       categories: course.categories,
       price: course.price,
       estimatedPrice: course.estimatedPrice,
-      thumbnail: course.thumbnail,
+      thumbnail: { url: (course as any).thumbnail?.url },
       tags: course.tags,
-      level: course.level,
-      demoUrl: (course as any).videoDemo?.url,
+      level: normalizeLevel((course as any).level),
+      videoDemo: { url: (course as any).videoDemo?.url },
       benefits: course.benefits,
       prerequisites: course.prerequisites,
       totalSections,
@@ -783,9 +816,31 @@ export const enrollCourseService = async (
       .populate("creatorId", "name avatar email")
       .populate("categories", "title");
 
+    const userEnrollment = await EnrolledCourseModel.findOne({
+      userId: userId?._id,
+      courseId,
+    }).select("completedLectures");
+
+    const levelRaw = String((course as any)?.level || "").toLowerCase();
+    const levelEnumValue =
+      levelRaw === ECourseLevel.Beginner.toLowerCase()
+        ? ECourseLevel.Beginner
+        : levelRaw === ECourseLevel.Intermediate.toLowerCase()
+        ? ECourseLevel.Intermediate
+        : levelRaw === ECourseLevel.Advanced.toLowerCase()
+        ? ECourseLevel.Advanced
+        : levelRaw === ECourseLevel.Professional.toLowerCase()
+        ? ECourseLevel.Professional
+        : null;
+
+    if (course) {
+      (course as any).level = levelEnumValue;
+    }
+
     res.status(200).json({
       success: true,
-      course: course,
+      course,
+      completedLectures: userEnrollment?.completedLectures || [],
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -826,6 +881,7 @@ export const searchCoursesService = async (
         const searchConditions: any[] = [
           { name: { $regex: regexPattern } },
           { description: { $regex: regexPattern } },
+          { overview: { $regex: regexPattern } },
           { tags: { $regex: regexPattern } },
         ];
 
@@ -892,15 +948,20 @@ export const searchCoursesService = async (
     // Find courses with the filter and sort options
     const courses = await CourseModel.find(filter)
       .select(
-        "_id name description categories price estimatedPrice thumbnail tags level videoDemo ratings purchased createdAt"
+        "_id name description overview categories price estimatedPrice thumbnail tags level videoDemo ratings purchased createdAt"
       )
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
       .sort(sortOption);
 
+    const mapped = courses.map((c: any) => ({
+      ...c.toObject(),
+      level: normalizeLevel(c.level),
+    }));
+
     res.status(200).json({
       success: true,
-      courses,
+      courses: mapped,
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1318,8 +1379,7 @@ export const getAllLevelsService = async (
   next: NextFunction
 ) => {
   try {
-    const levels = (await CourseModel.distinct("level")) as string[];
-    levels.sort((a, b) => String(a).localeCompare(String(b)));
+    const levels = Object.values(ECourseLevel);
     res.status(200).json({ success: true, levels });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

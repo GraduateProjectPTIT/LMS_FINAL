@@ -3,5 +3,4 @@ export enum ECourseLevel {
   Intermediate = "Intermediate",
   Advanced = "Advanced",
   Professional = "Professional",
-  All = "All Levels",
 }

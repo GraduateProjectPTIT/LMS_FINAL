@@ -15,6 +15,7 @@ import authRouter from "./routes/auth.route";
 import { stripeWebhook } from "./controllers/order.controller";
 import categoryRouter from "./routes/category.route";
 import statisticsRouter from "./routes/statistics.route";
+import cartRouter from "./routes/cart.route";
 
 app.post(
   "/api/stripe/webhook",
@@ -54,7 +55,8 @@ app.use(
   notificationRouter,
   statisticsRouter,
   layoutRouter,
-  categoryRouter
+  categoryRouter,
+  cartRouter
 );
 
 app.use("/api/stripe", stripeRouter);
