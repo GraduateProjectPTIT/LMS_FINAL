@@ -1,38 +1,89 @@
-import React, { useState } from 'react';
+"use client";
+
+import React, { useState, useRef, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
 import { SectionLecture, IVideoLinkResponse } from "@/type";
+import { FaRegPlayCircle, FaLink, FaCheck } from "react-icons/fa";
 
 interface VideoPlayerProps {
     lecture: SectionLecture | null;
+    course: any;
+    onLectureCompleted: (lectureId: string) => void; // Callback để update completion status
+    completedLectures: string[]; // Array of completed lecture IDs
 }
 
-const VideoPlayer = ({ lecture }: VideoPlayerProps) => {
+const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }: VideoPlayerProps) => {
     const [activeTab, setActiveTab] = useState<'description' | 'resources' | 'questions'>('description');
+    const [watchedPercentage, setWatchedPercentage] = useState(0);
+    const [isMarkingCompleted, setIsMarkingCompleted] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const { currentUser } = useSelector((state: RootState) => state.user);
+
+    const isAdmin = currentUser?.role === 'admin';
+    const isCreator = currentUser?._id === course?.creatorId?._id;
+    const canBypass = isAdmin || isCreator;
+
+    // Check if current lecture is completed
+    const isLectureCompleted = lecture ? completedLectures.includes(lecture._id) : false;
+
+    // Reset watched percentage when lecture changes
+    useEffect(() => {
+        setWatchedPercentage(0);
+    }, [lecture?._id]);
+
+    // Handle video time update to track progress
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            const video = videoRef.current;
+            const percentage = (video.currentTime / video.duration) * 100;
+            setWatchedPercentage(Math.round(percentage));
+        }
+    };
+
+    // Handle marking lecture as completed
+    const handleMarkAsCompleted = async () => {
+        if (!lecture || isLectureCompleted) return;
+
+        setIsMarkingCompleted(true);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/complete_lecture`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    courseId: course._id,
+                    lectureId: lecture._id
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                onLectureCompleted(lecture._id);
+                // Optionally show success message
+                console.log('Lecture marked as completed successfully');
+            } else {
+                console.error('Failed to mark lecture as completed:', data.message);
+                // Optionally show error message
+            }
+        } catch (error) {
+            console.error('Error marking lecture as completed:', error);
+            // Optionally show error message
+        } finally {
+            setIsMarkingCompleted(false);
+        }
+    };
 
     if (!lecture) {
         return (
             <div className="flex flex-col h-full">
                 <div className="bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center aspect-video">
                     <div className="text-center p-6">
-                        <svg
-                            className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                            />
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
+                        <FaRegPlayCircle className="text-gray-400 dark:text-gray-500 mx-auto" size={50} />
                         <p className="mt-4 text-gray-500 dark:text-gray-400">Select a video to start learning</p>
                     </div>
                 </div>
@@ -40,26 +91,77 @@ const VideoPlayer = ({ lecture }: VideoPlayerProps) => {
         );
     }
 
+    const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80);
+
     return (
         <div className="flex flex-col h-screen overflow-y-scroll">
+            {/* Video display */}
             <div className="bg-black rounded-lg overflow-hidden aspect-video">
                 <video
+                    ref={videoRef}
                     src={lecture.video.url}
                     controls
                     className="w-full h-full"
-                    poster="/video-placeholder.jpg"
                     key={lecture._id} // Force re-render when lecture changes
+                    onTimeUpdate={handleTimeUpdate}
                 >
                     Your browser does not support the video tag.
                 </video>
             </div>
 
             <div className="mt-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lecture.videoTitle}</h2>
+                {/* Title and Mark as Completed button */}
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">
+                        {lecture.videoTitle}
+                    </h2>
+
+                    {/* Mark as Completed button */}
+                    {showMarkAsCompletedButton && (
+                        <button
+                            onClick={handleMarkAsCompleted}
+                            disabled={isMarkingCompleted}
+                            className="ml-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors duration-200"
+                        >
+                            <FaCheck className="mr-2" />
+                            {isMarkingCompleted ? 'Marking...' : 'Mark as Completed'}
+                        </button>
+                    )}
+
+                    {/* Completed indicator */}
+                    {isLectureCompleted && (
+                        <div className="ml-4 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg font-medium text-sm flex items-center">
+                            <FaCheck className="mr-2" />
+                            Completed
+                        </div>
+                    )}
+                </div>
+
+                {/* Progress indicator (only show for non-bypass users) */}
+                {!canBypass && !isLectureCompleted && (
+                    <div className="mb-4">
+                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            <span>Progress</span>
+                            <span>{watchedPercentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                                className={`h-2 rounded-full transition-all duration-300 ${watchedPercentage >= 80 ? 'bg-green-500' : 'bg-blue-500'
+                                    }`}
+                                style={{ width: `${Math.min(watchedPercentage, 100)}%` }}
+                            ></div>
+                        </div>
+                        {watchedPercentage >= 80 && (
+                            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                                ✓ You can now mark this lecture as completed
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="border-b border-gray-300 dark:border-slate-700 mb-4">
-                    <nav className="-mb-px flex space-x-8">
+                    <nav className="flex gap-2">
                         <button
                             onClick={() => setActiveTab('description')}
                             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'description'
@@ -110,20 +212,7 @@ const VideoPlayer = ({ lecture }: VideoPlayerProps) => {
                                                 rel="noopener noreferrer"
                                                 className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center"
                                             >
-                                                <svg
-                                                    className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                                    />
-                                                </svg>
+                                                <FaLink className='h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400' />
                                                 {link.title}
                                             </a>
                                         </li>

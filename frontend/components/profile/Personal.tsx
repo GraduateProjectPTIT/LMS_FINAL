@@ -1,19 +1,21 @@
 "use client"
 
 import React, { useEffect, useState } from 'react';
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDispatch } from 'react-redux';
+import { updateStart, updateSuccess, updateFailure } from '@/redux/user/userSlice';
+import { getFieldStatus, getFieldBorderClass, getFieldIcon } from "@/utils/formFieldHelpers";
+import toast from 'react-hot-toast';
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { FaUserEdit, FaUserCheck } from 'react-icons/fa';
-
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useDispatch } from 'react-redux';
-import { updateStart, updateSuccess, updateFailure } from '@/redux/user/userSlice';
-import toast from 'react-hot-toast';
+import { IoAlertCircleOutline } from "react-icons/io5";
 
 interface PersonalProps {
     user: any;
@@ -26,7 +28,8 @@ const updatePersonalInfoSchema = z.object({
         facebook: z.string().url().or(z.literal('')).optional(),
         instagram: z.string().url().or(z.literal('')).optional(),
         tiktok: z.string().url().or(z.literal('')).optional(),
-    }).optional()
+    }).optional(),
+    bio: z.string().max(500, "Bio can't be over 500 characters").optional(),
 })
 
 type UpdateFormValues = z.infer<typeof updatePersonalInfoSchema>
@@ -42,10 +45,12 @@ const Personal = ({ user }: PersonalProps) => {
     const {
         register,
         handleSubmit,
-        formState: { isSubmitting },
+        watch,
+        formState: { isSubmitting, errors, touchedFields },
         reset
     } = useForm<UpdateFormValues>({
         resolver: zodResolver(updatePersonalInfoSchema),
+        mode: "onChange",
         defaultValues: {
             name: user?.name || "",
             email: user?.email || "",
@@ -53,16 +58,29 @@ const Personal = ({ user }: PersonalProps) => {
                 facebook: user?.socials?.facebook || "",
                 instagram: user?.socials?.instagram || "",
                 tiktok: user?.socials?.tiktok || "",
-            }
+            },
+            bio: user?.bio || "",
         }
-    })
+    });
+
+    const watchedFields = watch();
+
+    // Helper function để lấy field status và styling
+    const field = (name: keyof UpdateFormValues) => {
+        const status = getFieldStatus(name, touchedFields, errors, watchedFields);
+        return {
+            border: getFieldBorderClass(status),
+            icon: getFieldIcon(status),
+        };
+    };
 
     // Xử lý khi người dùng bấm nút hủy
     const handleCancel = () => {
         reset({
             name: user?.name,
             email: user?.email,
-            socials: user?.socials
+            socials: user?.socials,
+            bio: user?.bio,
         });
         setAvatarPreview("");
         setIsEditing(false);
@@ -113,7 +131,9 @@ const Personal = ({ user }: PersonalProps) => {
             setIsUploadingImage(true);
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_avatar`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ avatar: avatarPreview }),
                 credentials: 'include',
             });
@@ -134,6 +154,7 @@ const Personal = ({ user }: PersonalProps) => {
         // Kiểm tra xem người dùng có thay đổi thông tin gì không
         const hasInfoChanged = data.name !== user?.name ||
             data.email !== user?.email ||
+            data.bio !== user?.bio ||
             JSON.stringify(data.socials) !== JSON.stringify(user?.socials);
 
         // Dừng lại nếu không có gì thay đổi
@@ -153,7 +174,9 @@ const Personal = ({ user }: PersonalProps) => {
         if (hasInfoChanged) {
             const infoPromise = fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/user/update_user_info`, {
                 method: "PUT",
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(data),
                 credentials: 'include',
             }).then(async (res) => ({ ok: res.ok, data: await res.json() }));
@@ -237,7 +260,7 @@ const Personal = ({ user }: PersonalProps) => {
                         <div className="flex flex-col items-center gap-2">
                             <div className='relative'>
                                 <Avatar className="w-24 h-24 border border-gray-300 dark:border-slate-800 shadow-md">
-                                    <AvatarImage src={avatarPreview || user?.avatar.url || "/anonymous.png"} />
+                                    <AvatarImage src={avatarPreview || user?.avatar?.url || "/anonymous.png"} />
                                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-xl font-bold">
                                         {user?.name?.charAt(0) || 'U'}
                                     </AvatarFallback>
@@ -279,60 +302,137 @@ const Personal = ({ user }: PersonalProps) => {
                             {/* Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">Full Name</Label>
-                                <Input
-                                    id="name"
-                                    {...register("name")}
-                                    placeholder='Enter name'
-                                    disabled={!isEditing}
-                                    className="border-gray-300 dark:border-slate-600 w-full"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="name"
+                                        {...register("name")}
+                                        placeholder='Enter name'
+                                        disabled={!isEditing}
+                                        className={`${field('name').border} ${isEditing ? 'pr-10' : ''}`}
+                                    />
+                                    {isEditing && field('name').icon && (
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                            {field('name').icon}
+                                        </div>
+                                    )}
+                                </div>
+                                {errors.name && watchedFields.name && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                        <p className="text-red-400 text-[12px]">{errors.name.message}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Email */}
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email Address</Label>
-                                <Input
-                                    id="email"
-                                    {...register("email")}
-                                    placeholder='Enter email'
-                                    disabled={!isEditing}
-                                    className="border-gray-300 dark:border-slate-600"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="email"
+                                        {...register("email")}
+                                        placeholder='Enter email'
+                                        disabled={!isEditing}
+                                        className={`${field('email').border} ${isEditing ? 'pr-10' : ''}`}
+                                    />
+                                    {isEditing && field('email').icon && (
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                            {field('email').icon}
+                                        </div>
+                                    )}
+                                </div>
+                                {errors.email && watchedFields.email && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                        <p className="text-red-400 text-[12px]">{errors.email.message}</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Bio */}
+                    <div className="space-y-2">
+                        <Label htmlFor="bio">Bio</Label>
+                        <div className="relative">
+                            <textarea
+                                id="bio"
+                                {...register("bio")}
+                                placeholder='Tell us about yourself...'
+                                disabled={!isEditing}
+                                className={`${field('bio').border} w-full rounded-md border text-sm p-2 pr-8 md:pr-10 bg-transparent resize-y min-h-[72px] ${isEditing ? 'pr-10' : ''}`}
+                            />
+                            {isEditing && field('bio').icon && (
+                                <div className="absolute top-2 right-2">
+                                    {field('bio').icon}
+                                </div>
+                            )}
+                        </div>
+                        {errors.bio && watchedFields.bio && (
+                            <div className="flex items-center gap-2 mt-1">
+                                <IoAlertCircleOutline className="text-red-400 text-sm" />
+                                <p className="text-red-400 text-[12px]">{errors.bio.message}</p>
+                            </div>
+                        )}
+                        {watchedFields.bio && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 text-right">
+                                {watchedFields.bio.length}/500 characters
+                            </p>
+                        )}
                     </div>
 
                     {/* Social Links */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="facebook">Facebook</Label>
-                            <Input
-                                id="facebook"
-                                placeholder='Enter facebook link'
-                                {...register("socials.facebook")}
-                                disabled={!isEditing}
-                                className="border-gray-300 dark:border-slate-600"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="facebook"
+                                    placeholder='Enter facebook link'
+                                    {...register("socials.facebook")}
+                                    disabled={!isEditing}
+                                    className={`${field('socials').border} ${isEditing ? 'pr-10' : ''}`}
+                                />
+                                {isEditing && field('socials').icon && (
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        {field('socials').icon}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="instagram">Instagram</Label>
-                            <Input
-                                id="instagram"
-                                placeholder='Enter instagram link'
-                                {...register("socials.instagram")}
-                                disabled={!isEditing}
-                                className="border-gray-300 dark:border-slate-600"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="instagram"
+                                    placeholder='Enter instagram link'
+                                    {...register("socials.instagram")}
+                                    disabled={!isEditing}
+                                    className={`${field('socials').border} ${isEditing ? 'pr-10' : ''}`}
+                                />
+                                {isEditing && field('socials').icon && (
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        {field('socials').icon}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tiktok">TikTok</Label>
-                            <Input
-                                id="tiktok"
-                                placeholder='Enter tiktok link'
-                                {...register("socials.tiktok")}
-                                disabled={!isEditing}
-                                className="border-gray-300 dark:border-slate-600"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="tiktok"
+                                    placeholder='Enter tiktok link'
+                                    {...register("socials.tiktok")}
+                                    disabled={!isEditing}
+                                    className={`${field('socials').border} ${isEditing ? 'pr-10' : ''}`}
+                                />
+                                {isEditing && field('socials').icon && (
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        {field('socials').icon}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </CardContent>

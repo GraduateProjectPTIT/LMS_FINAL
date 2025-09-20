@@ -15,6 +15,7 @@ const CreateCourse = () => {
 
     const [courseInfo, setCourseInfo] = useState<ICreateCourseInformation>({
         name: "",
+        overview: "",
         description: "",
         categories: [],
         price: null,

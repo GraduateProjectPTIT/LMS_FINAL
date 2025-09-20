@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getFieldStatus, getFieldBorderClass, getFieldIcon } from "@/utils/formFieldHelpers";
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -60,42 +62,6 @@ const Authentication = ({ user }: AuthenticationProps) => {
 
     const watchedFields = watch();
 
-    // Xác định trạng thái của trường input (lỗi, thành công, mặc định).
-    const getFieldStatus = (fieldName: keyof PasswordChangeFormValues) => {
-        const isTouched = touchedFields[fieldName];
-        const hasError = errors[fieldName];
-        const hasValue = watchedFields[fieldName]?.length > 0;
-
-        if (!isTouched || !hasValue) return 'default';
-        if (hasError) return 'error';
-        return 'success';
-    }
-
-    // Trả về class CSS cho viền input dựa trên trạng thái.
-    const getFieldBorderClass = (fieldName: keyof PasswordChangeFormValues) => {
-        const status = getFieldStatus(fieldName);
-        switch (status) {
-            case 'error':
-                return 'border-red-400';
-            case 'success':
-                return 'border-green-400';
-            default:
-                return 'border-gray-300 dark:border-slate-600';
-        }
-    }
-
-    // Trả về icon tương ứng với trạng thái của input.
-    const getFieldIcon = (fieldName: keyof PasswordChangeFormValues) => {
-        const status = getFieldStatus(fieldName);
-        if (status === 'error') {
-            return <IoAlertCircleOutline className="text-red-500 text-lg" />;
-        }
-        if (status === 'success') {
-            return <IoCheckmarkCircleOutline className="text-green-500 text-lg" />;
-        }
-        return null;
-    }
-
     const togglePasswordVisibility = (field: string) => {
         setShowPasswords({
             ...showPasswords,
@@ -139,6 +105,14 @@ const Authentication = ({ user }: AuthenticationProps) => {
             toast.error("Something went wrong. Please try again.");
         }
     }
+
+    const field = (name: keyof PasswordChangeFormValues) => {
+        const status = getFieldStatus(name, touchedFields, errors, watchedFields);
+        return {
+            border: getFieldBorderClass(status),
+            icon: getFieldIcon(status),
+        };
+    };
 
     return (
         <Card className="w-full theme-mode border-gray-200 dark:border-slate-600 shadow-md dark:shadow-slate-600">
@@ -198,10 +172,10 @@ const Authentication = ({ user }: AuthenticationProps) => {
                                             id="oldPassword"
                                             type={showPasswords.oldPassword ? "text" : "password"}
                                             placeholder="••••••••"
-                                            className={`${getFieldBorderClass('oldPassword')} pr-16`}
+                                            className={`${field('oldPassword').border} pr-16`}
                                         />
                                         <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
-                                            {getFieldIcon('oldPassword')}
+                                            {field('oldPassword').icon}
                                             <button
                                                 type="button"
                                                 onClick={() => togglePasswordVisibility('oldPassword')}
@@ -228,10 +202,10 @@ const Authentication = ({ user }: AuthenticationProps) => {
                                             id="newPassword"
                                             type={showPasswords.newPassword ? "text" : "password"}
                                             placeholder="••••••••"
-                                            className={`${getFieldBorderClass('newPassword')} pr-16`}
+                                            className={`${field('newPassword').border} pr-16`}
                                         />
                                         <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
-                                            {getFieldIcon('newPassword')}
+                                            {field('newPassword').icon}
                                             <button
                                                 type="button"
                                                 onClick={() => togglePasswordVisibility('newPassword')}
@@ -258,10 +232,10 @@ const Authentication = ({ user }: AuthenticationProps) => {
                                             id="confirmPassword"
                                             type={showPasswords.confirmPassword ? "text" : "password"}
                                             placeholder="••••••••"
-                                            className={`${getFieldBorderClass('confirmPassword')} pr-16`}
+                                            className={`${field('confirmPassword').border} pr-16`}
                                         />
                                         <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
-                                            {getFieldIcon('confirmPassword')}
+                                            {field('confirmPassword').icon}
                                             <button
                                                 type="button"
                                                 onClick={() => togglePasswordVisibility('confirmPassword')}

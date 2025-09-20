@@ -1,6 +1,9 @@
 "use client"
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
 
 import { FaUserAlt } from "react-icons/fa";
 import { GoPasskeyFill } from "react-icons/go";
@@ -11,7 +14,6 @@ import { Separator } from '../ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiArrowDownSLine, RiArrowUpSLine } from "react-icons/ri";
 import { MdOutlineAdminPanelSettings } from "react-icons/md";
-import { useRouter } from 'next/navigation';
 
 const sidebarLinks = [
     {
@@ -45,19 +47,30 @@ interface SidebarProps {
 const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
 
     const router = useRouter();
+    const { currentUser } = useSelector((state: RootState) => state.user);
 
     const [isOpen, setIsOpen] = useState(false);
+
+    const isAdmin = currentUser?.role === "admin";
+    const isTutor = currentUser?.role === "tutor";
+
+    // Filter out "Enroll Courses" for admin or tutor
+    const filteredSidebarLinks = sidebarLinks.filter(
+        item => !(item.value === 'enroll_courses' && (isAdmin || isTutor))
+    );
+
 
     const handleClick = (section: string) => {
         setActiveSection(section);
         setIsOpen(false);
     }
 
-    const activeItem = sidebarLinks.find(item => item.value === activeSection) || sidebarLinks[0];
+    const activeItem = filteredSidebarLinks.find(item => item.value === activeSection) || filteredSidebarLinks[0];
 
     const toggleDropdown = () => {
         setIsOpen(!isOpen);
     }
+
 
     return (
         <section className='flex flex-col w-full md:w-[280px] gap-[30px] h-full md:h-screen md:max-h-[1200px] theme-mode p-2 md:p-6 border max-md:border-none border-gray-300 dark:border-slate-700 border-r-0 rounded-l-[24px] '>
@@ -65,7 +78,7 @@ const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
             <h2 className='text-xl md:text-2xl font-bold'>Profile Management</h2>
 
             <div className='hidden md:flex md:flex-col gap-3'>
-                {sidebarLinks.map((item, index) => (
+                {filteredSidebarLinks.map((item, index) => (
                     <motion.div
                         key={index}
                         whileHover={{ scale: 1.02 }}
@@ -117,7 +130,7 @@ const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.3 }}
                         >
-                            {sidebarLinks
+                            {filteredSidebarLinks
                                 .filter(item => item.value !== activeSection)
                                 .map((item, index) => (
                                     <motion.div

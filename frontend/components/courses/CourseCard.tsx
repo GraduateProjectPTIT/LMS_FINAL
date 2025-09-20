@@ -169,7 +169,7 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                     <span className="font-medium">: {course.purchased.toLocaleString()} students</span>
                 </div>
 
-                <div className="h-[50px]">
+                <div className="h-[80px]">
                     <span className="text-sm text-slate-500 dark:text-slate-400">Category : </span>
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         {course.categories.map(cat => cat.title).join(', ')}

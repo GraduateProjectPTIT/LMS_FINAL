@@ -18,6 +18,7 @@ import {
     sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateTempId } from '@/utils/generateId';
+import { LIMITS, formatError } from "@/utils/courseContentValidation";
 
 interface CourseContentProps {
     active: number;
@@ -72,43 +73,89 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
         for (let sectionIndex = 0; sectionIndex < courseData.length; sectionIndex++) {
             const section = courseData[sectionIndex];
 
+            // Validate section title
             if (!section.sectionTitle.trim()) {
-                return `Section ${sectionIndex + 1} title is required`;
+                return formatError(sectionIndex, undefined, undefined, "Please enter a section title.");
+            }
+            if (section.sectionTitle.trim().length < LIMITS.SECTION_TITLE.min) {
+                return formatError(sectionIndex, undefined, undefined, `Section title must be at least ${LIMITS.SECTION_TITLE.min} characters.`);
+            }
+            if (section.sectionTitle.trim().length > LIMITS.SECTION_TITLE.max) {
+                return formatError(sectionIndex, undefined, undefined, `Section title must not exceed ${LIMITS.SECTION_TITLE.max} characters.`);
             }
 
             for (let lectureIndex = 0; lectureIndex < section.sectionContents.length; lectureIndex++) {
                 const lecture = section.sectionContents[lectureIndex];
 
-                // Xác thực tiêu đề, mô tả, video và độ dài video
+                // Validate lecture title
                 if (!lecture.videoTitle.trim()) {
-                    return `Lecture title is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                    return formatError(sectionIndex, lectureIndex, undefined, "Please enter a lecture title.");
                 }
-                if (!lecture.videoDescription.trim()) {
-                    return `Lecture description is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                if (lecture.videoTitle.trim().length < LIMITS.LECTURE_TITLE.min) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Lecture title must be at least ${LIMITS.LECTURE_TITLE.min} characters.`);
                 }
-                if (!lecture.video?.url || !lecture.video?.public_id) {
-                    return `Video is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
-                }
-                if (!lecture.videoLength || lecture.videoLength <= 0) {
-                    return `Video length is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}`;
+                if (lecture.videoTitle.trim().length > LIMITS.LECTURE_TITLE.max) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Lecture title must not exceed ${LIMITS.LECTURE_TITLE.max} characters.`);
                 }
 
-                // Xác thực các link tài nguyên (nếu có)
+                // Validate lecture description
+                if (!lecture.videoDescription.trim()) {
+                    return formatError(sectionIndex, lectureIndex, undefined, "Please enter a lecture description.");
+                }
+                if (lecture.videoDescription.trim().length < LIMITS.LECTURE_DESCRIPTION.min) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Lecture description must be at least ${LIMITS.LECTURE_DESCRIPTION.min} characters.`);
+                }
+                if (lecture.videoDescription.trim().length > LIMITS.LECTURE_DESCRIPTION.max) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Lecture description must not exceed ${LIMITS.LECTURE_DESCRIPTION.max} characters.`);
+                }
+
+                // Validate video
+                if (!lecture.video?.url || !lecture.video?.public_id) {
+                    return formatError(sectionIndex, lectureIndex, undefined, "Please upload a video for this lecture.");
+                }
+
+                // Validate video length
+                if (!lecture.videoLength || lecture.videoLength <= 0) {
+                    return formatError(sectionIndex, lectureIndex, undefined, "Please enter the video length.");
+                }
+                if (lecture.videoLength < LIMITS.VIDEO_LENGTH.min) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Video length must be at least ${LIMITS.VIDEO_LENGTH.min} minutes.`);
+                }
+                if (lecture.videoLength > LIMITS.VIDEO_LENGTH.max) {
+                    return formatError(sectionIndex, lectureIndex, undefined, `Video length must not exceed ${LIMITS.VIDEO_LENGTH.max} minutes (24 hours).`);
+                }
+
+                // Validate resource links
                 if (lecture.videoLinks && lecture.videoLinks.length > 0) {
                     for (let linkIndex = 0; linkIndex < lecture.videoLinks.length; linkIndex++) {
                         const link = lecture.videoLinks[linkIndex];
 
+                        // Resource title validation
                         if (!link.title.trim()) {
-                            return `Resource link title is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                            return formatError(sectionIndex, lectureIndex, linkIndex, "Please enter a resource link title.");
                         }
-                        if (!link.url.trim()) {
-                            return `Resource link URL is required in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                        if (link.title.trim().length < LIMITS.RESOURCE_TITLE.min) {
+                            return formatError(sectionIndex, lectureIndex, linkIndex, `Resource link title must be at least ${LIMITS.RESOURCE_TITLE.min} characters.`);
+                        }
+                        if (link.title.trim().length > LIMITS.RESOURCE_TITLE.max) {
+                            return formatError(sectionIndex, lectureIndex, linkIndex, `Resource link title must not exceed ${LIMITS.RESOURCE_TITLE.max} characters.`);
                         }
 
-                        // Optional: Validate URL format
+                        // Resource URL validation
+                        if (!link.url.trim()) {
+                            return formatError(sectionIndex, lectureIndex, linkIndex, "Please enter a resource link URL.");
+                        }
+                        if (link.url.trim().length < LIMITS.RESOURCE_URL.min) {
+                            return formatError(sectionIndex, lectureIndex, linkIndex, `Resource link URL must be at least ${LIMITS.RESOURCE_URL.min} characters.`);
+                        }
+                        if (link.url.trim().length > LIMITS.RESOURCE_URL.max) {
+                            return formatError(sectionIndex, lectureIndex, linkIndex, `Resource link URL must not exceed ${LIMITS.RESOURCE_URL.max} characters.`);
+                        }
+
+                        // URL format validation
                         const urlPattern = /^https?:\/\/.+/;
                         if (!urlPattern.test(link.url.trim())) {
-                            return `Resource link URL must be a valid URL (starting with http:// or https://) in Section ${sectionIndex + 1}, Lecture ${lectureIndex + 1}, Link ${linkIndex + 1}`;
+                            return formatError(sectionIndex, lectureIndex, linkIndex, "Resource link URL must start with http:// or https://");
                         }
                     }
                 }

@@ -51,8 +51,6 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
     const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newLimit = Number(e.target.value);
         onLimitChange(newLimit);
-        // Reset to first page when changing limit
-        onPageChange(1);
     };
 
     return (
@@ -71,7 +69,7 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     disabled={isLoading}
                     className="border border-gray-300 dark:border-slate-500 rounded px-2 py-1 text-sm bg-white dark:bg-slate-800 disabled:opacity-50"
                 >
-                    {[5, 10, 20, 30, 50].map(size => (
+                    {[10, 20, 30, 40, 50].map(size => (
                         <option key={size} value={size}>
                             {size}
                         </option>
@@ -104,6 +102,9 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                 <div className="flex items-center space-x-1 px-3">
                     <span className="text-sm text-gray-600 dark:text-gray-300">
                         Page {page} of {totalPages}
+                    </span>
+                    <span className="hidden md:inline text-sm text-gray-500 dark:text-gray-400">
+                        ({total} results)
                     </span>
                 </div>
 

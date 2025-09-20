@@ -1,16 +1,27 @@
 "use client"
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
 import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
 import VideoPlayer from './VideoPlayer';
 import CourseSidebar from './CourseSidebar';
 import { CourseEnrollResponse, SectionLecture } from "@/type";
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [course, setCourse] = useState<CourseEnrollResponse | null>(null);
     const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [completedLectures, setCompletedLectures] = useState<string[]>([]);
+    const [enrollmentData, setEnrollmentData] = useState<any>(null);
+
+    const { currentUser } = useSelector((state: RootState) => state.user);
+
+    const isAdmin = currentUser?.role === 'admin';
+    const isCreator = course ? currentUser?._id === course.creatorId?._id : false;
+    const canBypass = isAdmin || isCreator;
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
@@ -30,9 +41,18 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             setCourse(data.course);
 
-            // Auto-select first lecture if available
+            // Set enrollment data and completed lectures
+            if (data.enrollment) {
+                setEnrollmentData(data.enrollment);
+                setCompletedLectures(data.enrollment.completedLectures || []); // api chưa trả về completedLectures
+            } else {
+                setCompletedLectures([]);
+            }
+
+            // Auto-select first accessible lecture
             if (data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
-                setSelectedLecture(data.course.courseData[0].sectionContents[0]);
+                const firstLecture = data.course.courseData[0].sectionContents[0];
+                setSelectedLecture(firstLecture);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -47,9 +67,95 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         }
     }, [courseId]);
 
-    const setSelectedVideo = (lecture: SectionLecture) => {
-        setSelectedLecture(lecture);
+    // Create flat array of all lectures with their order
+    const getAllLecturesInOrder = () => {
+        if (!course) return [];
+
+        const allLectures: (SectionLecture & { order: number })[] = [];
+        let order = 0;
+
+        course.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push({ ...lecture, order });
+                order++;
+            });
+        });
+
+        return allLectures;
     };
+
+    // Check if lecture is accessible
+    const isLectureAccessible = (lecture: SectionLecture) => {
+        if (canBypass) return true;
+
+        const allLectures = getAllLecturesInOrder();
+        const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
+
+        if (currentLectureIndex === 0) return true; // First lecture is always accessible
+
+        // Check if all previous lectures are completed
+        for (let i = 0; i < currentLectureIndex; i++) {
+            if (!completedLectures.includes(allLectures[i]._id)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    const setSelectedVideo = (lecture: SectionLecture) => {
+        // Only allow selection of accessible lectures
+        if (!isLectureAccessible(lecture)) {
+            return;
+        }
+
+        setSelectedLecture(lecture);
+        // Close sidebar on mobile after selecting video
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
+    };
+
+    // Handle when a lecture is marked as completed
+    const handleLectureCompleted = (lectureId: string) => {
+        setCompletedLectures(prev => {
+            if (!prev.includes(lectureId)) {
+                return [...prev, lectureId];
+            }
+            return prev;
+        });
+
+        // Update enrollment data progress if available
+        if (enrollmentData) {
+            const allLectures = getAllLecturesInOrder();
+            const newCompletedCount = completedLectures.length + 1;
+            const progress = Math.min(100, Math.round((newCompletedCount / allLectures.length) * 100));
+
+            setEnrollmentData(prev => ({
+                ...prev,
+                progress,
+                completed: progress >= 100,
+                completedLectures: [...completedLectures, lectureId]
+            }));
+        }
+    };
+
+    // Auto-select next accessible lecture when current one is completed
+    useEffect(() => {
+        if (selectedLecture && completedLectures.includes(selectedLecture._id)) {
+            const allLectures = getAllLecturesInOrder();
+            const currentIndex = allLectures.findIndex(l => l._id === selectedLecture._id);
+
+            // Find next accessible lecture
+            for (let i = currentIndex + 1; i < allLectures.length; i++) {
+                if (isLectureAccessible(allLectures[i])) {
+                    // Optional: Auto-advance to next lecture
+                    // setSelectedLecture(allLectures[i]);
+                    break;
+                }
+            }
+        }
+    }, [completedLectures, selectedLecture]);
 
     const courseCategories = course?.categories.map(cat => cat.title).join(', ') || '';
 
@@ -60,43 +166,70 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             ) : course ? (
                 <div className="flex flex-col h-screen bg-white dark:bg-[#272a31]">
                     <CourseHeader
-                        courseId={courseId}
                         name={course.name}
                         level={course.level}
                         categories={courseCategories}
+                        toggleSidebar={toggleSidebar}
+                        isSidebarOpen={isSidebarOpen}
                     />
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Main content area */}
                         <div className="flex-grow p-4 overflow-auto">
-                            <VideoPlayer lecture={selectedLecture} />
+                            <VideoPlayer
+                                lecture={selectedLecture}
+                                course={course}
+                                onLectureCompleted={handleLectureCompleted}
+                                completedLectures={completedLectures}
+                            />
                         </div>
 
-                        {/* Right sidebar - with transition */}
+                        {/* Desktop sidebar - with transition */}
                         <div
-                            className={`border-l border-gray-300 dark:border-slate-600 bg-white dark:bg-[#1f2227] overflow-auto transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-96' : 'w-0'}`}
+                            className={`hidden md:block border-l border-gray-300 dark:border-slate-600 bg-white dark:bg-[#1f2227] overflow-auto transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-96' : 'w-0'}`}
                         >
                             {isSidebarOpen && (
                                 <CourseSidebar
                                     courseData={course.courseData}
                                     setSelectedVideo={setSelectedVideo}
                                     selectedVideoId={selectedLecture?._id}
+                                    completedLectures={completedLectures}
+                                    course={course}
                                 />
                             )}
                         </div>
 
-                        {/* Toggle sidebar button */}
+                        {/* Mobile sidebar panel */}
+                        <div
+                            className={`md:hidden fixed inset-y-0 right-0 z-50 w-80 bg-white dark:bg-[#1f2227] shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                            style={{ top: '61px' }} // Adjust based on header height
+                        >
+                            <CourseSidebar
+                                courseData={course.courseData}
+                                setSelectedVideo={setSelectedVideo}
+                                selectedVideoId={selectedLecture?._id}
+                                completedLectures={completedLectures}
+                                course={course}
+                            />
+                        </div>
+
+                        {/* Mobile overlay */}
+                        {isSidebarOpen && (
+                            <div
+                                className="md:hidden fixed inset-0 bg-black/50 z-40"
+                                style={{ top: '64px' }} // Adjust based on header height
+                                onClick={() => setIsSidebarOpen(false)}
+                            />
+                        )}
+
+                        {/* Desktop toggle sidebar button */}
                         <button
                             onClick={toggleSidebar}
-                            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-l-md p-2 shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 z-10"
+                            className="hidden md:block absolute right-0 top-1/2 transform -translate-y-1/2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-l-md p-2 shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 z-10"
                         >
                             {isSidebarOpen ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
+                                <ChevronRight className='w-4 h-4' />
                             ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
+                                <ChevronLeft className='w-4 h-4' />
                             )}
                         </button>
                     </div>

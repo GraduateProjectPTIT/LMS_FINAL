@@ -348,7 +348,8 @@ const EditLectureItem = ({
                     {/* Title */}
                     <div className='flex flex-col gap-2'>
                         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Lecture Title*
+                            Lecture Title
+                            <span className='text-red-600'> *</span>
                         </Label>
                         <Input
                             value={lecture.videoTitle}
@@ -361,7 +362,8 @@ const EditLectureItem = ({
                     {/* Description */}
                     <div className='flex flex-col gap-2'>
                         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Lecture Description*
+                            Lecture Description
+                            <span className='text-red-600'> *</span>
                         </Label>
                         <textarea
                             value={lecture.videoDescription}
@@ -375,7 +377,8 @@ const EditLectureItem = ({
                     {/* Video Upload */}
                     <div className='flex flex-col gap-2'>
                         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Video Content*
+                            Video Content
+                            <span className='text-red-600'> *</span>
                         </Label>
                         <EditVideoUploader
                             video={lecture.video}
@@ -391,7 +394,8 @@ const EditLectureItem = ({
                     <div className='flex flex-col gap-2'>
                         <div className="flex items-center justify-between">
                             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Video Length (in minutes)*
+                                Video Length (in minutes)
+                                <span className='text-red-600'> *</span>
                             </Label>
                             {isAutoDetected && (
                                 <span className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">

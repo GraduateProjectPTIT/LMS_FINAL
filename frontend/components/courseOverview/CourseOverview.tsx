@@ -32,8 +32,8 @@ interface IOverviewCategory {
     title: string;
 }
 
-interface IOverviewThumbnail {
-    public_id: string;
+interface IOverviewMedia {
+    public_id?: string;
     url: string;
 }
 
@@ -64,14 +64,15 @@ interface IOverviewCourseSection {
 interface ICourseData {
     _id: string;
     name: string;
+    overview: string;
     description: string;
     categories: IOverviewCategory[];
     price: number;
     estimatedPrice: number;
-    thumbnail: IOverviewThumbnail;
+    thumbnail: IOverviewMedia;
     tags: string;
     level: string;
-    demoUrl: string;
+    videoDemo: IOverviewMedia;
     benefits: IOverviewBenefit[];
     prerequisites: IOverviewPrerequisite[];
     totalSections: number;
@@ -168,11 +169,16 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
     }
 
     const checkCourseAccessed = (courseId: string) => {
+
+        if (!currentUser) {
+            return false;
+        }
+
         if (currentUser?.role === "admin") {
             return true;
         }
 
-        const isCreator = courseData?.creatorId?._id === currentUser._id;
+        const isCreator = courseData?.creatorId?._id === currentUser?._id;
         if (isCreator) {
             return true;
         }
@@ -207,7 +213,11 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
     }
 
     const handleBuyCourse = () => {
-        toast.success("Buying course")
+        if (!currentUser) {
+            toast("Please login to buy the course");
+            router.push('/login');
+            return;
+        }
     }
 
     const getCategoriesString = (categories: IOverviewCategory[]) => {
@@ -241,9 +251,9 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                 {getCategoriesString(courseData.categories)}
                             </div>
 
-                            {/* Course Description */}
+                            {/* Course Overview */}
                             <p className="text-lg mb-6 text-slate-600 dark:text-slate-300 leading-relaxed">
-                                {courseData.description}
+                                {courseData.overview}
                             </p>
 
                             {/* Reviews and Rating */}
@@ -255,16 +265,16 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                         ))}
                                     </div>
                                     <span className="text-slate-800 dark:text-white font-medium">
-                                        {courseData.ratings || 5.0}
+                                        {courseData.ratings}
                                     </span>
                                     <span className="mx-2 text-slate-400 dark:text-slate-400">•</span>
                                     <span className="text-slate-700 dark:text-slate-300">
-                                        ({courseData.reviews.length || 427} reviews)
+                                        ({courseData.reviews.length} reviews)
                                     </span>
                                 </div>
                                 <div className="flex items-center ml-auto md:ml-4 text-slate-600 dark:text-slate-300 text-sm mt-2 md:mt-0">
                                     <User size={16} className="mr-1" />
-                                    <span>{courseData.purchased || 12450} students enrolled</span>
+                                    <span>{courseData.purchased} students enrolled</span>
                                 </div>
                             </div>
 
@@ -298,9 +308,9 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                         <div className="md:w-1/2 md:my-[20px]">
                             <div className="rounded-2xl overflow-hidden shadow-2xl relative group transition-all hover:shadow-blue-200/50 dark:hover:shadow-blue-400/30 border border-white/50 dark:border-blue-400/30 backdrop-blur-sm">
                                 <div className="aspect-video relative">
-                                    {isPlaying && courseData.demoUrl ? (
+                                    {isPlaying && courseData.videoDemo ? (
                                         <video
-                                            src={courseData.demoUrl}
+                                            src={courseData.videoDemo.url}
                                             controls
                                             autoPlay
                                             className="w-full h-full rounded-2xl object-cover"
@@ -319,7 +329,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                             />
 
                                             {/* Play button if demo available */}
-                                            {courseData.demoUrl && (
+                                            {courseData.videoDemo && (
                                                 <button
                                                     onClick={() => setIsPlaying(true)}
                                                     className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
@@ -424,6 +434,14 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             </ul>
                         </div>
 
+                        {/* Description */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Description</h2>
+                            <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                                {courseData.description || "No description provided"}
+                            </p>
+                        </div>
+
                         {/* Instructor Section */}
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700">
                             <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Meet Your Instructor</h2>
@@ -520,13 +538,14 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             </div>
 
                             <button
-                                className="w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                                className={`w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5
+        ${loadingEnroll || isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
                                 onClick={
                                     checkCourseAccessed(courseId)
                                         ? () => handleEnroll(courseId)
                                         : handleBuyCourse
                                 }
-                                disabled={loadingEnroll}
+                                disabled={loadingEnroll || isLoading}
                             >
                                 {checkCourseAccessed(courseId)
                                     ? (loadingEnroll ? "Enrolling..." : "Enter to course")

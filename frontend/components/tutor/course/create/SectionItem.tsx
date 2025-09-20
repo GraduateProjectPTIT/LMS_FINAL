@@ -187,7 +187,8 @@ const SectionItem = ({
 
                 <div className="flex-1">
                     <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                        Section #{sectionIndex + 1} - Title*
+                        Section #{sectionIndex + 1} - Title
+                        <span className='text-red-600'> *</span>
                     </Label>
                     <Input
                         value={section.sectionTitle}

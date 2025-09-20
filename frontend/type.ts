@@ -65,6 +65,7 @@ export interface IBaseSection {
 
 export interface IBaseCourseInfo {
     name: string;
+    overview: string;
     description: string;
     categories: IBaseCategory[];
     price: number;
@@ -84,6 +85,7 @@ export interface IBaseCourseInfo {
 
 export interface ICreateCourseInformation {
     name: string;
+    overview: string;
     description: string;
     price: number | null;
     estimatedPrice?: number | null;

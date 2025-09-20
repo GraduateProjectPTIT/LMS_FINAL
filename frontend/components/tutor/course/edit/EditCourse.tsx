@@ -44,6 +44,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
                 setCourseInfo({
                     _id: data.course._id,
                     name: data.course.name,
+                    overview: data.course.overview,
                     description: data.course.description,
                     categories: data.course.categories.map((cat: any) => cat._id),
                     price: data.course.price,
@@ -97,11 +98,6 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
             console.log(error.message);
         }
     }
-
-    console.log("courseInfo: ", courseInfo);
-    console.log("benefits: ", benefits);
-    console.log("prerequisites: ", prerequisites);
-    console.log("courseData: ", courseData);
 
     useEffect(() => {
         handleGetAllLevels();

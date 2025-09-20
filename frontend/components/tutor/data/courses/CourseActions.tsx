@@ -82,10 +82,17 @@ const CourseActions = ({
                     Copy Course ID
                 </DropdownMenuItem>
 
+                <Link href={`/course-overview/${course._id}`}>
+                    <DropdownMenuItem className="cursor-pointer">
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Course
+                    </DropdownMenuItem>
+                </Link>
+
                 <Link href={`/course-enroll/${course._id}`}>
                     <DropdownMenuItem className="cursor-pointer">
                         <Eye className="mr-2 h-4 w-4" />
-                        View Details
+                        Enroll Course
                     </DropdownMenuItem>
                 </Link>
 

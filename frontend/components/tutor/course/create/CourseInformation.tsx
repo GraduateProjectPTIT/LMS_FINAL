@@ -21,7 +21,8 @@ import { IoAlertCircleOutline } from "react-icons/io5";
 const courseSchema = z
     .object({
         name: z.string().min(5, "Course name must be at least 5 characters").max(100, "Course name must not exceed 100 characters"),
-        description: z.string().min(150, "Description must be at least 150 characters").max(1000, "Description must not exceed 1000 characters"),
+        overview: z.string().min(100, "Overview must be at least 100 characters").max(300, "Overview must not exceed 300 characters"),
+        description: z.string().min(200, "Description must be at least 200 characters").max(2000, "Description must not exceed 2000 characters"),
         categories: z.array(z.string())
             .min(1, "Please select at least one category")
             .max(5, "You can select up to 5 categories only"),
@@ -119,6 +120,7 @@ const CourseInformation = ({
         mode: "onChange",
         defaultValues: {
             name: courseInfo?.name || '',
+            overview: courseInfo?.overview || '',
             description: courseInfo?.description || '',
             categories: courseInfo?.categories || [],
             price: courseInfo?.price ?? undefined,
@@ -314,12 +316,17 @@ const CourseInformation = ({
             <div className='flex flex-col gap-[20px]'>
                 {/* name */}
                 <div className='flex flex-col gap-[10px]'>
-                    <Label htmlFor="name">Course Name</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="name">Course Name</Label>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {(watchedFields.name || '').length}/100
+                        </span>
+                    </div>
                     <div className="relative">
                         <Input
                             {...register("name")}
                             id='name'
-                            placeholder='How to use mascara'
+                            placeholder='Enter a clear, descriptive course title (e.g., "Mastering Mascara Techniques")'
                             type="text"
                             className={field("name").border}
                         />
@@ -335,15 +342,48 @@ const CourseInformation = ({
                     )}
                 </div>
 
+                {/* overview */}
+                <div className='flex flex-col gap-[10px]'>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="overview">Course Overview</Label>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {(watchedFields.overview || '').length}/300
+                        </span>
+                    </div>
+                    <div className="relative">
+                        <textarea
+                            {...register("overview")}
+                            id="overview"
+                            rows={3}
+                            placeholder="Briefly summarize what this course covers and what students will achieve. Make it concise and appealing."
+                            className={`w-full rounded-md border text-sm p-2 pr-8 md:pr-10 bg-transparent resize-y min-h-[72px] ${field("overview").border}`}
+                        />
+                        <div className="absolute right-3 top-3">
+                            {field("overview").icon}
+                        </div>
+                    </div>
+                    {errors.overview && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <IoAlertCircleOutline className="text-red-400 text-sm" />
+                            <p className="text-red-400 text-[12px]">{errors.overview.message}</p>
+                        </div>
+                    )}
+                </div>
+
                 {/* description */}
                 <div className='flex flex-col gap-[10px]'>
-                    <Label htmlFor="description">Course Description</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="description">Course Description</Label>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {(watchedFields.description || '').length}/2000
+                        </span>
+                    </div>
                     <div className="relative">
                         <textarea
                             {...register("description")}
                             id="description"
                             rows={3}
-                            placeholder="Unlock the secrets to flawless lashes with our comprehensive course on how to use mascara like a pro. Whether you're a beginner or looking to refine your makeup skills, this course is designed to teach you everything you need to know about applying mascara effectively and achieving stunning results."
+                            placeholder="Write a detailed description of your course. Include topics, teaching methods, and any prerequisites or requirements."
                             className={`w-full rounded-md border text-sm p-2 pr-8 md:pr-10 bg-transparent resize-y min-h-[72px] ${field("description").border}`}
                         />
                         <div className="absolute right-3 top-3">
@@ -493,7 +533,7 @@ const CourseInformation = ({
                             <Input
                                 {...register("price")}
                                 id='price'
-                                placeholder='30'
+                                placeholder='Enter the actual price (e.g., 30)'
                                 type="text"
                                 inputMode="decimal" // Hiện bàn phím số trên mobile
                                 className={field("price").border}
@@ -516,7 +556,7 @@ const CourseInformation = ({
                             <Input
                                 {...register("estimatedPrice")}
                                 id='estimatedPrice'
-                                placeholder='30'
+                                placeholder='Enter the estimated price (e.g., 40)'
                                 type="text"
                                 inputMode="decimal" // Hiện bàn phím số trên mobile
                                 className={field("estimatedPrice").border}
@@ -541,7 +581,7 @@ const CourseInformation = ({
                         <Input
                             {...register("tags")}
                             id='tags'
-                            placeholder='Makeup Basics, Mascara Techniques, Beauty Skills'
+                            placeholder='Add up to 5 tags, separated by commas (e.g., Makeup Basics, Mascara, Beauty Skills)'
                             type="text"
                             className={field("tags").border}
                         />

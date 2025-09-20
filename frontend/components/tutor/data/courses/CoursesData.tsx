@@ -208,15 +208,7 @@ const CoursesData = () => {
         // Apply search filter
         if (searchQuery.trim()) {
             filtered = filtered.filter(course =>
-                course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                course.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (Array.isArray(course.categories) && course.categories.some((cat: any) =>
-                    cat.title?.toLowerCase().includes(searchQuery.toLowerCase())
-                )) ||
-                (typeof course.tags === 'string' &&
-                    course.tags.toLowerCase().includes(searchQuery.toLowerCase())
-                ) ||
-                course.level?.toLowerCase().includes(searchQuery.toLowerCase())
+                course.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
@@ -333,7 +325,9 @@ const CoursesData = () => {
                 `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/delete_course/${courseToDelete._id}`,
                 {
                     method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
                     credentials: "include",
                 }
             );
@@ -348,7 +342,7 @@ const CoursesData = () => {
             setCourseToDelete(null);
 
             // Update courses list after deletion
-            setAllCourses(prev => prev.filter(course => course._id !== courseToDelete._id));
+            fetchAllCourses();
         } catch (err: any) {
             toast.error("Error deleting course");
             console.log(err?.message || err);

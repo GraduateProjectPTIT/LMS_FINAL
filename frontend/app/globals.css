@@ -141,13 +141,33 @@ body {
     animation: changeBackgroundColor 8s infinite alternate;
   }
 
-  .logo-ticker-image {
-    height: 32px;
+  .logo-ticker-small {
+    height: 30px;
     width: auto;
     filter: invert(0);
   }
 
-  .dark .logo-ticker-image {
+  .logo-ticker-medium {
+    height: 60px;
+    width: auto;
+    filter: invert(0);
+  }
+
+  .logo-ticker-large {
+    height: 100px;
+    width: auto;
+    filter: invert(0);
+  }
+
+  .dark .logo-ticker-small {
+    filter: invert(1);
+  }
+
+  .dark .logo-ticker-medium {
+    filter: invert(1);
+  }
+
+  .dark .logo-ticker-large {
     filter: invert(1);
   }
 }
