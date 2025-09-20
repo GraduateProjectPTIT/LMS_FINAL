@@ -65,7 +65,7 @@ export interface ISocialAuthBody {
   email: string;
   name: string;
   avatar: string;
-  role: UserRole;
+  role?: UserRole;
 }
 
 // Dùng cho body của request đổi mật khẩu
