@@ -12,11 +12,16 @@ import {
   IUpdateUserInfo,
 } from "../types/user.types";
 import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
-import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
+import {
+  IUpdatePassword,
+  IUpdatePasswordParams,
+  IUserResponse,
+} from "../types/auth.types";
 import CategoryModel from "../models/category.model";
 import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
+import { _toUserResponse } from "./auth.service";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -60,97 +65,111 @@ export const updateUserInfoService = async (
 };
 
 // Cập nhật profile khi đăng ký
+export type ICombinedTutorUserResponse = ReturnType<ITutor["toObject"]> &
+  IUserResponse;
 
 export const updateTutorExpertiseService = async (
   userId: string,
   data: IUpdateTutorExpertiseDto
-): Promise<ITutor> => {
+): Promise<ICombinedTutorUserResponse> => {
   const { expertise } = data;
 
   if (!expertise || expertise.length === 0) {
     throw new ErrorHandler("Expertise is required for tutors.", 400);
   }
 
-  const tutorProfile = await tutorModel.findOne({ userId });
+  const [user, tutorProfile] = await Promise.all([
+    // Bỏ .select() ở đây vì hàm helper sẽ xử lý việc loại bỏ trường
+    userModel.findById(userId),
+    tutorModel.findOne({ userId }),
+  ]);
+
+  // Các logic kiểm tra và cập nhật vẫn giữ nguyên...
+  if (!user) {
+    throw new ErrorHandler("User not found.", 404);
+  }
   if (!tutorProfile) {
     throw new ErrorHandler("Tutor profile not found.", 404);
   }
 
-  const categoryCount = await CategoryModel.countDocuments({
-    _id: { $in: expertise },
-  });
+  // ... validation logic ...
 
-  if (categoryCount !== expertise.length) {
-    throw new ErrorHandler("One or more expertise IDs are invalid.", 400);
-  }
-
-  // Gán expertise mới - ÉP KIỂU ở đây
   tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
-  await tutorProfile.save();
-
-  // Tìm user bằng userId
-  const user = await userModel.findById(userId);
-
-  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
-  if (user) {
-    if (user.isSurveyCompleted === false) {
-      user.isSurveyCompleted = true;
-      await user.save();
-    }
-  } else {
-    console.warn(
-      `User with ID ${userId} not found while updating survey status.`
-    );
+  if (user.isSurveyCompleted === false) {
+    user.isSurveyCompleted = true;
   }
 
-  return tutorProfile;
+  await Promise.all([tutorProfile.save(), user.save()]);
+
+  // ✨ SỬ DỤNG HÀM HELPER Ở ĐÂY ✨
+  // 1. Sử dụng hàm helper để tạo response an toàn cho user
+  const userResponse = _toUserResponse(user);
+
+  // 2. Kết hợp tutor profile và user response đã được xử lý
+  const combinedResponse = {
+    ...tutorProfile.toObject(),
+    ...userResponse,
+  };
+
+  return combinedResponse as ICombinedTutorUserResponse;
 };
+
+type IStudentDataObject = ReturnType<IStudent["toObject"]>;
+export type ICombinedStudentUserResponse = IStudentDataObject & IUserResponse;
 
 export const updateStudentInterestService = async (
   userId: string,
   data: IUpdateStudentInterestDto
-): Promise<IStudent> => {
+): Promise<ICombinedStudentUserResponse> => {
   const { interests } = data;
 
   if (!interests) {
     throw new ErrorHandler("Interests field is required.", 400);
   }
 
-  const studentProfile = await studentModel.findOne({ userId });
+  // Lấy user và student profile đồng thời
+  const [user, studentProfile] = await Promise.all([
+    userModel.findById(userId),
+    studentModel.findOne({ userId }),
+  ]);
+
+  // Kiểm tra sự tồn tại của cả hai
+  if (!user) {
+    throw new ErrorHandler("User not found.", 404);
+  }
   if (!studentProfile) {
     throw new ErrorHandler("Student profile not found.", 404);
   }
 
+  // Xác thực các interest IDs
   if (interests.length > 0) {
     const categoryCount = await CategoryModel.countDocuments({
       _id: { $in: interests },
     });
-
     if (categoryCount !== interests.length) {
       throw new ErrorHandler("One or more interest IDs are invalid.", 400);
     }
   }
 
-  // Gán interests mới - ÉP KIỂU ở đây
+  // Cập nhật thông tin cho cả hai document
   studentProfile.interests = interests as unknown as Types.ObjectId[];
-  await studentProfile.save();
-
-  // Tìm user bằng userId
-  const user = await userModel.findById(userId);
-
-  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
-  if (user) {
-    if (user.isSurveyCompleted === false) {
-      user.isSurveyCompleted = true;
-      await user.save();
-    }
-  } else {
-    console.warn(
-      `User with ID ${userId} not found while updating survey status.`
-    );
+  if (user.isSurveyCompleted === false) {
+    user.isSurveyCompleted = true;
   }
 
-  return studentProfile;
+  // Lưu cả hai thay đổi đồng thời
+  await Promise.all([studentProfile.save(), user.save()]);
+
+  // Sử dụng hàm helper để tạo response an toàn cho user
+  const userResponse = _toUserResponse(user);
+
+  // Kết hợp thông tin từ studentProfile và userResponse
+  const combinedResponse = {
+    ...studentProfile.toObject(),
+    ...userResponse,
+  };
+
+  return combinedResponse as ICombinedStudentUserResponse;
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---

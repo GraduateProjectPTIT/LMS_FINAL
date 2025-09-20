@@ -29,7 +29,7 @@ import { IStudent } from "../types/user.types";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
-const _toUserResponse = (user: IUser): IUserResponse => {
+export const _toUserResponse = (user: IUser): IUserResponse => {
   // 1. Chuyển Mongoose Document thành plain object
   const userObject = user.toObject();
 
