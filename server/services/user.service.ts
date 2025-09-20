@@ -64,114 +64,6 @@ export const updateUserInfoService = async (
   return user;
 };
 
-// Cập nhật profile khi đăng ký
-export type ICombinedTutorUserResponse = ReturnType<ITutor["toObject"]> &
-  IUserResponse;
-
-export const updateTutorExpertiseService = async (
-  userId: string,
-  data: IUpdateTutorExpertiseDto
-): Promise<ICombinedTutorUserResponse> => {
-  const { expertise } = data;
-
-  if (!expertise || expertise.length === 0) {
-    throw new ErrorHandler("Expertise is required for tutors.", 400);
-  }
-
-  const [user, tutorProfile] = await Promise.all([
-    // Bỏ .select() ở đây vì hàm helper sẽ xử lý việc loại bỏ trường
-    userModel.findById(userId),
-    tutorModel.findOne({ userId }),
-  ]);
-
-  // Các logic kiểm tra và cập nhật vẫn giữ nguyên...
-  if (!user) {
-    throw new ErrorHandler("User not found.", 404);
-  }
-  if (!tutorProfile) {
-    throw new ErrorHandler("Tutor profile not found.", 404);
-  }
-
-  // ... validation logic ...
-
-  tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
-  if (user.isSurveyCompleted === false) {
-    user.isSurveyCompleted = true;
-  }
-
-  await Promise.all([tutorProfile.save(), user.save()]);
-
-  // ✨ SỬ DỤNG HÀM HELPER Ở ĐÂY ✨
-  // 1. Sử dụng hàm helper để tạo response an toàn cho user
-  const userResponse = _toUserResponse(user);
-
-  // 2. Kết hợp tutor profile và user response đã được xử lý
-  const combinedResponse = {
-    ...tutorProfile.toObject(),
-    ...userResponse,
-  };
-
-  return combinedResponse as ICombinedTutorUserResponse;
-};
-
-type IStudentDataObject = ReturnType<IStudent["toObject"]>;
-export type ICombinedStudentUserResponse = IStudentDataObject & IUserResponse;
-
-export const updateStudentInterestService = async (
-  userId: string,
-  data: IUpdateStudentInterestDto
-): Promise<ICombinedStudentUserResponse> => {
-  const { interests } = data;
-
-  if (!interests) {
-    throw new ErrorHandler("Interests field is required.", 400);
-  }
-
-  // Lấy user và student profile đồng thời
-  const [user, studentProfile] = await Promise.all([
-    userModel.findById(userId),
-    studentModel.findOne({ userId }),
-  ]);
-
-  // Kiểm tra sự tồn tại của cả hai
-  if (!user) {
-    throw new ErrorHandler("User not found.", 404);
-  }
-  if (!studentProfile) {
-    throw new ErrorHandler("Student profile not found.", 404);
-  }
-
-  // Xác thực các interest IDs
-  if (interests.length > 0) {
-    const categoryCount = await CategoryModel.countDocuments({
-      _id: { $in: interests },
-    });
-    if (categoryCount !== interests.length) {
-      throw new ErrorHandler("One or more interest IDs are invalid.", 400);
-    }
-  }
-
-  // Cập nhật thông tin cho cả hai document
-  studentProfile.interests = interests as unknown as Types.ObjectId[];
-  if (user.isSurveyCompleted === false) {
-    user.isSurveyCompleted = true;
-  }
-
-  // Lưu cả hai thay đổi đồng thời
-  await Promise.all([studentProfile.save(), user.save()]);
-
-  // Sử dụng hàm helper để tạo response an toàn cho user
-  const userResponse = _toUserResponse(user);
-
-  // Kết hợp thông tin từ studentProfile và userResponse
-  const combinedResponse = {
-    ...studentProfile.toObject(),
-    ...userResponse,
-  };
-
-  return combinedResponse as ICombinedStudentUserResponse;
-};
-
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
 export const updateAvatarService = async (
   userId: string,
@@ -225,23 +117,6 @@ export const updateAvatarService = async (
   }
 };
 
-// --- LẤY TẤT CẢ USERS (đã có) ---
-export const getAllUsersService = async (queryParams: PaginationParams) => {
-  // Tách các tham số phân trang ra khỏi các tham số dùng để lọc
-  const { page, limit, role } = queryParams; // 1. Xây dựng đối tượng filter
-
-  const filter: { [key: string]: any } = {};
-  if (role === "student" || role === "tutor") {
-    filter.role = role;
-  }
-
-  const paginatedResult = await paginate(userModel, { page, limit }, filter); // 3. (Tùy chọn) Đổi tên key 'data' thành 'users' cho dễ hiểu ở controller
-
-  return {
-    paginatedResult,
-  };
-};
-
 // --- CẬP NHẬT VAI TRÒ (đã có) ---
 export const updateUserRoleService = async (id: string, role: string) => {
   const user = await userModel.findByIdAndUpdate(id, { role }, { new: true });
@@ -250,20 +125,6 @@ export const updateUserRoleService = async (id: string, role: string) => {
   }
   // await redis.set(id, JSON.stringify(user));
   return user;
-};
-
-// --- XÓA USER ---
-export const deleteUserService = async (id: string) => {
-  const user = await userModel.findById(id);
-  if (!user) {
-    throw new ErrorHandler("User not found", 404);
-  }
-  // Cần thêm logic xóa avatar trên cloudinary nếu có
-  if (user.avatar?.public_id) {
-    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-  }
-  await user.deleteOne();
-  // await redis.del(id);
 };
 
 // --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---
