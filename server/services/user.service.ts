@@ -22,6 +22,7 @@ import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
+import { adminModel } from "../models/admin.model";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -155,11 +156,32 @@ export const deleteMyAccountService = async (id: string) => {
     throw new ErrorHandler("User not found", 404);
   }
 
-  // 1. Xóa avatar trên Cloudinary nếu có
+  // 1. Xóa profile tương ứng với role của user
+  switch (user.role) {
+    case UserRole.Student:
+      if (user.studentProfile) {
+        await studentModel.findByIdAndDelete(user.studentProfile);
+      }
+      break;
+    case UserRole.Tutor:
+      if (user.tutorProfile) {
+        await tutorModel.findByIdAndDelete(user.tutorProfile);
+      }
+      break;
+    case UserRole.Admin:
+      if (user.adminProfile) {
+        await adminModel.findByIdAndDelete(user.adminProfile);
+      }
+      break;
+    default:
+      break;
+  }
+
+  // 2. Xóa avatar trên Cloudinary nếu có (giữ nguyên)
   if (user.avatar?.public_id) {
     await cloudinary.v2.uploader.destroy(user.avatar.public_id);
   }
 
-  // 2. Xóa người dùng khỏi database
+  // 3. Xóa người dùng khỏi database (giữ nguyên)
   await user.deleteOne();
 };
