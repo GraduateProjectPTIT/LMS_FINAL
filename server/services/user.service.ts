@@ -12,11 +12,17 @@ import {
   IUpdateUserInfo,
 } from "../types/user.types";
 import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
-import { IUpdatePassword, IUpdatePasswordParams } from "../types/auth.types";
+import {
+  IUpdatePassword,
+  IUpdatePasswordParams,
+  IUserResponse,
+} from "../types/auth.types";
 import CategoryModel from "../models/category.model";
 import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
+import { _toUserResponse } from "./auth.service";
+import { adminModel } from "../models/admin.model";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -57,100 +63,6 @@ export const updateUserInfoService = async (
   await user.save();
   // await redis.set(userId, JSON.stringify(user));
   return user;
-};
-
-// Cập nhật profile khi đăng ký
-
-export const updateTutorExpertiseService = async (
-  userId: string,
-  data: IUpdateTutorExpertiseDto
-): Promise<ITutor> => {
-  const { expertise } = data;
-
-  if (!expertise || expertise.length === 0) {
-    throw new ErrorHandler("Expertise is required for tutors.", 400);
-  }
-
-  const tutorProfile = await tutorModel.findOne({ userId });
-  if (!tutorProfile) {
-    throw new ErrorHandler("Tutor profile not found.", 404);
-  }
-
-  const categoryCount = await CategoryModel.countDocuments({
-    _id: { $in: expertise },
-  });
-
-  if (categoryCount !== expertise.length) {
-    throw new ErrorHandler("One or more expertise IDs are invalid.", 400);
-  }
-
-  // Gán expertise mới - ÉP KIỂU ở đây
-  tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
-  await tutorProfile.save();
-
-  // Tìm user bằng userId
-  const user = await userModel.findById(userId);
-
-  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
-  if (user) {
-    if (user.isSurveyCompleted === false) {
-      user.isSurveyCompleted = true;
-      await user.save();
-    }
-  } else {
-    console.warn(
-      `User with ID ${userId} not found while updating survey status.`
-    );
-  }
-
-  return tutorProfile;
-};
-
-export const updateStudentInterestService = async (
-  userId: string,
-  data: IUpdateStudentInterestDto
-): Promise<IStudent> => {
-  const { interests } = data;
-
-  if (!interests) {
-    throw new ErrorHandler("Interests field is required.", 400);
-  }
-
-  const studentProfile = await studentModel.findOne({ userId });
-  if (!studentProfile) {
-    throw new ErrorHandler("Student profile not found.", 404);
-  }
-
-  if (interests.length > 0) {
-    const categoryCount = await CategoryModel.countDocuments({
-      _id: { $in: interests },
-    });
-
-    if (categoryCount !== interests.length) {
-      throw new ErrorHandler("One or more interest IDs are invalid.", 400);
-    }
-  }
-
-  // Gán interests mới - ÉP KIỂU ở đây
-  studentProfile.interests = interests as unknown as Types.ObjectId[];
-  await studentProfile.save();
-
-  // Tìm user bằng userId
-  const user = await userModel.findById(userId);
-
-  // Nếu tìm thấy user, cập nhật trạng thái và lưu lại
-  if (user) {
-    if (user.isSurveyCompleted === false) {
-      user.isSurveyCompleted = true;
-      await user.save();
-    }
-  } else {
-    console.warn(
-      `User with ID ${userId} not found while updating survey status.`
-    );
-  }
-
-  return studentProfile;
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
@@ -206,23 +118,6 @@ export const updateAvatarService = async (
   }
 };
 
-// --- LẤY TẤT CẢ USERS (đã có) ---
-export const getAllUsersService = async (queryParams: PaginationParams) => {
-  // Tách các tham số phân trang ra khỏi các tham số dùng để lọc
-  const { page, limit, role } = queryParams; // 1. Xây dựng đối tượng filter
-
-  const filter: { [key: string]: any } = {};
-  if (role === "student" || role === "tutor") {
-    filter.role = role;
-  }
-
-  const paginatedResult = await paginate(userModel, { page, limit }, filter); // 3. (Tùy chọn) Đổi tên key 'data' thành 'users' cho dễ hiểu ở controller
-
-  return {
-    paginatedResult,
-  };
-};
-
 // --- CẬP NHẬT VAI TRÒ (đã có) ---
 export const updateUserRoleService = async (id: string, role: string) => {
   const user = await userModel.findByIdAndUpdate(id, { role }, { new: true });
@@ -231,20 +126,6 @@ export const updateUserRoleService = async (id: string, role: string) => {
   }
   // await redis.set(id, JSON.stringify(user));
   return user;
-};
-
-// --- XÓA USER ---
-export const deleteUserService = async (id: string) => {
-  const user = await userModel.findById(id);
-  if (!user) {
-    throw new ErrorHandler("User not found", 404);
-  }
-  // Cần thêm logic xóa avatar trên cloudinary nếu có
-  if (user.avatar?.public_id) {
-    await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-  }
-  await user.deleteOne();
-  // await redis.del(id);
 };
 
 // --- NGHIỆP VỤ CẬP NHẬT MẬT KHẨU ---
@@ -275,11 +156,32 @@ export const deleteMyAccountService = async (id: string) => {
     throw new ErrorHandler("User not found", 404);
   }
 
-  // 1. Xóa avatar trên Cloudinary nếu có
+  // 1. Xóa profile tương ứng với role của user
+  switch (user.role) {
+    case UserRole.Student:
+      if (user.studentProfile) {
+        await studentModel.findByIdAndDelete(user.studentProfile);
+      }
+      break;
+    case UserRole.Tutor:
+      if (user.tutorProfile) {
+        await tutorModel.findByIdAndDelete(user.tutorProfile);
+      }
+      break;
+    case UserRole.Admin:
+      if (user.adminProfile) {
+        await adminModel.findByIdAndDelete(user.adminProfile);
+      }
+      break;
+    default:
+      break;
+  }
+
+  // 2. Xóa avatar trên Cloudinary nếu có (giữ nguyên)
   if (user.avatar?.public_id) {
     await cloudinary.v2.uploader.destroy(user.avatar.public_id);
   }
 
-  // 2. Xóa người dùng khỏi database
+  // 3. Xóa người dùng khỏi database (giữ nguyên)
   await user.deleteOne();
 };
