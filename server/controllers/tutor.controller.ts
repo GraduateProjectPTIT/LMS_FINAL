@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
-import { updateTutorExpertiseService } from "../services/tutor.service";
+import {
+  getTutorDetailsService,
+  updateTutorExpertiseService,
+} from "../services/tutor.service";
 
 // register setup profile cho tutor
 export const setupTutorProfile = CatchAsyncError(
@@ -21,6 +24,18 @@ export const setupTutorProfile = CatchAsyncError(
       success: true,
       message: "Tutor profile setup completed successfully.",
       tutor: updatedTutorProfile,
+    });
+  }
+);
+
+export const getTutorOverview = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const tutorId = req.params.id;
+    const tutorDetails = await getTutorDetailsService(tutorId);
+
+    res.status(200).json({
+      success: true,
+      tutorDetails,
     });
   }
 );
