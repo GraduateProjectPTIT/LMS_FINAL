@@ -17,7 +17,7 @@ import {
   IUpdatePasswordParams,
   IUserResponse,
 } from "../types/auth.types";
-import CategoryModel from "../models/category.model";
+import CategoryModel, { ICategory } from "../models/category.model";
 import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
@@ -36,21 +36,17 @@ export const updateStudentInterestService = async (
     throw new ErrorHandler("Interests field is required.", 400);
   }
 
-  // Lấy user và student profile đồng thời
+  // BƯỚC 1: Lấy user và student profile
   const [user, studentProfile] = await Promise.all([
     userModel.findById(userId),
     studentModel.findOne({ userId }),
   ]);
 
-  // Kiểm tra sự tồn tại của cả hai
-  if (!user) {
-    throw new ErrorHandler("User not found.", 404);
-  }
-  if (!studentProfile) {
-    throw new ErrorHandler("Student profile not found.", 404);
+  if (!user || !studentProfile) {
+    throw new ErrorHandler("User or Student profile not found.", 404);
   }
 
-  // Xác thực các interest IDs
+  // (Optional but recommended) Xác thực các interest IDs
   if (interests.length > 0) {
     const categoryCount = await CategoryModel.countDocuments({
       _id: { $in: interests },
@@ -60,22 +56,39 @@ export const updateStudentInterestService = async (
     }
   }
 
-  // Cập nhật thông tin cho cả hai document
+  // BƯỚC 2: Cập nhật và lưu vào database
   studentProfile.interests = interests as unknown as Types.ObjectId[];
   if (user.isSurveyCompleted === false) {
     user.isSurveyCompleted = true;
   }
-
-  // Lưu cả hai thay đổi đồng thời
   await Promise.all([studentProfile.save(), user.save()]);
 
-  // Sử dụng hàm helper để tạo response an toàn cho user
-  const userResponse = _toUserResponse(user);
+  // ✨ BẮT ĐẦU CHUẨN BỊ RESPONSE GIỐNG HỆT LOGIC TUTOR ✨
 
-  // Kết hợp thông tin từ studentProfile và userResponse
+  // 3. Populate trường 'interests' sau khi đã lưu
+  const populatedProfile = await studentProfile.populate<{
+    interests: ICategory[];
+  }>("interests");
+
+  // 4. Map để lấy ra mảng các tên sở thích (string[])
+  let interestTitles: string[] = [];
+  if (populatedProfile && populatedProfile.interests) {
+    interestTitles = populatedProfile.interests.map(
+      (category) => category.title
+    );
+  }
+
+  // 5. Chuẩn bị các phần của response
+  const userResponse = _toUserResponse(user);
+  // Tách userId ra và lấy phần còn lại của student profile
+  const { userId: removedUserId, ...restOfProfile } =
+    populatedProfile.toObject();
+
+  // 6. Kết hợp lại để có response cuối cùng
   const combinedResponse = {
-    ...studentProfile.toObject(),
+    ...restOfProfile,
     ...userResponse,
+    interests: interestTitles, // Ghi đè trường interests bằng mảng các title
   };
 
   return combinedResponse as ICombinedStudentUserResponse;

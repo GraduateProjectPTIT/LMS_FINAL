@@ -423,7 +423,6 @@ export const loginUserService = async (
     const studentProfile = await studentModel
       .findOne({ userId: userFromDB._id })
       .populate<{ interests: ICategory[] }>("interests"); // <-- Populate 'interests'
-    console.log("studentProfile:", studentProfile);
     let interestTitles: string[] = [];
 
     // 2. Kiểm tra và dùng .map() để lấy ra các title
