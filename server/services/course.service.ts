@@ -55,6 +55,23 @@ export const createCourse = async (
       return next(new ErrorHandler("Creator ID is required", 400));
     }
 
+    if (!data.level) {
+      return next(new ErrorHandler("Course level is required", 400));
+    }
+    const levelStr = String(data.level).trim().toLowerCase();
+    const mapLevel = (val: string) => {
+      if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
+      if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
+      if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
+      if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+      return null;
+    };
+    const enumLevel = mapLevel(levelStr);
+    if (!enumLevel) {
+      return next(new ErrorHandler("Invalid course level", 400));
+    }
+    data.level = enumLevel;
+
     if (!data.videoDemo || !data.videoDemo.public_id || !data.videoDemo.url) {
       return next(
         new ErrorHandler(
@@ -107,6 +124,22 @@ export const createCourse = async (
       }
     }
 
+    if (typeof data.level !== "undefined") {
+      const levelStr = String(data.level).trim().toLowerCase();
+      const mapLevel = (val: string) => {
+        if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
+        if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
+        if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
+        if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+        return null;
+      };
+      const enumLevel = mapLevel(levelStr);
+      if (!enumLevel) {
+        return next(new ErrorHandler("Invalid course level", 400));
+      }
+      data.level = enumLevel;
+    }
+
     if (data.categories) {
       if (!Array.isArray(data.categories) || data.categories.length === 0) {
         return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
@@ -122,7 +155,6 @@ export const createCourse = async (
       data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
-    // Preserve _id for FE drag-and-drop arrays
     if (Array.isArray(data.benefits)) {
       data.benefits = data.benefits.map((b: any) => ({
         ...(b && b._id ? { _id: b._id } : {}),
@@ -234,7 +266,6 @@ export const createCourse = async (
       }));
     }
 
-    // Preserve _id for FE drag-and-drop arrays
     if (Array.isArray(data.benefits)) {
       data.benefits = data.benefits.map((b: any) => ({
         ...(b && b._id ? { _id: b._id } : {}),
@@ -489,7 +520,6 @@ export const getStudentEnrolledCoursesService = async (
   }
 };
 
-// edit course
 /**
  * Cập nhật thông tin khóa học theo id.
  * - Chỉ dành cho vai trò: admin, tutor (và phải sở hữu khóa học nếu là tutor)
@@ -650,7 +680,6 @@ export const editCourseService = async (
   }
 };
 
-// get course overview
 /**
  * Lấy thông tin tổng quan khóa học (không cần mua) theo id.
  * - Dùng để hiển thị overview: mô tả, mục lục (courseData), đánh giá, v.v.
@@ -837,9 +866,36 @@ export const enrollCourseService = async (
       (course as any).level = levelEnumValue;
     }
 
+    const shouldSanitize = !isCreator && userId?.role !== "admin";
+    let payloadCourse: any = course;
+    if (shouldSanitize && course) {
+      const courseObj = (course as any).toObject();
+      if (courseObj.thumbnail) {
+        courseObj.thumbnail = { url: courseObj.thumbnail?.url };
+      }
+      if (courseObj.videoDemo) {
+        courseObj.videoDemo = { url: courseObj.videoDemo?.url };
+      }
+      if (courseObj.creatorId?.avatar) {
+        courseObj.creatorId.avatar = { url: courseObj.creatorId.avatar?.url };
+      }
+      if (Array.isArray(courseObj.courseData)) {
+        courseObj.courseData = courseObj.courseData.map((section: any) => ({
+          ...section,
+          sectionContents: Array.isArray(section.sectionContents)
+            ? section.sectionContents.map((lecture: any) => ({
+                ...lecture,
+                video: lecture?.video ? { url: lecture.video?.url } : lecture?.video,
+              }))
+            : [],
+        }));
+      }
+      payloadCourse = courseObj;
+    }
+
     res.status(200).json({
       success: true,
-      course,
+      course: payloadCourse,
       completedLectures: userEnrollment?.completedLectures || [],
     });
   } catch (error: any) {
@@ -862,14 +918,8 @@ export const searchCoursesService = async (
   next: NextFunction
 ) => {
   try {
-    const {
-      query: searchQuery,
-      category,
-      level,
-      priceMin,
-      priceMax,
-      sort,
-    } = query;
+    const { category, level, priceMin, priceMax, sort } = query;
+    const searchQuery = (query as any)?.query ?? (query as any)?.keyword;
 
     const filter: any = {};
 
@@ -916,7 +966,6 @@ export const searchCoursesService = async (
       if (priceMax) filter.price.$lte = Number(priceMax);
     }
 
-    // Determine sort order
     let sortOption = {};
     if (sort) {
       switch (sort) {
@@ -945,7 +994,6 @@ export const searchCoursesService = async (
       sortOption = { createdAt: -1 };
     }
 
-    // Find courses with the filter and sort options
     const courses = await CourseModel.find(filter)
       .select(
         "_id name description overview categories price estimatedPrice thumbnail tags level videoDemo ratings purchased createdAt"
@@ -954,10 +1002,16 @@ export const searchCoursesService = async (
       .populate("categories", "title")
       .sort(sortOption);
 
-    const mapped = courses.map((c: any) => ({
-      ...c.toObject(),
-      level: normalizeLevel(c.level),
-    }));
+    const mapped = courses.map((c: any) => {
+      const obj = c.toObject();
+      if (obj.thumbnail) obj.thumbnail = { url: obj.thumbnail?.url };
+      if (obj.videoDemo) obj.videoDemo = { url: obj.videoDemo?.url };
+      if (obj.creatorId?.avatar) {
+        obj.creatorId.avatar = { url: obj.creatorId.avatar?.url };
+      }
+      obj.level = normalizeLevel(obj.level);
+      return obj;
+    });
 
     res.status(200).json({
       success: true,
@@ -1531,18 +1585,24 @@ export const markLectureCompletedService = async (
       return next(new ErrorHandler("Invalid courseId or lectureId", 400));
     }
 
-    const isEnrolledByUserDoc = await EnrolledCourseModel.findOne({
-      userId: user?._id,
-      courseId,
-    });
-    if (!isEnrolledByUserDoc && user?.role !== "admin") {
+    const [isEnrolledByUserDoc, course] = await Promise.all([
+      EnrolledCourseModel.findOne({
+        userId: user?._id,
+        courseId,
+      }),
+      CourseModel.findById(courseId).select(
+        "courseData.sectionContents._id creatorId"
+      )
+    ]);
+
+    if (!course) return next(new ErrorHandler("Course not found", 404));
+
+    const isEnrolled = Boolean(isEnrolledByUserDoc);
+    const isCreator = course.creatorId && course.creatorId.toString() === String(user?._id);
+
+    if (!isEnrolled && !isCreator && user?.role !== "admin") {
       return next(new ErrorHandler("You are not enrolled in this course", 403));
     }
-
-    const course = await CourseModel.findById(courseId).select(
-      "courseData.sectionContents._id"
-    );
-    if (!course) return next(new ErrorHandler("Course not found", 404));
     
     const totalLectures = (course.courseData || []).reduce((acc: number, section: any) => {
       return acc + (section.sectionContents ? section.sectionContents.length : 0);
@@ -1559,7 +1619,7 @@ export const markLectureCompletedService = async (
           completedLectures: new mongoose.Types.ObjectId(lectureId),
         },
       },
-      { new: true, upsert: user?.role === "admin" ? true : false }
+      { new: true, upsert: user?.role === "admin" || isCreator ? true : false }
     );
     
     if (!updated) {

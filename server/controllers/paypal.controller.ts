@@ -6,19 +6,20 @@ import CourseModel from "../models/course.model";
 import OrderModel from "../models/order.model";
 import NotificationModel from "../models/notification.model";
 import sendMail from "../utils/sendMail";
-import path from "path";
-import ejs from "ejs";
 import paypalClient, { paypal } from "../utils/paypal";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 
 export const createPayPalCheckoutSession = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId } = req.body;
+      const { courseId, courseIds } = req.body as {
+        courseId?: string;
+        courseIds?: string[];
+      };
       const userId = req.user?._id;
       
-      if (!courseId) {
-        return next(new ErrorHandler("Course ID is required", 400));
+      if (!courseId && (!Array.isArray(courseIds) || courseIds.length === 0)) {
+        return next(new ErrorHandler("Course ID(s) is required", 400));
       }
 
       const user = await userModel.findById(userId);
@@ -26,18 +27,33 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         return next(new ErrorHandler("User not found", 404));
       }
 
-      const course = await CourseModel.findById(courseId);
-      if (!course) {
-        return next(new ErrorHandler("Course not found", 404));
+      const targetCourseIds: string[] = courseId
+        ? [courseId]
+        : Array.from(new Set((courseIds as string[]).filter(Boolean)));
+
+      const courses = await CourseModel.find({ _id: { $in: targetCourseIds } });
+      if (!courses || courses.length === 0) {
+        return next(new ErrorHandler("Course(s) not found", 404));
+      }
+      const foundIds = new Set(courses.map((c) => String((c as any)._id)));
+      const missing = targetCourseIds.filter((id) => !foundIds.has(String(id)));
+      if (missing.length > 0) {
+        return next(new ErrorHandler(`Course(s) not found: ${missing.join(", ")}`, 404));
       }
 
-      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
+      const existingEnrollments = await EnrolledCourseModel.find({
+        userId,
+        courseId: { $in: targetCourseIds },
+      }).select("courseId");
+      const alreadyEnrolledIds = new Set(existingEnrollments.map((e: any) => String(e.courseId)));
+      const purchasableCourses = courses.filter((c: any) => !alreadyEnrolledIds.has(String(c._id)));
 
-      if (existingEnrollment) {
-        return next(
-          new ErrorHandler("You have already purchased this course", 400)
-        );
+      if (purchasableCourses.length === 0) {
+        return next(new ErrorHandler("You have already purchased all selected courses", 400));
       }
+
+      const totalAmount = purchasableCourses.reduce((sum: number, c: any) => sum + Number(c.price || 0), 0);
+      const isMulti = purchasableCourses.length > 1;
 
       const request = new paypal.orders.OrdersCreateRequest();
       request.prefer("return=representation");
@@ -47,15 +63,19 @@ export const createPayPalCheckoutSession = CatchAsyncError(
           {
             amount: {
               currency_code: "USD",
-              value: course.price.toString(),
+              value: totalAmount.toFixed(2),
             },
-            description: course.name,
-            custom_id: courseId,
+            description: isMulti
+              ? `${purchasableCourses.length} courses purchase`
+              : purchasableCourses[0].name,
+            custom_id: isMulti ? "multi_courses" : String((purchasableCourses[0] as any)._id),
             reference_id: userId?.toString(),
           },
         ],
         application_context: {
-          return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?courseId=${courseId}`,
+          return_url: isMulti
+            ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?courseIds=${encodeURIComponent(purchasableCourses.map((c: any) => String(c._id)).join(','))}`
+            : `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?courseId=${String((purchasableCourses[0] as any)._id)}`,
           cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/courses?canceled=true`,
           brand_name: "LMS Platform",
           landing_page: "BILLING",
@@ -72,12 +92,13 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         res.status(200).json({
           success: true,
           orderId: order.result.id,
-          course: {
-            id: course._id,
-            name: course.name,
-            price: course.price,
-            description: course.description,
-          },
+          courses: purchasableCourses.map((c: any) => ({
+            id: c._id,
+            name: c.name,
+            price: c.price,
+            description: c.description,
+          })),
+          totalAmount,
           paypalLinks: order.result.links,
         });
       } catch (error: any) {
@@ -97,33 +118,33 @@ export const createPayPalCheckoutSession = CatchAsyncError(
 export const paypalSuccess = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId, token } = req.body;
+      const { courseId, courseIds, token } = req.body as {
+        courseId?: string;
+        courseIds?: string[];
+        token: string;
+      };
       const userId = req.user?._id;
 
-      console.log("PayPal success callback:", { courseId, token, userId });
+      console.log("PayPal success callback:", { courseId, courseIds, token, userId });
 
-      if (!courseId || !token) {
-        return next(new ErrorHandler("Missing courseId or PayPal token", 400));
+      if ((!courseId && (!Array.isArray(courseIds) || courseIds.length === 0)) || !token) {
+        return next(new ErrorHandler("Missing courseId(s) or PayPal token", 400));
       }
 
       if (!userId) {
         return next(new ErrorHandler("User not authenticated", 401));
       }
-
       const user = await userModel.findById(userId);
-      const course = await CourseModel.findById(courseId);
-
-      if (!user || !course) {
-        return next(new ErrorHandler("User or course not found", 404));
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
       }
 
-      const existingEnrollment = await EnrolledCourseModel.findOne({ userId, courseId });
-
-      if (existingEnrollment) {
-        return res.status(400).json({
-          success: false,
-          message: "You have already purchased this course"
-        });
+      const targetCourseIds: string[] = courseId
+        ? [courseId]
+        : Array.from(new Set((courseIds as string[]).filter(Boolean)));
+      const courses = await CourseModel.find({ _id: { $in: targetCourseIds } });
+      if (!courses || courses.length === 0) {
+        return next(new ErrorHandler("Course(s) not found", 404));
       }
 
       const orderRequest = new paypal.orders.OrdersGetRequest(token);
@@ -192,81 +213,110 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler(`Payment not completed. Status: ${paymentStatus}`, 400));
       }
 
-      const orderData = {
-        courseId: courseId as string,
-        userId: userId?.toString() || "",
-        payment_info: {
-           id: paymentId,
-           status: "succeeded",
-           amount: paymentAmount,
-           currency: capture.amount.currency_code,
-           payer_id: payerId,
-         },
-         payment_method: "paypal",
-       };
+      const results: any[] = [];
+      const purchasedCourseSummaries: { id: string; name: string; price: number }[] = [];
+      for (const c of courses) {
+        const cid = String((c as any)._id);
+        try {
+          const existing = await EnrolledCourseModel.findOne({ userId, courseId: cid });
+          if (existing) {
+            console.warn("Skip creating order/enrollment; already enrolled", { userId, courseId: cid });
+            continue;
+          }
+          const orderData = {
+            courseId: cid,
+            userId: userId?.toString() || "",
+            payment_info: {
+              id: paymentId,
+              status: "succeeded",
+              amount: Number(c.price || 0),
+              currency: capture.amount.currency_code,
+              payer_id: payerId,
+            },
+            payment_method: "paypal",
+          };
+          const newOrder = await OrderModel.create(orderData);
+          console.log("Order created:", newOrder._id);
 
-      const newOrder = await OrderModel.create(orderData);
-      console.log("Order created:", newOrder._id);
+          try {
+            await EnrolledCourseModel.create({ userId, courseId: cid });
+          } catch (enrollErr: any) {
+            if (enrollErr?.code === 11000) {
+              console.warn("Enrollment already exists for user/course", { userId, courseId: cid });
+            } else {
+              console.error("Failed to create enrollment:", enrollErr?.message || enrollErr);
+            }
+          }
 
-      // Enrollment is recorded below; removed legacy user.courses update
+          await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
 
-      try {
-        await EnrolledCourseModel.create({ userId, courseId });
-      } catch (enrollErr: any) {
-        if (enrollErr?.code === 11000) {
-          console.warn("Enrollment already exists for user/course", { userId, courseId });
-        } else {
-          console.error("Failed to create enrollment:", enrollErr?.message || enrollErr);
+          purchasedCourseSummaries.push({
+            id: String((newOrder._id as any)),
+            name: (c as any).name,
+            price: Number((c as any).price || 0),
+          });
+
+          await NotificationModel.create({
+            userId: userId as any,
+            title: "Order Confirmation - PayPal",
+            message: `You have successfully purchased ${(c as any).name} via PayPal`,
+          });
+          await NotificationModel.create({
+            userId: (c as any).creatorId as any,
+            title: "New Order",
+            message: `${user.name} purchased ${(c as any).name} via PayPal`,
+          });
+
+          results.push({
+            orderId: newOrder._id,
+            courseId: cid,
+            amount: Number((c as any).price || 0),
+            currency: capture.amount.currency_code,
+          });
+        } catch (err: any) {
+          console.error("Failed processing course order:", cid, err?.message || err);
         }
       }
 
-      await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
-
-      const mailData = {
-        order: {
-          _id: (newOrder._id as any).toString().slice(0, 6),
-          name: course.name,
-          price: course.price,
-          date: new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-        },
-      };
-
       try {
+        const totalPaid = purchasedCourseSummaries.reduce((s, it) => s + (it.price || 0), 0);
+        const mailData = {
+          order: {
+            _id: (results[0]?.orderId as any)?.toString()?.slice(0, 6) || (paymentId as any)?.toString()?.slice(0, 6),
+            date: new Date().toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            items: purchasedCourseSummaries.map((i) => ({ name: i.name, price: i.price })),
+            total: totalPaid,
+          },
+        } as any;
+
+        const subject = purchasedCourseSummaries.length > 1
+          ? `Order Confirmation - ${purchasedCourseSummaries.length} courses`
+          : `Order Confirmation - ${purchasedCourseSummaries[0]?.name || 'Course'}`;
+
         await sendMail({
-          email: user.email,
-          subject: "Order Confirmation - PayPal",
-          template: "order-confirmation.ejs",
+          email: (user as any).email,
+          subject,
+          template: "order-confirmation-multi.ejs",
           data: mailData,
         });
-        console.log("Confirmation email sent to:", user.email);
+        console.log("Confirmation email sent to:", (user as any).email);
       } catch (error: any) {
-        console.error("Email sending failed:", error.message);
+        console.error("Email sending failed:", error?.message || error);
       }
-
-      await NotificationModel.create({
-        userId: userId as any,
-        title: "Order Confirmation - PayPal",
-        message: `You have successfully purchased ${course.name} via PayPal`,
-      });
-      await NotificationModel.create({
-        userId: course.creatorId as any,
-        title: "New Order",
-        message: `${user.name} purchased ${course.name} via PayPal`,
-      });
 
       res.status(200).json({
         success: true,
         message: "Payment completed successfully",
-        order: {
-          id: newOrder._id,
-          courseId: courseId,
+        payment: {
+          id: paymentId,
           amount: paymentAmount,
-          currency: capture.amount.currency_code
-        }
+          currency: capture.amount.currency_code,
+        },
+        orders: results,
       });
     } catch (error: any) {
       console.error("PayPal success error:", error);

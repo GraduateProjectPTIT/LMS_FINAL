@@ -6,8 +6,7 @@ export const normalizeLevel = (lv: any): ECourseLevel => {
   if (s === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
   if (s === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
   if (s === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
-  if (s === ECourseLevel.All.toLowerCase()) return ECourseLevel.All;
-  return ECourseLevel.All;
+  return ECourseLevel.Beginner;
 };
 
 export const formatTime = (minutes: number): string => {
