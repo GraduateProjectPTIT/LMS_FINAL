@@ -10,7 +10,8 @@ const studentSchema: Schema<IStudent> = new Schema(
       unique: true,
     },
     interests: {
-      type: [String],
+      type: [Schema.Types.ObjectId],
+      ref: "Category",
       default: [],
     },
   },
