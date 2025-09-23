@@ -98,7 +98,7 @@ export const getCartService = async (userId: string, next: any) => {
   };
 };
 
-export const addToCartService = async (userId: string, courseId: string) => {
+export const addToCartService = async (userId: string, courseId: string): Promise<{ cart: any; added: boolean }> => {
   if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
     throw new ErrorHandler("Invalid id", 400);
   }
@@ -116,7 +116,7 @@ export const addToCartService = async (userId: string, courseId: string) => {
   ) as any;
 
   await cart.save();
-  return cart;
+  return { cart, added: !inCart };
 };
 
 export const removeFromCartService = async (userId: string, courseId: string) => {

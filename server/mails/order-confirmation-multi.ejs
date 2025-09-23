@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f4f4f4;
+        color: #333;
+        line-height: 1.6;
+      }
+      .container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+      }
+      .header {
+        text-align: center;
+        border-bottom: 2px solid #4a90e2;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        color: #4a90e2;
+        margin: 0;
+        font-size: 24px;
+      }
+      .order-details { margin-bottom: 20px; }
+      .order-details table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+      .order-details td { padding: 10px; border-bottom: 1px solid #eee; }
+
+      .order-items { background-color: #f9f9f9; border-radius: 4px; padding: 15px; }
+      .order-items table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 15px; }
+      .order-items th, .order-items td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+      .order-items th { background-color: #f0f0f0; font-weight: bold; color: #333; }
+
+      .order-summary { background-color: #f9f9f9; border-radius: 4px; padding: 15px; }
+      .order-summary table { width: 100%; border-collapse: collapse; }
+      .order-summary td { padding: 10px; text-align: right; }
+      .order-summary .label { text-align: left; font-weight: bold; color: #555; }
+      .total { font-weight: bold; color: #4a90e2; font-size: 18px; }
+      .total-row { border-top: 2px solid #4a90e2; }
+      .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Order Confirmation</h1>
+        <p>Thank you for your purchase!</p>
+      </div>
+
+      <div class="order-details">
+        <table>
+          <tr>
+            <td><strong>Order #:</strong> <%= order._id %></td>
+            <td><strong>Order Date:</strong> <%= order.date %></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="order-items">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (order.items || []).forEach(function(item){ %>
+              <tr>
+                <td><%= item.name %></td>
+                <td>1</td>
+                <td>$<%= item.price %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="order-summary">
+        <table>
+          <tr>
+            <td class="label">Subtotal:</td>
+            <td>$<%= order.total %></td>
+          </tr>
+          <tr class="total-row">
+            <td class="label total">Total:</td>
+            <td class="total">$<%= order.total %></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="footer">
+        <p>Questions about your order? Contact our support team.</p>
+      </div>
+    </div>
+  </body>
+</html>
