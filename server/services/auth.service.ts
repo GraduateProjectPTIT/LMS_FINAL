@@ -39,6 +39,7 @@ export const _toUserResponse = (user: IUser): IUserResponse => {
     resetToken,
     activationCode,
     activationToken,
+    avatar,
     ...userResponseData
   } = userObject;
 
@@ -46,7 +47,7 @@ export const _toUserResponse = (user: IUser): IUserResponse => {
   return {
     ...userResponseData,
     isVerified: userResponseData.isVerified ?? false,
-    avatar: userResponseData.avatar ?? { public_id: "", url: "" },
+    avatar: userResponseData.avatar ?? { url: "" },
     socials: userResponseData.socials ?? {
       facebook: "",
       instagram: "",
