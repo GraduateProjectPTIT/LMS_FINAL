@@ -12,7 +12,10 @@ export interface IActivationToken {
 export type IUserResponse = Omit<
   IUser,
   "password" | "resetToken" | "activationCode" | "activationToken"
->;
+> & {
+  expertise?: string[];
+  interests?: string[];
+};
 
 export interface IDecodedPayload {
   id: string;

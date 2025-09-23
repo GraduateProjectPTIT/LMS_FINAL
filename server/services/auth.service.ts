@@ -26,6 +26,7 @@ import { studentModel } from "../models/student.model";
 import { tutorModel } from "../models/tutor.model";
 import { adminModel } from "../models/admin.model";
 import { IStudent } from "../types/user.types";
+import { ICategory } from "../models/category.model";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
@@ -395,8 +396,52 @@ export const loginUserService = async (
     throw new ErrorHandler("Invalid email or password", 400);
   }
 
-  // ✅ Gọi hàm helper để chuyển đổi
-  return _toUserResponse(userFromDB);
+  const baseResponse = _toUserResponse(userFromDB);
+
+  if (userFromDB.role === "tutor") {
+    const tutorProfile = await tutorModel
+      .findOne({ userId: userFromDB._id })
+      .populate<{ expertise: ICategory[] }>("expertise"); // <-- POPULATE Ở ĐÂY
+
+    let expertiseTitles: string[] = [];
+
+    if (tutorProfile && tutorProfile.expertise) {
+      // Dùng .map() để tạo một mảng mới chỉ chứa các 'title'
+      expertiseTitles = tutorProfile.expertise.map(
+        (category) => category.title
+      );
+    }
+
+    return {
+      ...baseResponse,
+      expertise: expertiseTitles,
+    };
+  }
+
+  if (userFromDB.role === "student") {
+    // 1. Tìm student profile và populate trường 'interests'
+    const studentProfile = await studentModel
+      .findOne({ userId: userFromDB._id })
+      .populate<{ interests: ICategory[] }>("interests"); // <-- Populate 'interests'
+
+    let interestTitles: string[] = [];
+
+    // 2. Kiểm tra và dùng .map() để lấy ra các title
+    if (studentProfile && studentProfile.interests) {
+      interestTitles = studentProfile.interests.map(
+        (category) => category.title
+      );
+    }
+
+    // 3. Trả về response với mảng 'interests' chứa các title
+    return {
+      ...baseResponse,
+      interests: interestTitles, // <-- Trả về trường 'interests'
+    };
+  }
+
+  // 3. Nếu không phải role đặc biệt, trả về response cơ bản
+  return baseResponse;
 };
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
