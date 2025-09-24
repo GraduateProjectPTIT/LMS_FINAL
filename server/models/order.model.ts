@@ -16,8 +16,15 @@ export interface IPaymentInfo {
     metadata?: Record<string, any>;
 }
 
-export interface IOrder extends Document {
+export interface IOrderItem {
     courseId: string;
+    price: number;
+}
+
+export interface IOrder extends Document {
+    courseId?: string;
+    items?: IOrderItem[];
+    total?: number;
     userId: string;
     payment_info: IPaymentInfo;
     payment_method: string;
@@ -27,8 +34,15 @@ const orderSchema = new Schema<IOrder>(
     {
         courseId: {
             type: String,
-            required: true,
+            required: false,
         },
+        items: [
+            {
+                courseId: { type: String, required: true },
+                price: { type: Number, required: true },
+            },
+        ],
+        total: { type: Number },
         userId: {
             type: String,
             required: true,

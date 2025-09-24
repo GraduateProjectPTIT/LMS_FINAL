@@ -7,6 +7,8 @@ import OrderModel from "../models/order.model";
 import NotificationModel from "../models/notification.model";
 import sendMail from "../utils/sendMail";
 import paypalClient, { paypal } from "../utils/paypal";
+import CartModel from "../models/cart.model";
+import mongoose from "mongoose";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 
 export const createPayPalCheckoutSession = CatchAsyncError(
@@ -213,48 +215,17 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler(`Payment not completed. Status: ${paymentStatus}`, 400));
       }
 
-      const results: any[] = [];
-      const purchasedCourseSummaries: { id: string; name: string; price: number }[] = [];
+      const items = courses.map((c: any) => ({ courseId: String(c._id), price: Number(c.price || 0) }));
+      const total = items.reduce((s: number, it: any) => s + (it.price || 0), 0);
+
       for (const c of courses) {
         const cid = String((c as any)._id);
         try {
           const existing = await EnrolledCourseModel.findOne({ userId, courseId: cid });
-          if (existing) {
-            console.warn("Skip creating order/enrollment; already enrolled", { userId, courseId: cid });
-            continue;
-          }
-          const orderData = {
-            courseId: cid,
-            userId: userId?.toString() || "",
-            payment_info: {
-              id: paymentId,
-              status: "succeeded",
-              amount: Number(c.price || 0),
-              currency: capture.amount.currency_code,
-              payer_id: payerId,
-            },
-            payment_method: "paypal",
-          };
-          const newOrder = await OrderModel.create(orderData);
-          console.log("Order created:", newOrder._id);
-
-          try {
+          if (!existing) {
             await EnrolledCourseModel.create({ userId, courseId: cid });
-          } catch (enrollErr: any) {
-            if (enrollErr?.code === 11000) {
-              console.warn("Enrollment already exists for user/course", { userId, courseId: cid });
-            } else {
-              console.error("Failed to create enrollment:", enrollErr?.message || enrollErr);
-            }
+            await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
           }
-
-          await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
-
-          purchasedCourseSummaries.push({
-            id: String((newOrder._id as any)),
-            name: (c as any).name,
-            price: Number((c as any).price || 0),
-          });
 
           await NotificationModel.create({
             userId: userId as any,
@@ -266,36 +237,54 @@ export const paypalSuccess = CatchAsyncError(
             title: "New Order",
             message: `${user.name} purchased ${(c as any).name} via PayPal`,
           });
-
-          results.push({
-            orderId: newOrder._id,
-            courseId: cid,
-            amount: Number((c as any).price || 0),
-            currency: capture.amount.currency_code,
-          });
         } catch (err: any) {
-          console.error("Failed processing course order:", cid, err?.message || err);
+          console.error("Failed processing course enrollment/notification:", cid, err?.message || err);
         }
       }
 
+      const consolidatedOrder = await OrderModel.create({
+        items,
+        total,
+        userId: userId?.toString() || "",
+        payment_info: {
+          id: paymentId,
+          status: "succeeded",
+          amount: paymentAmount,
+          currency: capture.amount.currency_code,
+          payer_id: payerId,
+        },
+        payment_method: "paypal",
+      });
+      console.log("Consolidated order created:", consolidatedOrder._id);
+
       try {
-        const totalPaid = purchasedCourseSummaries.reduce((s, it) => s + (it.price || 0), 0);
+        const purchasedIds = items.map((it: any) => new mongoose.Types.ObjectId(String(it.courseId)));
+        await CartModel.updateOne(
+          { userId: new mongoose.Types.ObjectId(String(userId)) },
+          { $pull: { items: { courseId: { $in: purchasedIds } } } }
+        );
+      } catch (cartErr: any) {
+        console.error("Failed to remove purchased items from cart:", cartErr?.message || cartErr);
+      }
+
+      try {
+        const totalPaid = total;
         const mailData = {
           order: {
-            _id: (results[0]?.orderId as any)?.toString()?.slice(0, 6) || (paymentId as any)?.toString()?.slice(0, 6),
+            _id: (consolidatedOrder._id as any)?.toString()?.slice(0, 6) || (paymentId as any)?.toString()?.slice(0, 6),
             date: new Date().toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
             }),
-            items: purchasedCourseSummaries.map((i) => ({ name: i.name, price: i.price })),
+            items: courses.map((c: any) => ({ name: c.name, price: Number(c.price || 0) })),
             total: totalPaid,
           },
         } as any;
 
-        const subject = purchasedCourseSummaries.length > 1
-          ? `Order Confirmation - ${purchasedCourseSummaries.length} courses`
-          : `Order Confirmation - ${purchasedCourseSummaries[0]?.name || 'Course'}`;
+        const subject = items.length > 1
+          ? `Order Confirmation - ${items.length} courses`
+          : `Order Confirmation - ${courses[0]?.name || 'Course'}`;
 
         await sendMail({
           email: (user as any).email,
@@ -316,7 +305,12 @@ export const paypalSuccess = CatchAsyncError(
           amount: paymentAmount,
           currency: capture.amount.currency_code,
         },
-        orders: results,
+        order: {
+          id: consolidatedOrder._id,
+          items,
+          total,
+          currency: capture.amount.currency_code,
+        },
       });
     } catch (error: any) {
       console.error("PayPal success error:", error);
@@ -400,7 +394,9 @@ export const checkPayPalPaymentStatus = CatchAsyncError(
           amount: order.payment_info.amount,
           currency: order.payment_info.currency,
           payment_method: order.payment_method,
-          courseId: order.courseId
+          items: (order as any).items || undefined,
+          total: (order as any).total || undefined,
+          courseId: (order as any).courseId || undefined,
         }
       });
     } catch (error: any) {

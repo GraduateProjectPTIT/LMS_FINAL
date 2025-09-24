@@ -9,6 +9,7 @@ import sendMail from "../utils/sendMail";
 import path from "path";
 import ejs from "ejs";
 import NotificationModel from "../models/notification.model";
+import { normalizeOrders } from "../utils/order.helpers";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import { redis } from "../utils/redis";
 import mongoose from "mongoose";
@@ -24,9 +25,14 @@ export const createOrder = CatchAsyncError(
       const userId = req.user?._id;
       const user = await userModel.findById(req.user?._id);
       
+      if (!courseId) {
+        return next(new ErrorHandler("Course ID is required", 400));
+      }
+      const courseIdStr = String(courseId);
+      
       const existingEnrollment = await EnrolledCourseModel.findOne({
         userId,
-        courseId,
+        courseId: courseIdStr,
       });
 
       if (existingEnrollment) {
@@ -35,14 +41,19 @@ export const createOrder = CatchAsyncError(
         );
       }
 
-      const course: ICourse | null = await CourseModel.findById(courseId);
+      const course: ICourse | null = await CourseModel.findById(courseIdStr);
 
       if (!course) {
         return next(new ErrorHandler("Course not found", 404));
       }
 
+      const courseIdSafe = String(course._id);
       const data: any = {
-        courseId: (course._id as string).toString(),
+        courseId: courseIdSafe,
+        items: [
+          { courseId: courseIdSafe, price: Number(course.price || 0) },
+        ],
+        total: Number(course.price || 0),
         userId: (user?._id as unknown as string).toString(),
         payment_info,
         payment_method: payment_method || 'stripe',
@@ -50,7 +61,7 @@ export const createOrder = CatchAsyncError(
 
       const mailData = {
         order: {
-          _id: courseId.slice(0, 6),
+          _id: (course._id as any)?.toString()?.slice(0, 6),
           name: course.name,
           price: course.price,
           date: new Date().toLocaleDateString("en-US", {
@@ -80,10 +91,10 @@ export const createOrder = CatchAsyncError(
       }
 
       try {
-        await EnrolledCourseModel.create({ userId, courseId });
+        await EnrolledCourseModel.create({ userId, courseId: courseIdStr });
       } catch (enrollErr: any) {
         if (enrollErr?.code === 11000) {
-          console.warn("Enrollment already exists for user/course", { userId, courseId });
+          console.warn("Enrollment already exists for user/course", { userId, courseId: courseIdStr });
         } else {
           console.error("Failed to create enrollment:", enrollErr?.message || enrollErr);
         }
@@ -102,7 +113,6 @@ export const createOrder = CatchAsyncError(
         message: `${user?.name} purchased ${course?.name}`,
       });
 
-      // Increment purchased without triggering full schema validation
       await CourseModel.updateOne({ _id: course._id }, { $inc: { purchased: 1 } });
 
       newOrder(data, res, next);
@@ -491,15 +501,17 @@ export const getUserOrders = CatchAsyncError(
     try {
       const userId = req.user?._id;
 
-      const userOrders = await OrderModel.find({ userId });
+      const userOrders = await OrderModel.find({ userId }).sort({ createdAt: -1 });
 
       if (userOrders.length === 0) {
-        return res.json({ message: "No orders found" });
+        return res.status(200).json({ success: true, orders: [] });
       }
+
+      const normalized = normalizeOrders(userOrders);
 
       res.status(200).json({
         success: true,
-        orders: userOrders,
+        orders: normalized,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
