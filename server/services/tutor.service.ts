@@ -17,7 +17,7 @@ import {
   IUpdatePasswordParams,
   IUserResponse,
 } from "../types/auth.types";
-import CategoryModel from "../models/category.model";
+import CategoryModel, { ICategory } from "../models/category.model";
 import { tutorModel } from "../models/tutor.model";
 import mongoose, { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
@@ -38,37 +38,47 @@ export const updateTutorExpertiseService = async (
     throw new ErrorHandler("Expertise is required for tutors.", 400);
   }
 
+  // BƯỚC 1: Tìm user và profile (KHÔNG cần populate ở đây)
   const [user, tutorProfile] = await Promise.all([
-    // Bỏ .select() ở đây vì hàm helper sẽ xử lý việc loại bỏ trường
     userModel.findById(userId),
-    tutorModel.findOne({ userId }),
+    tutorModel.findOne({ userId }), // Bỏ .populate() không cần thiết ở đây
   ]);
 
-  // Các logic kiểm tra và cập nhật vẫn giữ nguyên...
-  if (!user) {
-    throw new ErrorHandler("User not found.", 404);
-  }
-  if (!tutorProfile) {
-    throw new ErrorHandler("Tutor profile not found.", 404);
+  if (!user || !tutorProfile) {
+    throw new ErrorHandler("User or Tutor profile not found.", 404);
   }
 
-  // ... validation logic ...
-
+  // BƯỚC 2: Cập nhật dữ liệu bằng ObjectId và lưu vào DB
   tutorProfile.expertise = expertise as unknown as Types.ObjectId[];
   if (user.isSurveyCompleted === false) {
     user.isSurveyCompleted = true;
   }
-
   await Promise.all([tutorProfile.save(), user.save()]);
 
-  // ✨ SỬ DỤNG HÀM HELPER Ở ĐÂY ✨
-  // 1. Sử dụng hàm helper để tạo response an toàn cho user
-  const userResponse = _toUserResponse(user);
+  // BƯỚC 3: Chuẩn bị response (POPULATE MỘT LẦN DUY NHẤT Ở ĐÂY)
+  // Populate document sau khi đã được lưu với dữ liệu mới nhất
+  const populatedProfile = await tutorProfile.populate<{
+    expertise: ICategory[];
+  }>("expertise");
 
-  // 2. Kết hợp tutor profile và user response đã được xử lý
+  let expertiseTitles: string[] = [];
+
+  // Sửa lỗi 'undefined': Thêm kiểm tra sự tồn tại của 'populatedProfile.expertise'
+  if (populatedProfile && populatedProfile.expertise) {
+    // Sửa lỗi 'title does not exist': Giờ đây TypeScript hiểu 'category' là ICategory
+    expertiseTitles = populatedProfile.expertise.map(
+      (category) => category.title
+    );
+  }
+
+  const userResponse = _toUserResponse(user);
+  const { userId: removedUserId, ...restOfProfile } =
+    populatedProfile.toObject();
+
   const combinedResponse = {
-    ...tutorProfile.toObject(),
+    ...restOfProfile,
     ...userResponse,
+    expertise: expertiseTitles,
   };
 
   return combinedResponse as ICombinedTutorUserResponse;
