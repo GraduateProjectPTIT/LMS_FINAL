@@ -1,6 +1,7 @@
 import { NextFunction, Response } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import OrderModel from "../models/order.model";
+import { normalizeOrders } from "../utils/order.helpers";
 
 // create new order
 export const newOrder = CatchAsyncError(async (data: any, res: Response, next: NextFunction) => {
@@ -14,12 +15,13 @@ export const newOrder = CatchAsyncError(async (data: any, res: Response, next: N
 
 // Get all orders 
 export const getAllOrdersService = async (res: Response) => {
-    const orders = await OrderModel.find().sort({ createAt: -1 })
+    const orders = await OrderModel.find().sort({ createdAt: -1 });
+    const normalized = normalizeOrders(orders);
 
-    res.status(201).json({
+    res.status(200).json({
         success: true,
-        orders,
-    })
+        orders: normalized,
+    });
 }
 
 // Get all paid orders
@@ -29,12 +31,11 @@ export const getPaidOrdersService = async (res: Response) => {
             { "payment_info.status": "paid" },
             { "payment_info.status": "succeeded" }
         ]
-    }).populate("courseId", "name price")
-      .populate("userId", "name email")
-      .sort({ createdAt: -1 })
+    }).sort({ createdAt: -1 });
+    const normalized = normalizeOrders(orders);
 
     res.status(200).json({
         success: true,
-        orders,
-    })
+        orders: normalized,
+    });
 }

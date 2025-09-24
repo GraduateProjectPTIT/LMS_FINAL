@@ -925,21 +925,37 @@ export const searchCoursesService = async (
 
     if (typeof searchQuery !== "undefined") {
       const keyword = String(searchQuery ?? "").trim();
+      
+      if (keyword.length >= 2) {
         const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regexPattern = new RegExp(escaped, "i");
 
         const searchConditions: any[] = [
           { name: { $regex: regexPattern } },
-          { description: { $regex: regexPattern } },
-          { overview: { $regex: regexPattern } },
           { tags: { $regex: regexPattern } },
         ];
+
+        const matchingCategories = await CategoryModel.find({
+          title: { $regex: regexPattern }
+        }).select("_id");
+        
+        if (matchingCategories.length > 0) {
+          const categoryIds = matchingCategories.map(cat => cat._id);
+          searchConditions.push({ categories: { $in: categoryIds } });
+        }
 
         if (mongoose.Types.ObjectId.isValid(keyword)) {
           searchConditions.push({ _id: keyword });
         }
 
         filter.$or = searchConditions;
+      } else if (keyword.length > 0 && keyword.length < 2) {
+        return res.status(200).json({
+          success: true,
+          courses: [],
+          message: "Keyword must be at least 2 characters long"
+        });
+      }
     }
 
     if (category) {
