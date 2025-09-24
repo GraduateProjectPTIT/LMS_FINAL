@@ -96,6 +96,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     activationToken: {
       type: String,
+      select: false,
     },
     studentProfile: { type: Schema.Types.ObjectId, ref: "Student" },
     tutorProfile: { type: Schema.Types.ObjectId, ref: "Tutor" },
