@@ -16,7 +16,11 @@ export interface PaginatedResult<T> {
 export interface PaginationParams {
   page?: string;
   limit?: string;
-  role?: string; // Thêm role vào đây
+}
+
+export interface UserQueryParams extends PaginationParams {
+  role?: "student" | "tutor";
+  keyword?: string;
 }
 
 /**

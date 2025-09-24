@@ -11,7 +11,11 @@ import {
   IUpdateTutorExpertiseDto,
   IUpdateUserInfo,
 } from "../types/user.types";
-import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
+import {
+  paginate,
+  PaginationParams,
+  UserQueryParams,
+} from "../utils/pagination.helper"; // Import the helper
 import {
   IUpdatePassword,
   IUpdatePasswordParams,
@@ -22,6 +26,7 @@ import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
+import { createKeywordSearchFilter } from "../utils/query.helper";
 
 // --- XÓA USER ---
 // export const deleteUserService = async (id: string) => {
@@ -37,16 +42,27 @@ import { _toUserResponse } from "./auth.service";
 // };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
-export const getAllUsersService = async (queryParams: PaginationParams) => {
-  // Tách các tham số phân trang ra khỏi các tham số dùng để lọc
-  const { page, limit, role } = queryParams; // 1. Xây dựng đối tượng filter
+export const getAllUsersService = async (queryParams: UserQueryParams) => {
+  const { page, limit, role, keyword } = queryParams;
 
-  const filter: { [key: string]: any } = {};
+  // 2. Build the base filter object
+  const baseFilter: { [key: string]: any } = {};
   if (role === "student" || role === "tutor") {
-    filter.role = role;
+    baseFilter.role = role;
   }
 
-  const paginatedResult = await paginate(userModel, { page, limit }, filter); // 3. (Tùy chọn) Đổi tên key 'data' thành 'users' cho dễ hiểu ở controller
+  // 3. Generate the keyword search filter using the utility ✨
+  const keywordFilter = createKeywordSearchFilter(keyword, ["email"]);
+
+  // 4. Combine base filter and keyword filter
+  const finalFilter = { ...baseFilter, ...keywordFilter };
+
+  // 5. Pass the combined filter to the pagination function
+  const paginatedResult = await paginate(
+    userModel,
+    { page, limit },
+    finalFilter
+  );
 
   return {
     paginatedResult,
