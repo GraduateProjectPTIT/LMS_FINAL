@@ -7,9 +7,10 @@ interface CourseGridProps {
     viewMode: 'grid' | 'list';
     setShowPreviewModal: React.Dispatch<React.SetStateAction<boolean>>;
     setSelectedCourse: React.Dispatch<React.SetStateAction<ICourseSearchResponse | null>>
+    currentUrl: string | null;
 }
 
-const CourseGrid = ({ courses, viewMode, setShowPreviewModal, setSelectedCourse }: CourseGridProps) => {
+const CourseGrid = ({ courses, viewMode, setShowPreviewModal, setSelectedCourse, currentUrl }: CourseGridProps) => {
 
     return (
         <div className={`${viewMode === 'list'
@@ -24,6 +25,7 @@ const CourseGrid = ({ courses, viewMode, setShowPreviewModal, setSelectedCourse 
                     viewMode={viewMode}
                     setShowPreviewModal={setShowPreviewModal}
                     setSelectedCourse={setSelectedCourse}
+                    currentUrl={currentUrl}
                 />
             ))}
         </div>

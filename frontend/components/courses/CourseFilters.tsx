@@ -69,7 +69,7 @@ const CourseFilters = ({
                         >
                             <option value="all">All Categories</option>
                             {categories.map((category) => (
-                                <option key={category.title} value={category.title}>
+                                <option key={category._id} value={category._id}>
                                     {category.title}
                                 </option>
                             ))}
@@ -153,7 +153,9 @@ const CourseFilters = ({
 
                         {categoryFilter !== 'all' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-                                Category: {categoryFilter}
+                                Category: {
+                                    categories.find(c => c._id === categoryFilter)?.title || categoryFilter
+                                }
                                 <button
                                     onClick={() => onCategoryChange('all')}
                                     className="hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-full p-0.5"

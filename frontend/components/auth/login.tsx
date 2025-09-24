@@ -51,6 +51,8 @@ const Login = () => {
     // Check if there's a callbackUrl from middleware
     const callbackUrl = searchParams?.get("callbackUrl") || "/"; // Default to homepage
 
+    console.log("Callback URL:", callbackUrl);
+
     const { currentUser } = useSelector((state: any) => state.user);
 
     // Redirect logged-in users

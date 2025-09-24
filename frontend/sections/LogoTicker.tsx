@@ -24,7 +24,7 @@ const logos = [
 
 const LogoTicker = () => {
   return (
-    <section className="h-[100px] flex items-center theme-mode border shadow-md dark:shadow-slate-400">
+    <section className="h-[100px] flex items-center theme-mode border shadow-md">
       <div className="container">
         <div className="flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black,transparent)]">
           <motion.div

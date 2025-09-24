@@ -61,31 +61,27 @@ const CourseViewControls = ({
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
                     View Mode:
                 </span>
-                <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 p-1">
-                    <Button
-                        variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                        size="sm"
+                <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 p-2">
+                    <button
                         onClick={() => onViewModeChange('grid')}
-                        className={`flex items-center gap-2 rounded-md transition-all ${viewMode === 'grid'
-                            ? 'bg-slate-600 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
-                            : 'text-slate-600 dark:text-slate-400'
+                        className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-all ${viewMode === 'grid'
+                            ? 'bg-blue-500 dark:bg-slate-100 text-white dark:text-black shadow-sm'
+                            : 'text-slate-600 dark:text-slate-500 hover:bg-blue-100 dark:hover:bg-blue-100'
                             }`}
                     >
                         <LayoutGrid className="h-4 w-4" />
                         <span className="hidden sm:inline">Grid</span>
-                    </Button>
-                    <Button
-                        variant={viewMode === 'list' ? 'default' : 'ghost'}
-                        size="sm"
+                    </button>
+                    <button
                         onClick={() => onViewModeChange('list')}
-                        className={`flex items-center gap-2 rounded-md transition-all ${viewMode === 'list'
-                            ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-all ${viewMode === 'list'
+                            ? 'bg-blue-500 dark:bg-slate-100 text-white dark:text-black shadow-sm'
+                            : ' text-slate-600 dark:text-slate-500 hover:bg-blue-100 dark:hover:bg-blue-100'
                             }`}
                     >
                         <List className="h-4 w-4" />
                         <span className="hidden sm:inline">List</span>
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>

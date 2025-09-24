@@ -258,4 +258,22 @@ export interface CourseEnrollResponse {
     updatedAt: string;
 }
 
+// ------------------- CART -------------------
+
+export interface CartItem {
+    _id: string;
+    name: string;
+    price: number;
+    estimatedPrice?: number;
+    thumbnail?: {
+        url: string;
+    };
+    level?: string;
+    totalSections?: number;
+    totalLectures?: number;
+    totalTime?: string;
+    instructorName?: string;
+    ratings?: number;
+}
+
 

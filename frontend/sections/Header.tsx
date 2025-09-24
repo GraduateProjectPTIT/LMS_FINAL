@@ -7,6 +7,7 @@ import { useSelector, useDispatch } from "react-redux";
 import toast from 'react-hot-toast';
 import { signOut } from "next-auth/react";
 import { signOutSuccess } from '@/redux/user/userSlice';
+import { clearAll } from "@/redux/cart/cartSlice";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from '@/components/ui/input';
-import { Search, Bell, Menu, Clock, X, Trash2 } from 'lucide-react';
+import { Search, Bell, Menu, Clock, X, Trash2, ShoppingCart } from 'lucide-react';
 
 import AnonymousImage from "@/public/anonymous.png"
 import Logo from "@/assets/logo-lms.png"
@@ -36,6 +37,7 @@ const Header = () => {
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { currentUser } = useSelector((state: RootState) => state.user);
+  const { totalItems } = useSelector((state: RootState) => state.cart);
   const { history, addHistory, removeHistory, clearHistory } = useSearchHistory();
 
   // state management
@@ -137,6 +139,7 @@ const Header = () => {
       }
 
       dispatch(signOutSuccess());
+      dispatch(clearAll());
       toast.success("Logout successfully");
       router.replace('/');
     } catch (error: any) {
@@ -228,13 +231,28 @@ const Header = () => {
               </div>
 
               {/* Mobile and Desktop Icons */}
-              <div className="flex justify-center items-center gap-2 md:gap-3">
+              <div className="flex justify-center items-center gap-5">
                 <Search
                   onClick={() => handleSearchToggle(true)}
-                  className='w-5 h-5 block md:hidden hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors mr-3'
+                  className='w-5 h-5 block md:hidden hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors'
                 />
+
+                <div className='relative'>
+                  <ShoppingCart
+                    onClick={() => router.push('/cart')}
+                    className='w-5 h-5 hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors'
+                  />
+
+                  {currentUser && totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full"></span>
+                  )}
+                </div>
+
+
                 <Bell className='w-5 h-5 hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors' />
+
                 <ThemeSwitcher />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Avatar className="w-7 h-7 border border-gray-300 dark:border-slate-800 shadow-md hover:cursor-pointer">

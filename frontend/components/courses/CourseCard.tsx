@@ -1,9 +1,13 @@
 import React from 'react';
 import { useRouter } from 'next/navigation'
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
+import toast from 'react-hot-toast';
+import { addItemToCartFailure, addItemToCartStart, addItemToCartSuccess } from '@/redux/cart/cartSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Users, Play, Clock, Award, Eye } from 'lucide-react';
+import { Star, Users, Play, Award, ShoppingCart } from 'lucide-react';
 import { ICourseSearchResponse } from '@/type';
 import MissingImage from '@/public/missing_image.jpg'
 
@@ -12,16 +16,21 @@ interface CourseCardProps {
     viewMode: 'grid' | 'list';
     setShowPreviewModal: React.Dispatch<React.SetStateAction<boolean>>;
     setSelectedCourse: React.Dispatch<React.SetStateAction<ICourseSearchResponse | null>>;
+    currentUrl: string | null;
 }
 
-const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }: CourseCardProps) => {
+const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse, currentUrl }: CourseCardProps) => {
 
     const router = useRouter();
+    const dispatch = useDispatch();
+
+    const { currentUser } = useSelector((state: RootState) => state.user);
 
     const getThumbnailUrl = (thumbnail: any) => {
-        if (typeof thumbnail === 'string') return thumbnail;
-        if (thumbnail && typeof thumbnail === 'object' && thumbnail.url) return thumbnail.url;
-        return '/placeholder-course.jpg';
+        if (thumbnail && typeof thumbnail === 'object' && thumbnail.url && thumbnail.url.trim() !== '') {
+            return thumbnail.url;
+        }
+        return MissingImage.src;
     };
 
     const renderStars = (rating: number) => {
@@ -41,6 +50,37 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
     const handleClickPreview = (course: ICourseSearchResponse) => {
         setSelectedCourse(course);
         setShowPreviewModal(true);
+    }
+
+    const handleAddToCart = async (courseId: string) => {
+
+        if (!currentUser) {
+            toast("Please login to add the course");
+            router.push(`/login?callbackUrl=${encodeURIComponent(currentUrl || `/course-overview/${courseId}`)}`);
+            return;
+        }
+
+        try {
+            dispatch(addItemToCartStart());
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/cart/add/${courseId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                dispatch(addItemToCartFailure(data.message || "Failed to add item to cart"));
+                toast.error(data.message || "Failed to add item to cart");
+                return;
+            }
+            dispatch(addItemToCartSuccess(data.cart));
+            toast.success("Course added to cart");
+        } catch (error: any) {
+            dispatch(addItemToCartFailure(error.message || "Failed to add item to cart"));
+            toast.error(error.message || "Failed to add item to cart");
+        }
     }
 
     if (viewMode === 'list') {
@@ -116,11 +156,14 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => handleViewDetails(course._id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddToCart(course._id)
+                                        }}
                                         className='flex items-center gap-2 hover:cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900/70'
                                     >
-                                        <Eye className="h-4 w-4" />
-                                        View Details
+                                        <ShoppingCart className="h-4 w-4" />
+                                        Add to Cart
                                     </Button>
 
                                 </div>
@@ -137,7 +180,7 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
             <CardHeader className="p-0">
                 <div className="relative overflow-hidden">
                     <img
-                        src={course.thumbnail ? getThumbnailUrl(course.thumbnail) : MissingImage.src}
+                        src={getThumbnailUrl(course.thumbnail)}
                         alt={course.name}
                         className="w-full h-48 object-cover transition-transform duration-300"
                     />
@@ -197,11 +240,14 @@ const CourseCard = ({ course, viewMode, setShowPreviewModal, setSelectedCourse }
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewDetails(course._id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(course._id);
+                            }}
                             className="flex items-center hover:cursor-pointer gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 "
                         >
-                            <Eye className="h-4 w-4" />
-                            View Details
+                            <ShoppingCart className="h-4 w-4" />
+                            Add To Cart
                         </Button>
 
                     </div>

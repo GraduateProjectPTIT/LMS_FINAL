@@ -96,8 +96,8 @@ const SelectPreferencesModal = ({ isOpen, onClose, userRole }: SelectPreferences
 
         try {
             const endpoint = userRole === 'student'
-                ? '/api/user/student-profile-register'
-                : '/api/user/tutor-profile-register';
+                ? '/api/student/student-profile-register'
+                : '/api/tutor/tutor-profile-register';
 
             const bodyKey = userRole === 'student' ? 'interests' : 'expertise';
 

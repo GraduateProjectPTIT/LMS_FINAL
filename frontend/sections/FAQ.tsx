@@ -52,7 +52,7 @@ const FAQ = () => {
 
     return (
         <section className="py-16 border shadow-lg border-r-0 border-l-0 border-gray-200 dark:border-slate-700 bg-gradient-to-b from-[#E6EBFF] to-[#FFFFFF] dark:bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#0A1D56,#0D1B2A_100%)]">
-            <div className="container mx-auto px-4">
+            <div className="container">
                 <div className="px-[10px] md:px-[50px] lg:px-[100px] grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Left Column - Title and Introduction */}
                     <div className="lg:col-span-4">

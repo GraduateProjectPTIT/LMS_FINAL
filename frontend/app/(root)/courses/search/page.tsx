@@ -51,11 +51,16 @@ const SearchCoursesPage = () => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
+    const currentUrl = useMemo(() => {
+        const params = searchParams?.toString();
+        return params ? `${pathname}?${params}` : pathname;
+    }, [pathname, searchParams]);
+
     const [courses, setCourses] = useState<ICourseSearchResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // AbortController refs
+    // AbortController refs để hủy request khi cần
     const abortControllerRef = useRef<AbortController | null>(null);
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -73,7 +78,7 @@ const SearchCoursesPage = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(8);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
     // Cleanup function for AbortController and debounce timeout
     const cleanup = useCallback(() => {
@@ -97,7 +102,6 @@ const SearchCoursesPage = () => {
         };
     }, [cleanup]);
 
-
     // update URL khi filter thay đổi
     const updateURL = useCallback(
         (newFilters: SearchFilters) => {
@@ -110,12 +114,12 @@ const SearchCoursesPage = () => {
 
     const handleSearchCourses = useCallback(async (searchFilters: SearchFilters, signal?: AbortSignal) => {
         // Nếu không có từ khóa, clear kết quả và không gọi API
-        if (!searchFilters.keyword.trim()) {
-            setCourses([]);
-            setLoading(false);
-            setError(null);
-            return;
-        }
+        // if (!searchFilters.keyword.trim()) {
+        //     setCourses([]);
+        //     setLoading(false);
+        //     setError(null);
+        //     return;
+        // }
 
         setLoading(true);
         setError(null);
@@ -297,7 +301,7 @@ const SearchCoursesPage = () => {
         updateURL(cleared);
     }, [filters.keyword, updateURL]);
 
-    const isNotFound = !loading && !error && totalResults === 0 && filters.keyword.trim();
+    const isNotFound = !loading && !error && totalResults === 0;
 
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState<ICourseSearchResponse | null>(null);
@@ -306,7 +310,10 @@ const SearchCoursesPage = () => {
         <Layout>
             <div className='min-h-screen theme-mode'>
                 <div className="container">
+                    {/* Nếu đang tải */}
                     {loading && <Loader />}
+
+                    {/* Nếu có lỗi */}
                     {!loading && error && (
                         <Alert variant="destructive" className="max-w-md mx-auto shadow-lg border-red-200 dark:border-red-800">
                             <AlertCircle className="h-4 w-4" />
@@ -321,6 +328,8 @@ const SearchCoursesPage = () => {
                             </AlertDescription>
                         </Alert>
                     )}
+
+                    {/* Nếu thành công */}
                     {!loading && !error && (
                         <div className='space-y-6 py-6'>
                             {filters.keyword && (
@@ -381,6 +390,7 @@ const SearchCoursesPage = () => {
                                         viewMode={viewMode}
                                         setShowPreviewModal={setShowPreviewModal}
                                         setSelectedCourse={setSelectedCourse}
+                                        currentUrl={currentUrl}
                                     />
 
                                     <CoursePagination

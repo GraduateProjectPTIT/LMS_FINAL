@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image';
 import Loader from '../Loader';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { addItemToCartStart, addItemToCartSuccess, addItemToCartFailure } from '@/redux/cart/cartSlice';
 import { RootState } from '@/redux/store';
 import RecommendCourse from './RecommendCourse';
 import CourseReview from './CourseReview';
@@ -101,7 +102,9 @@ interface IProcessedSection {
 const CourseOverview = ({ courseId }: { courseId: string }) => {
 
     const router = useRouter();
+    const dispatch = useDispatch();
     const { currentUser } = useSelector((state: RootState) => state.user);
+    const { loading } = useSelector((state: RootState) => state.cart);
 
     const [courseData, setCourseData] = useState<ICourseData | null>(null);
     const [sections, setSections] = useState<IProcessedSection[]>([]);
@@ -212,14 +215,6 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         return thumbnailUrl || MissingImage;
     }
 
-    const handleBuyCourse = () => {
-        if (!currentUser) {
-            toast("Please login to buy the course");
-            router.push('/login');
-            return;
-        }
-    }
-
     const getCategoriesString = (categories: IOverviewCategory[]) => {
         return categories?.map(cat => cat.title).join(', ') || '';
     }
@@ -230,6 +225,37 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
 
     if (!courseData) {
         return <div>Course not found</div>;
+    }
+
+    const handleAddToCart = async () => {
+
+        if (!currentUser) {
+            toast("Please login to add the course");
+            router.push(`/login?callbackUrl=/course-overview/${courseId}`);
+            return;
+        }
+
+        try {
+            dispatch(addItemToCartStart());
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/cart/add/${courseId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                dispatch(addItemToCartFailure(data.message || "Failed to add item to cart"));
+                toast.error(data.message || "Failed to add item to cart");
+                return;
+            }
+            dispatch(addItemToCartSuccess(data.cart));
+            toast.success("Course added to cart");
+        } catch (error: any) {
+            dispatch(addItemToCartFailure(error.message || "Failed to add item to cart"));
+            toast.error(error.message || "Failed to add item to cart");
+        }
     }
 
     return (
@@ -449,7 +475,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="md:w-1/4 flex flex-col items-center md:items-start">
                                     <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-100 dark:border-blue-900 shadow-md mb-3">
-                                        {courseData.creatorId?.avatar ? (
+                                        {courseData.creatorId?.avatar && courseData.creatorId.avatar.url && courseData.creatorId.avatar.url.trim() !== "" ? (
                                             <Image
                                                 src={courseData.creatorId.avatar.url}
                                                 alt={courseData.creatorId.name || "Instructor"}
@@ -496,10 +522,6 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                             <Globe size={16} className="mr-2" />
                                             View Profile
                                         </button>
-                                        <button className="inline-flex items-center px-4 py-2 border border-indigo-200 dark:border-indigo-800 rounded-lg shadow-sm text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer">
-                                            <MessageCircle size={16} className="mr-2" />
-                                            Contact Instructor
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -543,13 +565,13 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                 onClick={
                                     checkCourseAccessed(courseId)
                                         ? () => handleEnroll(courseId)
-                                        : handleBuyCourse
+                                        : handleAddToCart
                                 }
                                 disabled={loadingEnroll || isLoading}
                             >
                                 {checkCourseAccessed(courseId)
                                     ? (loadingEnroll ? "Enrolling..." : "Enter to course")
-                                    : "Buying Course"}
+                                    : (loading ? "Adding..." : "Add to cart")}
                             </button>
 
                             <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-100 dark:border-yellow-900/50">
