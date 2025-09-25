@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, Clock, Users, BookOpen, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
-import Image from 'next/image'
-import toast from 'react-hot-toast'
-import confetti from 'canvas-confetti'
+  import React, { useEffect, useState } from 'react'
+  import { useRouter, useSearchParams } from 'next/navigation'
+  import { CheckCircle, Clock, Users, BookOpen, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
+  import Image from 'next/image'
+  import toast from 'react-hot-toast'
+  import confetti from 'canvas-confetti'
 
 interface CourseData {
     id: string;
@@ -54,7 +54,17 @@ const PaymentSuccess = () => {
     }, []);
 
     useEffect(() => {
-        if (processed) return; // Prevent multiple runs
+        const token = searchParams?.get('token');
+        if (token && typeof window !== 'undefined') {
+            const storageKey = `paypal_success_${token}`;
+            const already = sessionStorage.getItem(storageKey);
+            if (already) {
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (processed) return;
         setProcessed(true);
 
         const processPayment = async () => {
@@ -91,7 +101,7 @@ const PaymentSuccess = () => {
         };
 
         processPayment();
-    }, [searchParams, processed]);
+    }, [processed, searchParams]);
 
     const handlePayPalSuccess = async (courseId: string | null | undefined, courseIds: string | null | undefined, token: string) => {
         const payload = {
@@ -116,6 +126,11 @@ const PaymentSuccess = () => {
         }
 
         setPaymentData(data.payment);
+
+        if (typeof window !== 'undefined') {
+            const storageKey = `paypal_success_${token}`;
+            sessionStorage.setItem(storageKey, '1');
+        }
 
         toast.success("Payment completed successfully!");
     };

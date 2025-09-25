@@ -10,6 +10,7 @@ export interface IPaymentInfo {
     payer_name?: string;
     payment_intent_id?: string;
     payer_id?: string;
+    order_token?: string;
     paid_at?: Date;
     expires_at?: Date;
     refund_status?: 'none' | 'partial' | 'full';
@@ -28,6 +29,7 @@ export interface IOrder extends Document {
     userId: string;
     payment_info: IPaymentInfo;
     payment_method: string;
+    emailSent?: boolean;
 }
 
 const orderSchema = new Schema<IOrder>(
@@ -55,9 +57,15 @@ const orderSchema = new Schema<IOrder>(
             required: true,
             default: 'stripe'
         },
+        emailSent: {
+            type: Boolean,
+            default: false,
+        },
     },
     { timestamps: true }
 );
+
+orderSchema.index({ 'payment_info.order_token': 1, payment_method: 1 }, { unique: true, sparse: true });
 
 const OrderModel: Model<IOrder> = mongoose.model<IOrder>("Order", orderSchema);
 

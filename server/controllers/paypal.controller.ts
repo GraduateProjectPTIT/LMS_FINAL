@@ -175,6 +175,30 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler("Failed to check PayPal order status", 500));
       }
 
+      const existingOrder = await OrderModel.findOne({
+        "payment_info.order_token": token,
+        payment_method: "paypal"
+      });
+      
+      if (existingOrder) {
+        console.log("PayPal order already processed:", token);
+        return res.status(200).json({
+          success: true,
+          message: "Payment already processed",
+          payment: {
+            id: existingOrder.payment_info.id,
+            amount: existingOrder.payment_info.amount,
+            currency: existingOrder.payment_info.currency,
+          },
+          order: {
+            id: existingOrder._id,
+            items: existingOrder.items,
+            total: existingOrder.total,
+            currency: existingOrder.payment_info.currency,
+          },
+        });
+      }
+
       const captureRequest = new paypal.orders.OrdersCaptureRequest(token);
       
       let captureResult;
@@ -242,19 +266,31 @@ export const paypalSuccess = CatchAsyncError(
         }
       }
 
-      const consolidatedOrder = await OrderModel.create({
-        items,
-        total,
-        userId: userId?.toString() || "",
-        payment_info: {
-          id: paymentId,
-          status: "succeeded",
-          amount: paymentAmount,
-          currency: capture.amount.currency_code,
-          payer_id: payerId,
-        },
+      const upsertFilter: any = {
+        "payment_info.order_token": token,
         payment_method: "paypal",
-      });
+      };
+      const upsertUpdate: any = {
+        $setOnInsert: {
+          items,
+          total,
+          userId: userId?.toString() || "",
+          payment_info: {
+            id: paymentId,
+            status: "succeeded",
+            amount: paymentAmount,
+            currency: capture.amount.currency_code,
+            payer_id: payerId,
+            order_token: token,
+          },
+          payment_method: "paypal",
+        },
+      };
+      const consolidatedOrder = await OrderModel.findOneAndUpdate(
+        upsertFilter,
+        upsertUpdate,
+        { upsert: true, new: true }
+      );
       console.log("Consolidated order created:", consolidatedOrder._id);
 
       try {
@@ -286,13 +322,23 @@ export const paypalSuccess = CatchAsyncError(
           ? `Order Confirmation - ${items.length} courses`
           : `Order Confirmation - ${courses[0]?.name || 'Course'}`;
 
-        await sendMail({
-          email: (user as any).email,
-          subject,
-          template: "order-confirmation-multi.ejs",
-          data: mailData,
-        });
-        console.log("Confirmation email sent to:", (user as any).email);
+        const reservedForEmail = await OrderModel.findOneAndUpdate(
+          { "payment_info.order_token": token, payment_method: "paypal", emailSent: { $ne: true } },
+          { $set: { emailSent: true } },
+          { new: true }
+        );
+
+        if (reservedForEmail) {
+          await sendMail({
+            email: (user as any).email,
+            subject,
+            template: "order-confirmation-multi.ejs",
+            data: mailData,
+          });
+          console.log("Confirmation email sent to:", (user as any).email);
+        } else {
+          console.log("Email already sent for order:", consolidatedOrder._id);
+        }
       } catch (error: any) {
         console.error("Email sending failed:", error?.message || error);
       }
