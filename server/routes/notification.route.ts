@@ -2,11 +2,10 @@ import express from "express";
 import { authorizeRoles, isAuthenticated } from "../middleware/auth";
 import {
   getAllNotifications,
-  updateNotification,
-  getTutorPurchaseNotifications,
   markMyNotificationRead,
   markAllMyNotificationsRead,
   getMyNotifications,
+  createNotification,
 } from "../controllers/notification.controller";
 
 const notificationRouter = express.Router();
@@ -17,22 +16,15 @@ notificationRouter.get(
   authorizeRoles("admin"),
   getAllNotifications
 );
-notificationRouter.put(
-  "/notification/update_notification/:id",
-  isAuthenticated,
-  authorizeRoles("admin"),
-  updateNotification
-);
 
-notificationRouter.get(
-  "/notification/my/purchases",
+notificationRouter.post(
+  "/notification/create_notification",
   isAuthenticated,
-  authorizeRoles("admin", "tutor"),
-  getTutorPurchaseNotifications
+  createNotification
 );
 
 notificationRouter.put(
-  "/notification/my/:id/read",
+  "/notification/:id/read",
   isAuthenticated,
   authorizeRoles("admin", "tutor", "student"),
   markMyNotificationRead

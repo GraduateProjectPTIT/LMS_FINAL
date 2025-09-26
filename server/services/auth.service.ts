@@ -27,6 +27,7 @@ import { tutorModel } from "../models/tutor.model";
 import { adminModel } from "../models/admin.model";
 import { IStudent } from "../types/user.types";
 import { ICategory } from "../models/category.model";
+import NotificationModel from "../models/notification.model";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
@@ -254,6 +255,12 @@ export const registerUserService = async (body: IRegistrationBody) => {
       user: { name: newUser.name },
       activationCode: activationTokenData.activationCode,
     };
+
+    await NotificationModel.create({
+      userId: newUser?._id as any,
+      title: "Finish your survey",
+      message: `Spend less than 1 minute to complete the survey for course recommendation!`,
+    });
 
     // Render email template (không cần chờ)
 
