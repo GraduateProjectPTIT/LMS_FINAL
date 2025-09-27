@@ -13,7 +13,7 @@ import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiArrowDownSLine, RiArrowUpSLine } from "react-icons/ri";
-import { MdOutlineAdminPanelSettings } from "react-icons/md";
+import { MdOutlineInterests } from "react-icons/md";
 
 const sidebarLinks = [
     {
@@ -25,6 +25,16 @@ const sidebarLinks = [
         label: 'Emails & Password',
         icon: <GoPasskeyFill />,
         value: 'authentication_change'
+    },
+    {
+        label: 'Interests',
+        icon: <MdOutlineInterests />,
+        value: 'interests'
+    },
+    {
+        label: 'Expertises',
+        icon: <MdOutlineInterests />,
+        value: 'expertises'
     },
     {
         label: 'Notifications',
@@ -53,11 +63,18 @@ const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
 
     const isAdmin = currentUser?.role === "admin";
     const isTutor = currentUser?.role === "tutor";
+    const isStudent = currentUser?.role === "student";
 
-    // Filter out "Enroll Courses" for admin or tutor
-    const filteredSidebarLinks = sidebarLinks.filter(
-        item => !(item.value === 'enroll_courses' && (isAdmin || isTutor))
-    );
+    // Filter sidebar links based on user role
+    const filteredSidebarLinks = sidebarLinks.filter(item => {
+        // Hide "Enroll Courses" for admin or tutor
+        if (item.value === 'enroll_courses' && (isAdmin || isTutor)) return false;
+        // Show "Interests" only for students
+        if (item.value === 'interests' && !isStudent) return false;
+        // Show "Expertises" only for tutors
+        if (item.value === 'expertises' && !isTutor) return false;
+        return true;
+    });
 
 
     const handleClick = (section: string) => {
