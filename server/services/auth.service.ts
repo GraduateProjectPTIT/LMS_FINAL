@@ -28,6 +28,7 @@ import { adminModel } from "../models/admin.model";
 import { IStudent } from "../types/user.types";
 import { ICategory } from "../models/category.model";
 import NotificationModel from "../models/notification.model";
+import { createNotificationService } from "./notification.service";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
@@ -256,11 +257,17 @@ export const registerUserService = async (body: IRegistrationBody) => {
       activationCode: activationTokenData.activationCode,
     };
 
-    await NotificationModel.create({
-      userId: newUser?._id as any,
-      title: "Finish your survey",
-      message: `Spend less than 1 minute to complete the survey for course recommendation!`,
-    });
+    try {
+      if (newUser?._id) {
+        await createNotificationService({
+          userId: newUser._id.toString(),
+          title: "Finish your survey",
+          message: `Spend less than 1 minute to complete the survey for course recommendation!`,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to create registration notification:", error);
+    }
 
     // Render email template (không cần chờ)
 
