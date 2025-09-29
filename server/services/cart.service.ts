@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import CartModel from "../models/cart.model";
 import CourseModel from "../models/course.model";
 import ErrorHandler from "../utils/ErrorHandler";
+import EnrolledCourseModel from "../models/enrolledCourse.model";
 
 const formatTime = (minutes: number) => {
   if (!minutes || minutes <= 0) return "0m";
@@ -18,14 +19,16 @@ const mapCourseToCartItem = (course: any) => {
   const totalLectures = Array.isArray(course.courseData)
     ? course.courseData.reduce(
         (acc: number, sec: any) =>
-          acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+          acc +
+          (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
         0
       )
     : 0;
   const totalTimeMinutes = Array.isArray(course.courseData)
     ? course.courseData.reduce(
         (acc: number, sec: any) =>
-          acc + (Array.isArray(sec.sectionContents)
+          acc +
+          (Array.isArray(sec.sectionContents)
             ? sec.sectionContents.reduce(
                 (a: number, lec: any) => a + (lec?.videoLength || 0),
                 0
@@ -88,7 +91,10 @@ export const getCartService = async (userId: string, next: any) => {
     .map(mapCourseToCartItem);
 
   const totalItems = items.length;
-  const totalPrice = items.reduce((acc: number, it: any) => acc + (it.price || 0), 0);
+  const totalPrice = items.reduce(
+    (acc: number, it: any) => acc + (it.price || 0),
+    0
+  );
 
   return {
     items,
@@ -98,16 +104,37 @@ export const getCartService = async (userId: string, next: any) => {
   };
 };
 
-export const addToCartService = async (userId: string, courseId: string): Promise<{ cart: any; added: boolean }> => {
-  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+export const addToCartService = async (
+  userId: string,
+  courseId: string
+): Promise<{ cart: any; added: boolean }> => {
+  if (
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !mongoose.Types.ObjectId.isValid(courseId)
+  ) {
     throw new ErrorHandler("Invalid id", 400);
   }
   const course = await CourseModel.findById(courseId).select("_id");
   if (!course) throw new ErrorHandler("Course not found", 404);
 
+  const alreadyPurchased = await EnrolledCourseModel.findOne({
+    userId: new mongoose.Types.ObjectId(userId),
+    courseId: new mongoose.Types.ObjectId(courseId),
+  }).select("_id");
+  if (alreadyPurchased) {
+    const existingCart = await getOrCreateCart(userId);
+    existingCart.items = existingCart.items.filter(
+      (i) => String(i.courseId) !== String(courseId)
+    ) as any;
+    await existingCart.save();
+    throw new ErrorHandler("You have already purchased this course", 400);
+  }
+
   const cart = await getOrCreateCart(userId);
 
-  const inCart = cart.items.some((i) => String(i.courseId) === String(courseId));
+  const inCart = cart.items.some(
+    (i) => String(i.courseId) === String(courseId)
+  );
   if (!inCart) {
     cart.items.push({ courseId: new mongoose.Types.ObjectId(courseId) } as any);
   }
@@ -119,39 +146,67 @@ export const addToCartService = async (userId: string, courseId: string): Promis
   return { cart, added: !inCart };
 };
 
-export const removeFromCartService = async (userId: string, courseId: string) => {
-  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+export const removeFromCartService = async (
+  userId: string,
+  courseId: string
+) => {
+  if (
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !mongoose.Types.ObjectId.isValid(courseId)
+  ) {
     throw new ErrorHandler("Invalid id", 400);
   }
   const cart = await getOrCreateCart(userId);
   const before = cart.items.length;
-  cart.items = cart.items.filter((i) => String(i.courseId) !== String(courseId)) as any;
+  cart.items = cart.items.filter(
+    (i) => String(i.courseId) !== String(courseId)
+  ) as any;
   await cart.save();
   if (before === cart.items.length) {
   }
   return cart;
 };
 
-export const moveToSavedForLaterService = async (userId: string, courseId: string) => {
-  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+export const moveToSavedForLaterService = async (
+  userId: string,
+  courseId: string
+) => {
+  if (
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !mongoose.Types.ObjectId.isValid(courseId)
+  ) {
     throw new ErrorHandler("Invalid id", 400);
   }
   const cart = await getOrCreateCart(userId);
-  const existedInSaved = cart.savedForLater.some((i) => String(i.courseId) === String(courseId));
+  const existedInSaved = cart.savedForLater.some(
+    (i) => String(i.courseId) === String(courseId)
+  );
   if (!existedInSaved) {
-    cart.savedForLater.push({ courseId: new mongoose.Types.ObjectId(courseId) } as any);
+    cart.savedForLater.push({
+      courseId: new mongoose.Types.ObjectId(courseId),
+    } as any);
   }
-  cart.items = cart.items.filter((i) => String(i.courseId) !== String(courseId)) as any;
+  cart.items = cart.items.filter(
+    (i) => String(i.courseId) !== String(courseId)
+  ) as any;
   await cart.save();
   return cart;
 };
 
-export const moveToCartFromSavedService = async (userId: string, courseId: string) => {
-  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+export const moveToCartFromSavedService = async (
+  userId: string,
+  courseId: string
+) => {
+  if (
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !mongoose.Types.ObjectId.isValid(courseId)
+  ) {
     throw new ErrorHandler("Invalid id", 400);
   }
   const cart = await getOrCreateCart(userId);
-  const inCart = cart.items.some((i) => String(i.courseId) === String(courseId));
+  const inCart = cart.items.some(
+    (i) => String(i.courseId) === String(courseId)
+  );
   if (!inCart) {
     cart.items.push({ courseId: new mongoose.Types.ObjectId(courseId) } as any);
   }

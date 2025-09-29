@@ -25,6 +25,9 @@ import {
   getCourseStudents,
   updateLectureVideo,
   getOwnerSingleCourse,
+  getTopPurchasedCourses,
+  getTopRatedCourses,
+  checkUserPurchasedCourse,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -75,6 +78,15 @@ courseRouter.get(
   "/course/student/enrolled_courses",
   isAuthenticated,
   getStudentEnrolledCourses
+);
+
+courseRouter.get("/course/top-purchased", getTopPurchasedCourses);
+courseRouter.get("/course/top-rated", getTopRatedCourses);
+
+courseRouter.get(
+  "/course/:id/has-purchased",
+  isAuthenticated,
+  checkUserPurchasedCourse
 );
 courseRouter.put(
   "/course/add_question_to_lecture",
