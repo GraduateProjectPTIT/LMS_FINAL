@@ -45,6 +45,14 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
   const { page, limit, role, keyword } = queryParams;
 
+  if (role && !["student", "tutor"].includes(role)) {
+    // Ném ra một lỗi, middleware CatchAsyncError sẽ bắt lỗi này
+    throw new ErrorHandler(
+      "Giá trị của role không hợp lệ. Chỉ chấp nhận 'student' hoặc 'tutor'.",
+      400 // 400 Bad Request - lỗi từ phía người dùng
+    );
+  }
+
   // 2. Build the base filter object
   const baseFilter: { [key: string]: any } = {};
   if (role === "student" || role === "tutor") {
