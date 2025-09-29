@@ -226,6 +226,7 @@ const Header = () => {
             <div className='flex justify-center items-center gap-1 md:gap-2'>
               {/* Desktop Links */}
               <div className='hidden md:flex items-center gap-5 border-r pr-5 mr-5 border-gray-300 dark:border-slate-700 '>
+                <Link href="/posts" className="hover:cursor-pointer hover:font-semibold">Posts</Link>
                 <Link href="/policy" className="hover:cursor-pointer hover:font-semibold">Policy</Link>
                 <Link href='/about' className="hover:cursor-pointer hover:font-semibold">About Us</Link>
               </div>

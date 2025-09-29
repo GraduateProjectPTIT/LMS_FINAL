@@ -19,6 +19,7 @@ import cartRouter from "./routes/cart.route";
 import adminRouter from "./routes/admin.route";
 import tutorRouter from "./routes/tutor.route";
 import studentRouter from "./routes/student.route";
+import postRouter from "./routes/post.route";
 
 app.post(
   "/api/stripe/webhook",
@@ -31,8 +32,8 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
-    credentials: true,
+  origin: ["http://localhost:3000"],
+  credentials: true,
   })
 );
 
@@ -62,7 +63,8 @@ app.use(
   statisticsRouter,
   layoutRouter,
   categoryRouter,
-  cartRouter
+  cartRouter,
+  postRouter
 );
 
 app.use("/api/stripe", stripeRouter);
@@ -77,3 +79,4 @@ app.all("*", (req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use(ErrorMidleware);
+

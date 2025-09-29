@@ -86,6 +86,25 @@ const sectionData = {
                 },
             ],
         },
+        // Posts management
+        {
+            title: "Posts",
+            url: "/admin/posts",
+            icon: FileText,
+            isOpen: false,
+            items: [
+                {
+                    title: "All Posts",
+                    url: "/admin/posts",
+                    value: "posts_list",
+                },
+                {
+                    title: "Create Post",
+                    url: "/admin/posts/create",
+                    value: "posts_create",
+                },
+            ],
+        },
     ]
 }
 
