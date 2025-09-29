@@ -342,20 +342,140 @@ export const getTutorCoursesService = async (
       return next(new ErrorHandler("Forbidden", 403));
     }
 
-    const courses = await CourseModel.find({ creatorId: user._id })
+    let page = Number.parseInt(String(query?.page), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    let limit = Number.parseInt(String(query?.limit), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const skip = (page - 1) * limit;
+
+    const filter: any = { creatorId: user._id };
+
+    const [courses, totalItems] = await Promise.all([
+      CourseModel.find(filter)
+        .select(
+          "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        )
+        .populate("creatorId", "name avatar email")
+        .populate("categories", "title")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      CourseModel.countDocuments(filter),
+    ]);
+
+    const data = courses.map((c: any) => ({
+      ...c.toObject(),
+      level: normalizeLevel(c.level),
+    }));
+
+    const totalPages = Math.ceil(totalItems / limit) || 0;
+
+    return res.status(200).json({
+      success: true,
+      paginatedResult: {
+        data,
+        meta: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          pageSize: limit,
+        },
+      },
+    });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+// List top purchased courses
+export const getTopPurchasedCoursesService = async (
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    let limit = Number.parseInt(String(query?.limit ?? "10"), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
+    const courses = await CourseModel.find({})
       .select(
         "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
       )
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
-      .sort({ createdAt: -1 });
+      .sort({ purchased: -1, createdAt: -1 })
+      .limit(limit);
 
     const mapped = courses.map((c: any) => ({
       ...c.toObject(),
       level: normalizeLevel(c.level),
+      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
+      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
     }));
 
     return res.status(200).json({ success: true, courses: mapped });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+// List top rated courses
+export const getTopRatedCoursesService = async (
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    let limit = Number.parseInt(String(query?.limit ?? "10"), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
+    const courses = await CourseModel.find({})
+      .select(
+        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+      )
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
+      .sort({ ratings: -1, purchased: -1, createdAt: -1 })
+      .limit(limit);
+
+    const mapped = courses.map((c: any) => ({
+      ...c.toObject(),
+      level: normalizeLevel(c.level),
+      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
+      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
+    }));
+
+    return res.status(200).json({ success: true, courses: mapped });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+// Check if user has purchased a course
+export const checkUserPurchasedCourseService = async (
+  user: any,
+  courseId: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!user?._id) {
+      return next(new ErrorHandler("Unauthorized", 401));
+    }
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return next(new ErrorHandler("Invalid course id", 400));
+    }
+
+    const enrollment = await EnrolledCourseModel.findOne({
+      userId: user._id,
+      courseId: new mongoose.Types.ObjectId(courseId),
+    }).select("_id");
+
+    const hasPurchased = Boolean(enrollment);
+    return res.status(200).json({ success: true, hasPurchased });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -1388,13 +1508,46 @@ export const getAdminCoursesService = async (
   query: any,
   res: Response
 ) => {
-  const courses = await CourseModel.find()
-    .populate("reviews.userId", "name avatar")
-    .populate("creatorId", "name avatar email")
-    .populate("categories", "title")
-    .sort({ createdAt: -1 });
+  let page = Number.parseInt(String(query?.page), 10);
+  if (Number.isNaN(page) || page < 1) page = 1;
+  let limit = Number.parseInt(String(query?.limit), 10);
+  if (Number.isNaN(limit) || limit < 1) limit = 10;
+  if (limit > 100) limit = 100;
+  const skip = (page - 1) * limit;
 
-  res.status(200).json({ success: true, courses });
+  const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+  const filter: any = {};
+  if (keyword.length >= 2) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "i");
+    filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
+  }
+
+  const [courses, totalItems] = await Promise.all([
+    CourseModel.find(filter)
+      .populate("reviews.userId", "name avatar")
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    CourseModel.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(totalItems / limit) || 0;
+
+  res.status(200).json({
+    success: true,
+    paginatedResult: {
+      data: courses,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        pageSize: limit,
+      },
+    },
+  });
 };
 
 /**
@@ -1410,11 +1563,86 @@ export const getCourseStudentsService = async (
   next: NextFunction
 ) => {
   try {
-    const students = await EnrolledCourseModel.find({ courseId })
-      .populate("userId", "name email avatar")
-      .select("userId progress completed enrolledAt");
+    const query: any = (res as any).locals?.query || {};
+    let page = Number.parseInt(String(query?.page), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    let limit = Number.parseInt(String(query?.limit), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const skip = (page - 1) * limit;
 
-    res.status(200).json({ success: true, students });
+    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+
+    const matchStage: any = { courseId: new mongoose.Types.ObjectId(courseId) };
+
+    const pipeline: any[] = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+    ];
+
+    if (keyword && keyword.length >= 2) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { "user.name": { $regex: regex } },
+            { "user.email": { $regex: regex } },
+          ],
+        },
+      });
+    }
+
+    const countPipeline = [...pipeline, { $count: "count" }];
+    const dataPipeline = [
+      ...pipeline,
+      { $sort: { enrolledAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          userId: {
+            _id: "$user._id",
+            name: "$user.name",
+            email: "$user.email",
+            avatar: "$user.avatar",
+          },
+          progress: 1,
+          completed: 1,
+          enrolledAt: 1,
+        },
+      },
+    ];
+
+    const [data, countRes] = await Promise.all([
+      EnrolledCourseModel.aggregate(dataPipeline),
+      EnrolledCourseModel.aggregate(countPipeline),
+    ]);
+
+    const totalItems = Array.isArray(countRes) && countRes.length > 0 ? countRes[0].count : 0;
+    const totalPages = Math.ceil(totalItems / limit) || 0;
+
+    res.status(200).json({
+      success: true,
+      paginatedResult: {
+        data,
+        meta: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          pageSize: limit,
+        },
+      },
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
