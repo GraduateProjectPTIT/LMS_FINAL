@@ -27,6 +27,8 @@ import { tutorModel } from "../models/tutor.model";
 import { adminModel } from "../models/admin.model";
 import { IStudent } from "../types/user.types";
 import { ICategory } from "../models/category.model";
+import NotificationModel from "../models/notification.model";
+import { createNotificationService } from "./notification.service";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
@@ -40,7 +42,6 @@ export const _toUserResponse = (user: IUser): IUserResponse => {
     resetToken,
     activationCode,
     activationToken,
-    avatar,
     ...userResponseData
   } = userObject;
 
@@ -48,7 +49,9 @@ export const _toUserResponse = (user: IUser): IUserResponse => {
   return {
     ...userResponseData,
     isVerified: userResponseData.isVerified ?? false,
-    avatar: userResponseData.avatar ?? { url: "" },
+    avatar: {
+      url: userResponseData.avatar?.url ?? "",
+    },
     socials: userResponseData.socials ?? {
       facebook: "",
       instagram: "",
@@ -254,6 +257,18 @@ export const registerUserService = async (body: IRegistrationBody) => {
       user: { name: newUser.name },
       activationCode: activationTokenData.activationCode,
     };
+
+    try {
+      if (newUser?._id) {
+        await createNotificationService({
+          userId: newUser._id.toString(),
+          title: "Finish your survey",
+          message: `Spend less than 1 minute to complete the survey for course recommendation!`,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to create registration notification:", error);
+    }
 
     // Render email template (không cần chờ)
 
