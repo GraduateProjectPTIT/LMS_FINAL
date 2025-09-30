@@ -21,6 +21,8 @@ export interface PaginationParams {
 export interface UserQueryParams extends PaginationParams {
   role?: "student" | "tutor";
   keyword?: string;
+  isVerified?: string;
+  isSurveyCompleted?: string;
 }
 
 /**
