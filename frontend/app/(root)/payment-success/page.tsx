@@ -40,21 +40,18 @@ const PaymentSuccess = () => {
     const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
     const [processed, setProcessed] = useState(false);
 
-    // hiển thị pháo hoa
     useEffect(() => {
-        const timer = setTimeout(() => {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
-        }, 500);
+        const token = searchParams?.get('token');
+        if (token && typeof window !== 'undefined') {
+            const storageKey = `paypal_success_${token}`;
+            const already = sessionStorage.getItem(storageKey);
+            if (already) {
+                setLoading(false);
+                return;
+            }
+        }
 
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        if (processed) return; // Prevent multiple runs
+        if (processed) return;
         setProcessed(true);
 
         const processPayment = async () => {
@@ -91,7 +88,7 @@ const PaymentSuccess = () => {
         };
 
         processPayment();
-    }, [searchParams, processed]);
+    }, [processed, searchParams]);
 
     const handlePayPalSuccess = async (courseId: string | null | undefined, courseIds: string | null | undefined, token: string) => {
         const payload = {
@@ -117,7 +114,16 @@ const PaymentSuccess = () => {
 
         setPaymentData(data.payment);
 
-        toast.success("Payment completed successfully!");
+        if (typeof window !== 'undefined') {
+            const storageKey = `paypal_success_${token}`;
+            sessionStorage.setItem(storageKey, '1');
+        }
+
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
     };
 
     const handleStripeSuccess = async (courseId: string | null | undefined, courseIds: string | null | undefined, paymentId: string) => {

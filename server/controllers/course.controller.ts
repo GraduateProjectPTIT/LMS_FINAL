@@ -22,6 +22,9 @@ import {
   getAdminCoursesService,
   updateLectureVideoService,
   getOwnerSingleCourseService,
+  getTopPurchasedCoursesService,
+  getTopRatedCoursesService,
+  checkUserPurchasedCourseService,
 } from "../services/course.service";
 import {
   IAddQuestionData,
@@ -47,6 +50,40 @@ export const createCourseController = CatchAsyncError(
       createCourse(data, res, next);
     } catch (error: any) {
       console.error("Course upload error:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// get top purchased courses
+export const getTopPurchasedCourses = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getTopPurchasedCoursesService(req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// get top rated courses
+export const getTopRatedCourses = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getTopRatedCoursesService(req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// check if user purchased a course
+export const checkUserPurchasedCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await checkUserPurchasedCourseService(req.user, courseId, res, next);
+    } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }

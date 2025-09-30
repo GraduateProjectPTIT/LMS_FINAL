@@ -3,6 +3,8 @@ import Personal from './Personal';
 import Authentication from './Authentication';
 import Notifications from './Notifications';
 import EnrollCourses from './EnrollCourses';
+import Interests from './Interests';
+import Expertise from './Expertise';
 
 interface ProfileProps {
     user: any;
@@ -10,12 +12,17 @@ interface ProfileProps {
 }
 
 const Profile = ({ user, activeSection }: ProfileProps) => {
+
     const renderActiveSection = () => {
         switch (activeSection) {
             case 'personal_info':
                 return <Personal user={user} />
             case 'authentication_change':
                 return <Authentication user={user} />;
+            case 'interests':
+                return <Interests user={user} />;
+            case 'expertises':
+                return <Expertise user={user} />;
             case 'notifications':
                 return <Notifications user={user} />;
             case 'enroll_courses':

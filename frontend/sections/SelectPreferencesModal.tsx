@@ -119,7 +119,11 @@ const SelectPreferencesModal = ({ isOpen, onClose, userRole }: SelectPreferences
             }
 
             toast.success("Profile completed successfully!");
-            dispatch(updateSuccess(data.student));
+            if (userRole === 'tutor') {
+                dispatch(updateSuccess(data.tutor));
+            } else {
+                dispatch(updateSuccess(data.student));
+            }
             onClose();
         } catch (error: any) {
             console.error("Error saving preferences:", error);
