@@ -2,7 +2,12 @@
 
 import { Model, FilterQuery } from "mongoose";
 
-// These interfaces are the same as before
+// NEW: Thêm một interface cho tùy chọn sắp xếp
+export interface SortOptions {
+  [key: string]: 1 | -1 | "asc" | "desc";
+}
+
+// Các interface này giữ nguyên
 export interface PaginatedResult<T> {
   data: T[];
   meta: {
@@ -18,44 +23,51 @@ export interface PaginationParams {
   limit?: string;
 }
 
+// UserQueryParams giữ nguyên
 export interface UserQueryParams extends PaginationParams {
   role?: "student" | "tutor";
   keyword?: string;
   isVerified?: string;
   isSurveyCompleted?: string;
+  sortBy?: "createdAt" | "name";
+  sortOrder?: "asc" | "desc";
 }
 
 /**
- * A reusable function to paginate Mongoose queries.
- * @param model - The Mongoose model to paginate.
- * @param params - The query parameters for page and limit.
- * @param filter - Optional Mongoose filter query object (the 'where' clause).
+ * Hàm phân trang có thể tái sử dụng cho các Mongoose query.
+ * @param model - Mongoose model để phân trang.
+ * @param params - Các tham số truy vấn cho page và limit.
+ * @param filter - (Tùy chọn) Đối tượng filter của Mongoose (mệnh đề 'where').
+ * @param sort - (Tùy chọn) Đối tượng để sắp xếp kết quả.
  */
 export async function paginate<T>(
   model: Model<T>,
   params: PaginationParams,
-  filter: FilterQuery<T> = {}
+  filter: FilterQuery<T> = {},
+  // CHANGED: Thêm tham số 'sort' với giá trị mặc định
+  sort: SortOptions = { createdAt: -1 }
 ): Promise<PaginatedResult<T>> {
-  // 1. Sanitize and get page and limit values with defaults
+  // 1. Lấy giá trị page và limit với giá trị mặc định
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // 2. Execute queries in parallel using Mongoose methods
+  // 2. Thực thi các query song song
   const [data, totalItems] = await Promise.all([
     model
-      .find(filter) // Pass the filter here
-      .sort({ createdAt: -1 }) // Optional: add a default sort
+      .find(filter)
+      // CHANGED: Thay thế sort cứng bằng tham số 'sort' động
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .exec(),
-    model.countDocuments(filter).exec(), // Pass the same filter to get an accurate count
+    model.countDocuments(filter).exec(),
   ]);
 
-  // 3. Calculate total pages
+  // 3. Tính toán tổng số trang
   const totalPages = Math.ceil(totalItems / limit);
 
-  // 4. Return the structured paginated result
+  // 4. Trả về kết quả có cấu trúc
   return {
     data,
     meta: {
