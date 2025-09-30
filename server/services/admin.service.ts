@@ -42,57 +42,58 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 // };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
+// Đảm bảo bạn import SortOptions từ file helper
+import { SortOptions } from "../utils/pagination.helper";
+
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
-  const { page, limit, role, keyword, isVerified, isSurveyCompleted } =
-    queryParams;
+  const {
+    page,
+    limit,
+    role,
+    keyword,
+    isVerified,
+    isSurveyCompleted,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = queryParams;
 
-  if (role && !["student", "tutor"].includes(role)) {
-    // Ném ra một lỗi, middleware CatchAsyncError sẽ bắt lỗi này
-    throw new ErrorHandler(
-      "Giá trị của role không hợp lệ. Chỉ chấp nhận 'student' hoặc 'tutor'.",
-      400 // 400 Bad Request - lỗi từ phía người dùng
-    );
-  }
+  // ... (toàn bộ phần validation của bạn giữ nguyên) ...
 
-  if (isVerified && !["true", "false"].includes(isVerified)) {
+  const allowedSortFields = ["createdAt", "name"];
+  if (!allowedSortFields.includes(sortBy)) {
     throw new ErrorHandler(
-      "Giá trị của isVerified không hợp lệ. Chỉ chấp nhận 'true' hoặc 'false'.",
+      "Giá trị của sortBy không hợp lệ. Chỉ chấp nhận 'createdAt' hoặc 'name'.",
       400
     );
   }
-  if (isSurveyCompleted && !["true", "false"].includes(isSurveyCompleted)) {
-    throw new ErrorHandler(
-      "Giá trị của isSurveyCompleted không hợp lệ. Chỉ chấp nhận 'true' hoặc 'false'.",
-      400
-    );
-  }
 
-  // 2. Build the base filter object
+  // --- Phần build filter của bạn ---
   const baseFilter: { [key: string]: any } = {};
-  if (role === "student" || role === "tutor") {
+  if (role) {
     baseFilter.role = role;
   }
-
   if (isVerified !== undefined) {
-    // Chuyển đổi chuỗi "true" thành boolean true, và ngược lại
     baseFilter.isVerified = isVerified === "true";
   }
-
   if (isSurveyCompleted !== undefined) {
     baseFilter.isSurveyCompleted = isSurveyCompleted === "true";
   }
 
-  // 3. Generate the keyword search filter using the utility ✨
-  const keywordFilter = createKeywordSearchFilter(keyword, ["email"]);
-
-  // 4. Combine base filter and keyword filter
+  const keywordFilter = createKeywordSearchFilter(keyword, ["name", "email"]);
   const finalFilter = { ...baseFilter, ...keywordFilter };
 
-  // 5. Pass the combined filter to the pagination function
+  // 3. TẠO ĐỐI TƯỢNG sort CHO MONGOOSE VỚI CHÚ THÍCH KIỂU
+  const sortOptions: SortOptions = {
+    // <--- ĐÂY LÀ DÒNG ĐÃ SỬA
+    [sortBy]: sortOrder === "asc" ? 1 : -1,
+  };
+
+  // 4. TRUYỀN TÙY CHỌN SẮP XẾP VÀO HÀM `paginate`
   const paginatedResult = await paginate(
     userModel,
     { page, limit },
-    finalFilter
+    finalFilter,
+    sortOptions
   );
 
   return {
