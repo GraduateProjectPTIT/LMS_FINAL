@@ -43,7 +43,8 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 
 // --- LẤY TẤT CẢ USERS (đã có) ---
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
-  const { page, limit, role, keyword } = queryParams;
+  const { page, limit, role, keyword, isVerified, isSurveyCompleted } =
+    queryParams;
 
   if (role && !["student", "tutor"].includes(role)) {
     // Ném ra một lỗi, middleware CatchAsyncError sẽ bắt lỗi này
@@ -53,10 +54,32 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
     );
   }
 
+  if (isVerified && !["true", "false"].includes(isVerified)) {
+    throw new ErrorHandler(
+      "Giá trị của isVerified không hợp lệ. Chỉ chấp nhận 'true' hoặc 'false'.",
+      400
+    );
+  }
+  if (isSurveyCompleted && !["true", "false"].includes(isSurveyCompleted)) {
+    throw new ErrorHandler(
+      "Giá trị của isSurveyCompleted không hợp lệ. Chỉ chấp nhận 'true' hoặc 'false'.",
+      400
+    );
+  }
+
   // 2. Build the base filter object
   const baseFilter: { [key: string]: any } = {};
   if (role === "student" || role === "tutor") {
     baseFilter.role = role;
+  }
+
+  if (isVerified !== undefined) {
+    // Chuyển đổi chuỗi "true" thành boolean true, và ngược lại
+    baseFilter.isVerified = isVerified === "true";
+  }
+
+  if (isSurveyCompleted !== undefined) {
+    baseFilter.isSurveyCompleted = isSurveyCompleted === "true";
   }
 
   // 3. Generate the keyword search filter using the utility ✨
