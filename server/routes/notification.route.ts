@@ -6,6 +6,7 @@ import {
   markAllMyNotificationsRead,
   getMyNotifications,
   createNotification,
+  notificationStreamController,
 } from "../controllers/notification.controller";
 
 const notificationRouter = express.Router();
@@ -42,6 +43,12 @@ notificationRouter.get(
   isAuthenticated,
   authorizeRoles("admin", "tutor", "student"),
   getMyNotifications
+);
+
+notificationRouter.get(
+  "/notification/stream", // Tên route rõ ràng
+  isAuthenticated,
+  notificationStreamController
 );
 
 export default notificationRouter;

@@ -1,30 +1,42 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 import { IUser } from "./user.model";
 
-export interface INotification extends Document {
-    title: string;
-    message: string;
-    status: string;
-    userId: IUser;
+export interface CreateNotificationInput {
+  userId: string; // Chỉ cần ID của user dưới dạng string
+  title: string;
+  message: string;
 }
 
-const notificationSchema = new Schema<INotification>({
+export interface INotification extends Document {
+  title: string;
+  message: string;
+  status: string;
+  userId: IUser;
+}
+
+const notificationSchema = new Schema<INotification>(
+  {
     title: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     message: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     status: {
-        type: String,
-        required: true
-        , default: "unread"
+      type: String,
+      required: true,
+      default: "unread",
     },
-    userId: { type: Schema.Types.ObjectId, ref: 'User' },
-}, { timestamps: true })
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true }
+);
 
-const NotificationModel: Model<INotification> = mongoose.model('Notification', notificationSchema)
+const NotificationModel: Model<INotification> = mongoose.model(
+  "Notification",
+  notificationSchema
+);
 
-export default NotificationModel
+export default NotificationModel;
