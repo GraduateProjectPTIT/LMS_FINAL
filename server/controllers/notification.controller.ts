@@ -2,32 +2,34 @@ import { NextFunction, Request, Response } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import * as NotificationService from "../services/notification.service";
+import { addClient, removeClient } from "../utils/sseManager";
 
-/**
- * Endpoint để client kết nối và nhận thông báo real-time qua SSE.
- */
-export const streamNotifications = CatchAsyncError(
+export const notificationStreamController = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
+    // req.user được gán từ middleware isAuthenticated
     const userId = req.user?._id;
+
     if (!userId) {
-      return next(new ErrorHandler("User not authenticated", 401));
+      res
+        .status(401)
+        .json({ success: false, message: "User not authenticated" });
+      return; // Dừng hàm
     }
 
-    // Thiết lập các header bắt buộc cho SSE
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    // Thêm client vào service quản lý
-    NotificationService.addSseClient(userId.toString(), res);
+    addClient(userId.toString(), res);
 
-    // Gửi tin nhắn xác nhận kết nối
-    res.write("event: connection\ndata: Connected successfully\n\n");
+    res.write(
+      `data: ${JSON.stringify({ type: "connection_established" })}\n\n`
+    );
 
-    // Khi client ngắt kết nối, xóa khỏi service
     req.on("close", () => {
-      NotificationService.removeSseClient(userId.toString());
+      removeClient(userId.toString());
+      res.end();
     });
   }
 );

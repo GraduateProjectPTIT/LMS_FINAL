@@ -1,7 +1,12 @@
 import { Response } from "express";
 import cron from "node-cron";
-import NotificationModel, { INotification } from "../models/notification.model";
+import NotificationModel, {
+  CreateNotificationInput,
+  INotification,
+} from "../models/notification.model";
 import { IUser } from "../models/user.model";
+import notificationModel from "../models/notification.model";
+import { sendEventToUser } from "../utils/sseManager";
 
 // --- Phần quản lý Real-time SSE ---
 
@@ -105,16 +110,32 @@ export const markAllNotificationsAsReadService = async (userId: string) => {
   return result.modifiedCount;
 };
 
-export const createNotificationService = async (data: {
-  userId: string;
-  title: string;
-  message: string;
-}): Promise<INotification> => {
-  // Hàm giờ đây nhận một đối tượng `data` duy nhất
-  const notification = await NotificationModel.create(data);
+export const createNotificationService = async (
+  data: CreateNotificationInput
+) => {
+  const { userId, title, message } = data;
+
+  // 1. Lưu thông báo vào cơ sở dữ liệu (như code cũ)
+  const notification = await notificationModel.create({
+    userId,
+    title,
+    message,
+  });
+
+  // 2. GỌI SSE MANAGER ĐỂ ĐẨY THÔNG BÁO REAL-TIME
+  // Dữ liệu đẩy đi có thể là toàn bộ object notification
+  try {
+    sendEventToUser(userId, {
+      type: "NEW_NOTIFICATION",
+      payload: notification,
+    });
+  } catch (error) {
+    // Việc gửi SSE thất bại không nên làm hỏng cả tiến trình
+    console.error("Lỗi khi gửi thông báo SSE:", error);
+  }
+
   return notification;
 };
-
 // --- Phần công việc chạy nền (Cron Job) ---
 
 const deleteOldNotifications = async () => {

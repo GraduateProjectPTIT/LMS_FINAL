@@ -23,17 +23,27 @@ import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
 import { adminModel } from "../models/admin.model";
+import { sendEventToUser } from "../utils/sseManager";
+import { createNotificationService } from "./notification.service";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
-  // const userJson = await redis.get(id);
-  // if (userJson) {
-  //   return JSON.parse(userJson);
-  // }
   const user = await userModel.findById(id);
-  // if (user) {
-  //   await redis.set(id, JSON.stringify(user));
-  // }
+
+  if (user) {
+    try {
+      await createNotificationService({
+        userId: id,
+        title: "Lấy thông tin người dùng",
+        message: `Test tự lấy thông tin của chính tôi`,
+      });
+    } catch (error) {
+      console.error("[Notification Service] Gửi thông báo thất bại:", error);
+    }
+  }
+  // --- KẾT THÚC PHẦN CẬP NHẬT ---
+
+  // Hàm vẫn trả về kết quả chính của nó như bình thường
   return user;
 };
 
