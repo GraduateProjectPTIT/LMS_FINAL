@@ -585,7 +585,7 @@ export const cancelPayPalPayment = CatchAsyncError(
 export const getAdminOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      getAllOrdersService(res);
+      getAllOrdersService(req.query, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }

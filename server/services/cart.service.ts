@@ -4,14 +4,6 @@ import CourseModel from "../models/course.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 
-const formatTime = (minutes: number) => {
-  if (!minutes || minutes <= 0) return "0m";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
-};
-
 const mapCourseToCartItem = (course: any) => {
   const totalSections = Array.isArray(course.courseData)
     ? course.courseData.length
@@ -37,6 +29,7 @@ const mapCourseToCartItem = (course: any) => {
         0
       )
     : 0;
+  const totalTimeSeconds = totalTimeMinutes * 60;
 
   return {
     _id: String(course._id),
@@ -47,7 +40,7 @@ const mapCourseToCartItem = (course: any) => {
     level: course.level,
     totalSections,
     totalLectures,
-    totalTime: formatTime(totalTimeMinutes),
+    totalTime: totalTimeSeconds,
     instructorName: (course as any).creatorId?.name,
     ratings: course.ratings,
   };

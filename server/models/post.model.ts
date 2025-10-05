@@ -5,6 +5,7 @@ export interface IPost extends Document {
   slug: string;
   contentHtml: string;
   excerpt?: string;
+  shortDescription?: string;
   coverImage?: {
     public_id: string;
     url: string;
@@ -22,6 +23,7 @@ const postSchema = new Schema<IPost>(
     slug: { type: String, required: true, unique: true, lowercase: true, index: true },
     contentHtml: { type: String, required: true },
     excerpt: { type: String },
+    shortDescription: { type: String },
     coverImage: {
       public_id: { type: String },
       url: { type: String },

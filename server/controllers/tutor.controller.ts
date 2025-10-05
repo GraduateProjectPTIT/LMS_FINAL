@@ -4,6 +4,8 @@ import ErrorHandler from "../utils/ErrorHandler";
 import {
   getTutorDetailsService,
   updateTutorExpertiseService,
+  getTutorDashboardSummaryService,
+  getTutorEarningsChartService,
 } from "../services/tutor.service";
 
 // register setup profile cho tutor
@@ -25,6 +27,25 @@ export const setupTutorProfile = CatchAsyncError(
       message: "Tutor profile setup completed successfully.",
       tutor: updatedTutorProfile,
     });
+  }
+);
+
+export const getTutorDashboardSummary = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?._id?.toString();
+    if (!userId) throw new ErrorHandler("Authentication required", 401);
+    const data = await getTutorDashboardSummaryService(userId);
+    res.status(200).json({ success: true, ...data });
+  }
+);
+
+export const getTutorEarnings = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?._id?.toString();
+    if (!userId) throw new ErrorHandler("Authentication required", 401);
+    const range = String(req.query?.range || "30d");
+    const data = await getTutorEarningsChartService(userId, range);
+    res.status(200).json({ success: true, ...data });
   }
 );
 

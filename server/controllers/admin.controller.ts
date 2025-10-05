@@ -1,7 +1,7 @@
 // src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
-import { getAllUsersService } from "../services/admin.service";
+import { getAllUsersService, getAdminDashboardSummaryService, getAdminRevenueChartService } from "../services/admin.service";
 
 // --- XÓA USER (ADMIN) ---
 // export const deleteUser = CatchAsyncError(
@@ -25,6 +25,21 @@ export const getAllUsers = CatchAsyncError(
       success: true,
       ...paginatedUsers,
     });
+  }
+);
+
+export const getAdminDashboardSummary = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const data = await getAdminDashboardSummaryService();
+    res.status(200).json({ success: true, ...data });
+  }
+);
+
+export const getAdminRevenue = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const range = String(req.query?.range || "30d");
+    const data = await getAdminRevenueChartService(range);
+    res.status(200).json({ success: true, ...data });
   }
 );
 
