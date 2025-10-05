@@ -1,7 +1,7 @@
 import express from "express";
 
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
-import { getAllUsers } from "../controllers/admin.controller";
+import { getAllUsers, getAdminDashboardSummary, getAdminRevenue } from "../controllers/admin.controller";
 const adminRouter = express.Router();
 
 adminRouter.get(
@@ -9,6 +9,20 @@ adminRouter.get(
   isAuthenticated,
   authorizeRoles("admin"),
   getAllUsers
+);
+
+adminRouter.get(
+  "/admin/dashboard/summary",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  getAdminDashboardSummary
+);
+
+adminRouter.get(
+  "/admin/dashboard/revenue",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  getAdminRevenue
 );
 // adminRouter.put(
 //   "/admin/update-user-role",

@@ -11,7 +11,7 @@ import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import { ECourseLevel } from "../constants/course-level.enum";
-import { normalizeLevel, formatTime } from "../utils/course.helpers";
+import { normalizeLevel } from "../utils/course.helpers";
 
 import ErrorHandler from "../utils/ErrorHandler";
 
@@ -349,7 +349,20 @@ export const getTutorCoursesService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
+    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     const filter: any = { creatorId: user._id };
+    if (keyword.length >= 2) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
+    }
+
+    const allowedSortFields = ["createdAt", "name"] as const;
+    const sortBy = allowedSortFields.includes(String(query?.sortBy) as any)
+      ? String(query.sortBy)
+      : "createdAt";
+    const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+    const sort: any = { [sortBy]: sortOrder };
 
     const [courses, totalItems] = await Promise.all([
       CourseModel.find(filter)
@@ -358,7 +371,7 @@ export const getTutorCoursesService = async (
         )
         .populate("creatorId", "name avatar email")
         .populate("categories", "title")
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit),
       CourseModel.countDocuments(filter),
@@ -401,19 +414,43 @@ export const getTopPurchasedCoursesService = async (
 
     const courses = await CourseModel.find({})
       .select(
-        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        "name price estimatedPrice thumbnail purchased courseData.sectionContents.videoLength"
       )
-      .populate("creatorId", "name avatar email")
-      .populate("categories", "title")
       .sort({ purchased: -1, createdAt: -1 })
       .limit(limit);
 
-    const mapped = courses.map((c: any) => ({
-      ...c.toObject(),
-      level: normalizeLevel(c.level),
-      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
-      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
-    }));
+    const mapped = courses.map((c: any) => {
+      const totalLectures = Array.isArray(c.courseData)
+        ? c.courseData.reduce(
+            (acc: number, sec: any) =>
+              acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+            0
+          )
+        : 0;
+      const totalMinutes = Array.isArray(c.courseData)
+        ? c.courseData.reduce(
+            (acc: number, sec: any) =>
+              acc +
+              (Array.isArray(sec.sectionContents)
+                ? sec.sectionContents.reduce(
+                    (a: number, lec: any) => a + (lec?.videoLength || 0),
+                    0
+                  )
+                : 0),
+            0
+          )
+        : 0;
+      const totalDuration = totalMinutes * 60;
+      return {
+        thumbnail: { url: c.thumbnail?.url },
+        name: c.name,
+        price: c.price,
+        estimatedPrice: c.estimatedPrice,
+        enrolledCounts: c.purchased,
+        totalLectures,
+        totalDuration,
+      };
+    });
 
     return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
@@ -434,19 +471,43 @@ export const getTopRatedCoursesService = async (
 
     const courses = await CourseModel.find({})
       .select(
-        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        "name price estimatedPrice thumbnail purchased ratings courseData.sectionContents.videoLength"
       )
-      .populate("creatorId", "name avatar email")
-      .populate("categories", "title")
       .sort({ ratings: -1, purchased: -1, createdAt: -1 })
       .limit(limit);
 
-    const mapped = courses.map((c: any) => ({
-      ...c.toObject(),
-      level: normalizeLevel(c.level),
-      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
-      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
-    }));
+    const mapped = courses.map((c: any) => {
+      const totalLectures = Array.isArray(c.courseData)
+        ? c.courseData.reduce(
+            (acc: number, sec: any) =>
+              acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+            0
+          )
+        : 0;
+      const totalMinutes = Array.isArray(c.courseData)
+        ? c.courseData.reduce(
+            (acc: number, sec: any) =>
+              acc +
+              (Array.isArray(sec.sectionContents)
+                ? sec.sectionContents.reduce(
+                    (a: number, lec: any) => a + (lec?.videoLength || 0),
+                    0
+                  )
+                : 0),
+            0
+          )
+        : 0;
+      const totalDuration = totalMinutes * 60; // seconds
+      return {
+        thumbnail: { url: c.thumbnail?.url },
+        name: c.name,
+        price: c.price,
+        estimatedPrice: c.estimatedPrice,
+        enrolledCounts: c.purchased,
+        totalLectures,
+        totalDuration,
+      };
+    });
 
     return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
@@ -469,6 +530,23 @@ export const checkUserPurchasedCourseService = async (
       return next(new ErrorHandler("Invalid course id", 400));
     }
 
+    // Admins are considered as having access
+    if (String(user.role) === "admin") {
+      return res.status(200).json({ success: true, hasPurchased: true });
+    }
+
+    // Check course existence and ownership
+    const courseDoc = await CourseModel.findById(courseId).select("creatorId");
+    if (!courseDoc) {
+      return next(new ErrorHandler("Course not found", 404));
+    }
+
+    // Course creator is considered as having access
+    if (String((courseDoc as any).creatorId) === String(user._id)) {
+      return res.status(200).json({ success: true, hasPurchased: true });
+    }
+
+    // Regular user: check enrollment
     const enrollment = await EnrolledCourseModel.findOne({
       userId: user._id,
       courseId: new mongoose.Types.ObjectId(courseId),
@@ -853,14 +931,7 @@ export const getCourseOverviewService = async (
       };
     });
 
-    const formatTime = (minutes: number) => {
-      if (minutes < 60) {
-        return `${minutes}m`;
-      }
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
-    };
+    const totalTimeSeconds = totalTimeMinutes * 60;
 
     const courseData = {
       _id: course._id,
@@ -878,7 +949,7 @@ export const getCourseOverviewService = async (
       prerequisites: course.prerequisites,
       totalSections,
       totalLectures,
-      totalTime: formatTime(totalTimeMinutes),
+      totalTime: totalTimeSeconds,
       reviews: course.reviews.map((review: any) => ({
         _id: review._id,
         userId: {
@@ -1523,12 +1594,19 @@ export const getAdminCoursesService = async (
     filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
   }
 
+  const allowedSortFields = ["createdAt", "name"] as const;
+  const sortBy = allowedSortFields.includes(String(query?.sortBy) as any)
+    ? String(query.sortBy)
+    : "createdAt";
+  const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+  const sort: any = { [sortBy]: sortOrder };
+
   const [courses, totalItems] = await Promise.all([
     CourseModel.find(filter)
       .populate("reviews.userId", "name avatar")
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit),
     CourseModel.countDocuments(filter),
@@ -1560,18 +1638,19 @@ export const getAdminCoursesService = async (
 export const getCourseStudentsService = async (
   courseId: string,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  query?: any
 ) => {
   try {
-    const query: any = (res as any).locals?.query || {};
-    let page = Number.parseInt(String(query?.page), 10);
+    const q: any = query || {};
+    let page = Number.parseInt(String(q?.page), 10);
     if (Number.isNaN(page) || page < 1) page = 1;
-    let limit = Number.parseInt(String(query?.limit), 10);
+    let limit = Number.parseInt(String(q?.limit), 10);
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
-    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    const keyword = typeof q?.keyword !== "undefined" ? String(q.keyword).trim() : "";
 
     const matchStage: any = { courseId: new mongoose.Types.ObjectId(courseId) };
 
@@ -1601,10 +1680,19 @@ export const getCourseStudentsService = async (
       });
     }
 
+    // dynamic sort similar to users: sortBy createdAt|name, where createdAt => enrolledAt
+    const allowedSortFields = ["createdAt", "name"] as const;
+    const sortBy = allowedSortFields.includes(String(q?.sortBy) as any)
+      ? String(q.sortBy)
+      : "createdAt";
+    const sortOrder = String(q?.sortOrder) === "asc" ? 1 : -1;
+    const sortStage =
+      sortBy === "name" ? { $sort: { "user.name": sortOrder } } : { $sort: { enrolledAt: sortOrder } };
+
     const countPipeline = [...pipeline, { $count: "count" }];
     const dataPipeline = [
       ...pipeline,
-      { $sort: { enrolledAt: -1 } },
+      sortStage,
       { $skip: skip },
       { $limit: limit },
       {

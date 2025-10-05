@@ -14,7 +14,7 @@ export const createPostService = async (
       return next(new ErrorHandler("Unauthorized", 401));
     }
 
-    const { title, contentHtml, tags, status, coverImage } = data || {};
+    const { title, contentHtml, tags, status, coverImage, shortDescription } = data || {};
     if (!title || !contentHtml) {
       return next(new ErrorHandler("title and contentHtml are required", 400));
     }
@@ -38,6 +38,7 @@ export const createPostService = async (
       status: ["draft", "published"].includes(String(status)) ? status : "draft",
       coverImage: cover,
       authorId: user._id,
+      shortDescription: typeof shortDescription === "string" ? shortDescription : undefined,
     });
 
     return res.status(201).json({ success: true, post });
@@ -62,15 +63,39 @@ export const getPublicPostsService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
+    const [rawItems, total] = await Promise.all([
       PostModel.find({ status: "published" })
-        .select("title slug tags createdAt coverImage authorId")
+        .select("title slug tags createdAt coverImage authorId shortDescription contentHtml")
         .populate("authorId", "name avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
       PostModel.countDocuments({ status: "published" }),
     ]);
+
+    const stripHtml = (html: string) => String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const makeShort = (text: string, len = 180) => (text.length <= len ? text : text.slice(0, len).trimEnd() + "…");
+    const estimateReadingTimeMinutes = (text: string) => {
+      const words = text.split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.ceil(words / 200));
+    };
+
+    const items = rawItems.map((p: any) => {
+      const plain = stripHtml(p.contentHtml || "");
+      const shortDescription = typeof p.shortDescription === "string" && p.shortDescription.trim().length > 0
+        ? p.shortDescription.trim()
+        : undefined;
+      return {
+        title: p.title,
+        slug: p.slug,
+        tags: p.tags,
+        createdAt: p.createdAt,
+        authorId: p.authorId,
+        coverImage: p.coverImage?.url ? { url: p.coverImage.url } : p.coverImage,
+        shortDescription,
+        readingTimeMinutes: estimateReadingTimeMinutes(plain),
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -123,15 +148,77 @@ export const getPostsService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
-      PostModel.find({})
-        .select("title slug status tags createdAt updatedAt authorId")
+    // Filters
+    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    const status = typeof query?.status !== "undefined" ? String(query.status).trim() : undefined; // draft|published
+    const tag = typeof query?.tag !== "undefined" ? String(query.tag).trim() : undefined;
+    const authorId = typeof query?.authorId !== "undefined" ? String(query.authorId).trim() : undefined;
+
+    const filter: any = {};
+    if (keyword.length >= 2) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      filter.$or = [
+        { title: { $regex: regex } },
+        { slug: { $regex: regex } },
+        { tags: { $regex: regex } },
+      ];
+    }
+    if (status && ["draft", "published"].includes(status)) {
+      filter.status = status;
+    }
+    if (tag) {
+      filter.tags = { $in: [tag] };
+    }
+    if (authorId) {
+      filter.authorId = authorId;
+    }
+
+    // Sorting
+    const allowedSortFields = ["createdAt", "title"] as const;
+    const sortBy = allowedSortFields.includes(String(query?.sortBy) as any)
+      ? String(query.sortBy)
+      : "createdAt";
+    const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+    const sort: any = { [sortBy]: sortOrder };
+
+    const [rawItems, total] = await Promise.all([
+      PostModel.find(filter)
+        .select("title slug status tags createdAt updatedAt authorId shortDescription contentHtml coverImage")
         .populate("authorId", "name email avatar")
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit),
-      PostModel.countDocuments({}),
+      PostModel.countDocuments(filter),
     ]);
+
+    // Helpers to produce short description and reading time
+    const stripHtml = (html: string) => String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const estimateReadingTimeMinutes = (text: string) => {
+      const words = text.split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.ceil(words / 200)); // ~200 wpm
+    };
+
+    const items = rawItems.map((p: any) => {
+      const plain = stripHtml(p.contentHtml || "");
+      const shortDescription = typeof p.shortDescription === "string" && p.shortDescription.trim().length > 0
+        ? p.shortDescription.trim()
+        : undefined;
+      const readingTimeMinutes = estimateReadingTimeMinutes(plain);
+      return {
+        _id: p._id,
+        title: p.title,
+        slug: p.slug,
+        status: p.status,
+        tags: p.tags,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        authorId: p.authorId,
+        coverImage: p.coverImage?.url ? { url: p.coverImage.url } : p.coverImage,
+        shortDescription,
+        readingTimeMinutes,
+      };
+    });
 
     return res.status(200).json({
       success: true,

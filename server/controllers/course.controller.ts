@@ -93,7 +93,7 @@ export const getCourseStudents = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const courseId = req.params.id;
-      await getCourseStudentsService(courseId, res, next);
+      await getCourseStudentsService(courseId, res, next, req.query);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

@@ -23,6 +23,8 @@ import mongoose, { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
 import courseModel from "../models/course.model";
+import EnrolledCourseModel from "../models/enrolledCourse.model";
+import OrderModel from "../models/order.model";
 
 // Cập nhật profile khi đăng ký
 export type ICombinedTutorUserResponse = ReturnType<ITutor["toObject"]> &
@@ -82,6 +84,59 @@ export const updateTutorExpertiseService = async (
   };
 
   return combinedResponse as ICombinedTutorUserResponse;
+};
+
+export const getTutorDashboardSummaryService = async (userId: string) => {
+  const courses = await courseModel
+    .find({ creatorId: userId })
+    .select("_id purchased ratings")
+    .lean();
+  const myCoursesCount = courses.length;
+  const myStudentsCount = courses.reduce((acc, c: any) => acc + (c.purchased || 0), 0);
+
+  const courseIds = courses.map((c: any) => c._id);
+  const recentEnrollments = await EnrolledCourseModel.find({ courseId: { $in: courseIds } })
+    .sort({ enrolledAt: -1 })
+    .limit(5)
+    .populate("userId", "name avatar email")
+    .select("userId courseId enrolledAt");
+
+  const courseIdStrings = courseIds.map((id) => String(id));
+  const revenueAgg = await OrderModel.aggregate([
+    { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
+    { $unwind: "$items" },
+    { $match: { "items.courseId": { $in: courseIdStrings } } },
+    { $group: { _id: null, revenue: { $sum: "$items.price" }, count: { $sum: 1 } } },
+  ]);
+  const myRevenue = Array.isArray(revenueAgg) && revenueAgg.length ? revenueAgg[0].revenue : 0;
+
+  return {
+    summary: {
+      myCoursesCount,
+      myStudentsCount,
+      myRevenue,
+    },
+    recentEnrollments,
+  };
+};
+
+export const getTutorEarningsChartService = async (userId: string, range: string = "30d") => {
+  const isMonthly = range === "12m";
+  const courses = await courseModel.find({ creatorId: userId }).select("_id").lean();
+  const tutorCourseIds = courses.map((c: any) => String(c._id));
+  const groupId = isMonthly
+    ? { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }
+    : { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } };
+
+  const series = await OrderModel.aggregate([
+    { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
+    { $unwind: "$items" },
+    { $match: { "items.courseId": { $in: tutorCourseIds } } },
+    { $group: { _id: groupId, revenue: { $sum: "$items.price" } } },
+    { $sort: { "_id.year": 1, "_id.month": 1, ...(isMonthly ? {} : { "_id.day": 1 }) } },
+  ]);
+
+  return { range, series };
 };
 
 export const getTutorDetailsService = async (tutorId: string) => {
