@@ -24,7 +24,7 @@ interface CourseContentProps {
     active: number;
     setActive: (active: number) => void;
     courseData: ICreateSection[];
-    setCourseData: (newData: ICreateSection[]) => void;
+    setCourseData: React.Dispatch<React.SetStateAction<ICreateSection[]>>;
 }
 
 interface CollapsedState {
@@ -171,6 +171,7 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
         const hasUploading = courseData.some(s =>
             s.sectionContents.some(l => l.isUploading)
         );
+
         if (hasUploading) {
             toast.error("Please wait for all uploads to finish");
             return;
@@ -203,14 +204,17 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
     // Drag end (khi thả section) → reorder theo id
     const handleDragEnd = (event: DragEndEvent): void => {
         const { active, over } = event;
-        if (!over) return;
+        if (!over || active.id === over.id) return;
 
-        if (active.id !== over.id) {
-            const oldIndex = courseData.findIndex((item) => item.id === active.id);
-            const newIndex = courseData.findIndex((item) => item.id === over.id);
-            if (oldIndex === -1 || newIndex === -1) return;
-            setCourseData(arrayMove(courseData, oldIndex, newIndex));
-        }
+        // SỬA LẠI
+        setCourseData((prevCourseData) => {
+            const oldIndex = prevCourseData.findIndex((item) => item.id === active.id);
+            const newIndex = prevCourseData.findIndex((item) => item.id === over.id);
+            if (oldIndex === -1 || newIndex === -1) {
+                return prevCourseData;
+            }
+            return arrayMove(prevCourseData, oldIndex, newIndex);
+        });
     };
 
     const handleAddNewSection = () => {
@@ -236,7 +240,7 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
             ]
         };
 
-        setCourseData([...courseData, newSection]);
+        setCourseData(prevData => [...prevData, newSection]);
     };
 
     const handleRemoveSection = (sectionId: string) => {
@@ -255,17 +259,26 @@ const CourseContent = ({ active, setActive, courseData, setCourseData }: CourseC
 
     const confirmDeleteSection = () => {
         if (deleteModal.sectionIndex !== null) {
-            const updatedData = courseData.filter((_, index) => index !== deleteModal.sectionIndex);
-            setCourseData(updatedData);
+            setCourseData(prevData => prevData.filter((_, index) => index !== deleteModal.sectionIndex));
             toast.success("Section deleted successfully");
         }
     };
 
-    const handleSectionChange = (sectionId: string, updatedSection: ICreateSection) => {
-        const updatedData = courseData.map((section) =>
-            section.id === sectionId ? updatedSection : section
-        );
-        setCourseData(updatedData);
+    const handleSectionChange = (
+        sectionId: string,
+        sectionUpdater: ICreateSection | ((prevSection: ICreateSection) => ICreateSection)
+    ) => {
+        setCourseData((prevCourseData) => {
+            return prevCourseData.map((currentSection) => {
+                if (currentSection.id === sectionId) {
+                    if (typeof sectionUpdater === 'function') {
+                        return sectionUpdater(currentSection);
+                    }
+                    return sectionUpdater;
+                }
+                return currentSection;
+            });
+        });
     };
 
     // Đếm số section đã hoàn thành

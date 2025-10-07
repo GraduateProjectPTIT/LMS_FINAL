@@ -35,7 +35,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
     // Handle video time update to track progress
     const handleTimeUpdate = () => {
-        if (videoRef.current) {
+        if (videoRef.current && !isLectureCompleted) {
             const video = videoRef.current;
             const percentage = (video.currentTime / video.duration) * 100;
             setWatchedPercentage(Math.round(percentage));
@@ -64,15 +64,12 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
             if (response.ok && data.success) {
                 onLectureCompleted(lecture._id);
-                // Optionally show success message
                 console.log('Lecture marked as completed successfully');
             } else {
                 console.error('Failed to mark lecture as completed:', data.message);
-                // Optionally show error message
             }
         } catch (error) {
             console.error('Error marking lecture as completed:', error);
-            // Optionally show error message
         } finally {
             setIsMarkingCompleted(false);
         }
@@ -91,7 +88,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
         );
     }
 
-    const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80);
+    const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80 || canBypass);
 
     return (
         <div className="flex flex-col h-screen overflow-y-scroll">
@@ -121,7 +118,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                         <button
                             onClick={handleMarkAsCompleted}
                             disabled={isMarkingCompleted}
-                            className="ml-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors duration-200"
+                            className="ml-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors duration-200 flex-shrink-0"
                         >
                             <FaCheck className="mr-2" />
                             {isMarkingCompleted ? 'Marking...' : 'Mark as Completed'}
@@ -130,14 +127,14 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
                     {/* Completed indicator */}
                     {isLectureCompleted && (
-                        <div className="ml-4 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg font-medium text-sm flex items-center">
+                        <div className="ml-4 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg font-medium text-sm flex items-center flex-shrink-0">
                             <FaCheck className="mr-2" />
                             Completed
                         </div>
                     )}
                 </div>
 
-                {/* Progress indicator (only show for non-bypass users) */}
+                {/* Progress indicator (only show for non-bypass users and incomplete lectures) */}
                 {!canBypass && !isLectureCompleted && (
                     <div className="mb-4">
                         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">

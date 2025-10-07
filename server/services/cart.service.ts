@@ -10,26 +10,25 @@ const mapCourseToCartItem = (course: any) => {
     : 0;
   const totalLectures = Array.isArray(course.courseData)
     ? course.courseData.reduce(
-        (acc: number, sec: any) =>
-          acc +
-          (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
-        0
-      )
+      (acc: number, sec: any) =>
+        acc +
+        (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+      0
+    )
     : 0;
-  const totalTimeMinutes = Array.isArray(course.courseData)
+  const totalTimeSeconds = Array.isArray(course.courseData)
     ? course.courseData.reduce(
-        (acc: number, sec: any) =>
-          acc +
-          (Array.isArray(sec.sectionContents)
-            ? sec.sectionContents.reduce(
-                (a: number, lec: any) => a + (lec?.videoLength || 0),
-                0
-              )
-            : 0),
-        0
-      )
+      (acc: number, sec: any) =>
+        acc +
+        (Array.isArray(sec.sectionContents)
+          ? sec.sectionContents.reduce(
+            (a: number, lec: any) => a + (lec?.videoLength || 0),
+            0
+          )
+          : 0),
+      0
+    )
     : 0;
-  const totalTimeSeconds = totalTimeMinutes * 60;
 
   return {
     _id: String(course._id),

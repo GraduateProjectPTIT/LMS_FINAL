@@ -4,6 +4,12 @@ export interface ParamsProps {
     }
 }
 
+export interface SlugParamsProps {
+    params: {
+        slug: string
+    }
+}
+
 // ------------------- CLOUDINARY UPLOAD -------------------
 
 export interface UploadSignatureResponse {
@@ -271,7 +277,7 @@ export interface CartItem {
     level?: string;
     totalSections?: number;
     totalLectures?: number;
-    totalTime?: string;
+    totalTime?: number;
     instructorName?: string;
     ratings?: number;
 }

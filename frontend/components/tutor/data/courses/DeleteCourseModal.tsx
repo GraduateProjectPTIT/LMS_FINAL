@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 
-interface CourseModalProps {
+interface DeleteCourseModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: () => void;
@@ -12,13 +12,13 @@ interface CourseModalProps {
     isDeleting: boolean;
 }
 
-const CourseModal = ({
+const DeleteCourseModal = ({
     isOpen,
     onClose,
     onConfirm,
     courseName,
     isDeleting
-}: CourseModalProps) => {
+}: DeleteCourseModalProps) => {
     if (!isOpen) return null;
 
     const handleConfirm = () => {
@@ -77,4 +77,4 @@ const CourseModal = ({
     );
 };
 
-export default CourseModal;
+export default DeleteCourseModal;

@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import PreviewVideoModal from './PreviewVideoModal';
+import { formatDuration } from '@/utils/convertToMinutes';
 
 import { CheckCheck, ShieldAlert, CirclePlay, Clock, FileVideo, Bookmark, Play, Link } from 'lucide-react';
-
 
 interface CoursePreviewProps {
     active: number;
@@ -47,18 +47,14 @@ const CoursePreview = ({
         setPreviewVideoUrl('');
     };
 
-    const calculateTotalDuration = () => {
-        let totalMinutes = 0;
+    const calculateTotalDurationSeconds = () => {
+        let totalSeconds = 0;
         courseData.forEach(section => {
             section.sectionContents.forEach(lecture => {
-                totalMinutes += lecture.videoLength || 0;
+                totalSeconds += lecture.videoLength || 0;
             });
         });
-
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-
-        return `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
+        return totalSeconds;
     };
 
     const totalVideos = courseData.reduce((acc, section) => acc + section.sectionContents.length, 0);
@@ -216,7 +212,7 @@ const CoursePreview = ({
                         <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         <div>
                             <span className="text-sm text-gray-600 dark:text-gray-400 block">Duration</span>
-                            <span className="font-medium text-gray-800 dark:text-white">{calculateTotalDuration()}</span>
+                            <span className="font-medium text-gray-800 dark:text-white">{formatDuration(calculateTotalDurationSeconds())}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
@@ -329,7 +325,7 @@ const CoursePreview = ({
 
                                                 {lecture.videoLength > 0 && (
                                                     <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                                                        {Math.floor(lecture.videoLength / 60)}:{String(lecture.videoLength % 60).padStart(2, '0')}
+                                                        {formatDuration(lecture.videoLength)}
                                                     </span>
                                                 )}
                                             </div>

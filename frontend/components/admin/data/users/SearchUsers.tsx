@@ -5,31 +5,36 @@ import { Search, X, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface FilterState {
+    selectedRole: string;
+    verificationStatus: string;
+    surveyStatus: string;
     sortBy: string;
     sortOrder: string;
 }
 
-interface SearchCoursesProps {
+interface SearchUsersProps {
     searchQuery: string;
     onSearchChange: (value: string) => void;
     onSearchSubmit: () => void;
     onClearSearch: () => void;
     currentSearch?: string;
+    roles: string[];
     filters: FilterState;
     onFilterChange: (filters: Partial<FilterState>) => void;
     onClearFilters: () => void;
 }
 
-const SearchCourses = ({
+const SearchUsers = ({
     searchQuery,
     onSearchChange,
     onSearchSubmit,
     onClearSearch,
     currentSearch = "",
+    roles,
     filters,
     onFilterChange,
     onClearFilters,
-}: SearchCoursesProps) => {
+}: SearchUsersProps) => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,10 +55,22 @@ const SearchCourses = ({
         onSearchSubmit();
     };
 
+    const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onFilterChange({ selectedRole: e.target.value });
+    };
+
+    const handleVerificationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onFilterChange({ verificationStatus: e.target.value });
+    };
+
+    const handleSurveyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onFilterChange({ surveyStatus: e.target.value });
+    };
+
     const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
 
-        // Parse the combined sort value
+        // Parse the combined sort value (e.g., "name-asc" -> sortBy: "name", sortOrder: "asc")
         if (value === 'default') {
             onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
         } else if (value === 'date-newest') {
@@ -67,16 +84,40 @@ const SearchCourses = ({
         }
     };
 
-    const hasActiveFilters = (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc');
+    const hasActiveFilters = filters.selectedRole ||
+        (filters.verificationStatus && filters.verificationStatus !== 'all') ||
+        (filters.surveyStatus && filters.surveyStatus !== 'all') ||
+        (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc');
 
     const getActiveFiltersCount = () => {
         let count = 0;
+        if (filters.selectedRole) count++;
+        if (filters.verificationStatus && filters.verificationStatus !== 'all') count++;
+        if (filters.surveyStatus && filters.surveyStatus !== 'all') count++;
         if (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') count++;
         return count;
     };
 
     const toggleFilter = () => {
         setIsFilterOpen(!isFilterOpen);
+    };
+
+    const getVerificationLabel = (value: string) => {
+        const verificationLabels: Record<string, string> = {
+            'all': 'All Status',
+            'true': 'Verified',
+            'false': 'Not Verified'
+        };
+        return verificationLabels[value] || value;
+    };
+
+    const getSurveyLabel = (value: string) => {
+        const surveyLabels: Record<string, string> = {
+            'all': 'All Status',
+            'true': 'Completed',
+            'false': 'Not Completed'
+        };
+        return surveyLabels[value] || value;
     };
 
     const getSortValue = () => {
@@ -89,7 +130,7 @@ const SearchCourses = ({
 
     const getSortLabel = (value: string) => {
         const sortLabels: Record<string, string> = {
-            'default': 'Default (Newest)',
+            'default': 'Default',
             'name-asc': 'Name: A to Z',
             'name-desc': 'Name: Z to A',
             'date-newest': 'Newest',
@@ -108,7 +149,7 @@ const SearchCourses = ({
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
-                                placeholder="Search courses by name or tags..."
+                                placeholder="Search users by name or email ..."
                                 value={searchQuery}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyPress}
@@ -182,7 +223,7 @@ const SearchCourses = ({
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
                                 <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Course Filters</h3>
+                                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">User Filters</h3>
                             </div>
                             {hasActiveFilters && (
                                 <span className="text-sm text-slate-600 dark:text-slate-400">
@@ -192,6 +233,66 @@ const SearchCourses = ({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Role Filter */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Role
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={filters.selectedRole}
+                                        onChange={handleRoleChange}
+                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
+                                    >
+                                        <option value="">All Roles</option>
+                                        {roles.map(role => (
+                                            <option key={role} value={role}>
+                                                {role.charAt(0).toUpperCase() + role.slice(1)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Verification Status Filter */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Verification Status
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={filters.verificationStatus}
+                                        onChange={handleVerificationChange}
+                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="true">Verified</option>
+                                        <option value="false">Not Verified</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Survey Status Filter */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Survey Status
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={filters.surveyStatus}
+                                        onChange={handleSurveyChange}
+                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="true">Completed</option>
+                                        <option value="false">Not Completed</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
                             {/* Sort By Filter */}
                             <div className="flex flex-col gap-2">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -252,6 +353,42 @@ const SearchCourses = ({
                 <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Active filters:</span>
 
+                    {filters.selectedRole && (
+                        <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-full text-sm font-medium">
+                            <span>Role: {filters.selectedRole.charAt(0).toUpperCase() + filters.selectedRole.slice(1)}</span>
+                            <button
+                                onClick={() => onFilterChange({ selectedRole: "" })}
+                                className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                            >
+                                <X className="h-3 w-3 hover:cursor-pointer" />
+                            </button>
+                        </div>
+                    )}
+
+                    {filters.verificationStatus && filters.verificationStatus !== 'all' && (
+                        <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-1.5 rounded-full text-sm font-medium">
+                            <span>Verification: {getVerificationLabel(filters.verificationStatus)}</span>
+                            <button
+                                onClick={() => onFilterChange({ verificationStatus: 'all' })}
+                                className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
+                            >
+                                <X className="h-3 w-3 hover:cursor-pointer" />
+                            </button>
+                        </div>
+                    )}
+
+                    {filters.surveyStatus && filters.surveyStatus !== 'all' && (
+                        <div className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1.5 rounded-full text-sm font-medium">
+                            <span>Survey: {getSurveyLabel(filters.surveyStatus)}</span>
+                            <button
+                                onClick={() => onFilterChange({ surveyStatus: 'all' })}
+                                className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                            >
+                                <X className="h-3 w-3 hover:cursor-pointer" />
+                            </button>
+                        </div>
+                    )}
+
                     {(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') && (
                         <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">
                             <span>Sort: {getSortLabel(getSortValue())}</span>
@@ -269,4 +406,4 @@ const SearchCourses = ({
     );
 };
 
-export default SearchCourses;
+export default SearchUsers;

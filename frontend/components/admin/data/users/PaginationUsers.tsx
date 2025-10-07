@@ -13,19 +13,19 @@ interface PaginationInfo {
     hasPrevPage: boolean;
 }
 
-interface PaginationCoursesProps {
+interface PaginationUsersProps {
     pagination: PaginationInfo;
     onPageChange: (page: number) => void;
     onLimitChange: (limit: number) => void;
     isLoading?: boolean;
 }
 
-const PaginationCourses = ({
+const PaginationUsers = ({
     pagination,
     onPageChange,
     onLimitChange,
     isLoading = false
-}: PaginationCoursesProps) => {
+}: PaginationUsersProps) => {
     const { page, limit, total, totalPages, hasNextPage, hasPrevPage } = pagination;
 
     const handleFirstPage = () => {
@@ -106,7 +106,7 @@ const PaginationCourses = ({
                         Page {page} of {totalPages}
                     </span>
                     <span className="hidden md:inline text-sm text-gray-500 dark:text-gray-400">
-                        ({total} courses)
+                        ({total} users)
                     </span>
                 </div>
 
@@ -136,4 +136,4 @@ const PaginationCourses = ({
     );
 };
 
-export default PaginationCourses;
+export default PaginationUsers;

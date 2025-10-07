@@ -15,7 +15,6 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [completedLectures, setCompletedLectures] = useState<string[]>([]);
-    const [enrollmentData, setEnrollmentData] = useState<any>(null);
 
     const { currentUser } = useSelector((state: RootState) => state.user);
 
@@ -41,10 +40,9 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             setCourse(data.course);
 
-            // Set enrollment data and completed lectures
-            if (data.enrollment) {
-                setEnrollmentData(data.enrollment);
-                setCompletedLectures(data.enrollment.completedLectures || []); // api chưa trả về completedLectures
+            // Set completed lectures from API response
+            if (data.completedLectures && Array.isArray(data.completedLectures)) {
+                setCompletedLectures(data.completedLectures);
             } else {
                 setCompletedLectures([]);
             }
@@ -124,20 +122,6 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             return prev;
         });
-
-        // Update enrollment data progress if available
-        if (enrollmentData) {
-            const allLectures = getAllLecturesInOrder();
-            const newCompletedCount = completedLectures.length + 1;
-            const progress = Math.min(100, Math.round((newCompletedCount / allLectures.length) * 100));
-
-            setEnrollmentData(prev => ({
-                ...prev,
-                progress,
-                completed: progress >= 100,
-                completedLectures: [...completedLectures, lectureId]
-            }));
-        }
     };
 
     // Auto-select next accessible lecture when current one is completed

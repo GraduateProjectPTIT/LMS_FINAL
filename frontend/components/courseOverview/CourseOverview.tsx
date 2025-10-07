@@ -9,10 +9,10 @@ import { RootState } from '@/redux/store';
 import RecommendCourse from './RecommendCourse';
 import CourseReview from './CourseReview';
 import CallToActionCourse from './CallToActionCourse';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import MissingImage from "@/public/missing_image.jpg"
 import toast from 'react-hot-toast';
+import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
+import { formatDuration } from '@/utils/convertToMinutes';
 
 import { Clock, Award, CheckCircle, BookOpen, Play, Users, BarChart2, Star, User, Globe, Share2, Download, MessageCircle } from 'lucide-react';
 import { BiCategoryAlt } from "react-icons/bi";
@@ -78,7 +78,7 @@ interface ICourseData {
     prerequisites: IOverviewPrerequisite[];
     totalSections: number;
     totalLectures: number;
-    totalTime: string;
+    totalTime: number;
     reviews: any[];
     courseData: IOverviewCourseSection[];
     ratings: number;
@@ -112,6 +112,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
     const [activeSections, setActiveSections] = useState<number[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [loadingEnroll, setLoadingEnroll] = useState(false);
+    const [isAllowed, setIsAllowed] = useState(false);
 
     const handleFetchCourseOverview = async () => {
         setIsLoading(true);
@@ -133,11 +134,11 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
             const processedSections: IProcessedSection[] = course?.courseData?.map((section: IOverviewCourseSection) => ({
                 sectionTitle: section.sectionTitle,
                 totalLectures: section.sectionContents.length,
-                totalTime: `${section.sectionContents.reduce((acc, content) => acc + content.videoLength, 0)}m`,
+                totalTime: formatDuration(section.sectionContents.reduce((acc, content) => acc + content.videoLength, 0)),
                 lectures: section.sectionContents.map(content => ({
                     title: content.videoTitle,
                     description: content.videoDescription,
-                    time: `${content.videoLength}m`
+                    time: formatDuration(content.videoLength)
                 }))
             })) || [];
 
@@ -150,52 +151,35 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         }
     }
 
-    const [studentEnrolledCourses, setStudentEnrolledCourses] = useState<any[]>([]);
+    const handleCheckPurchasedCourses = async () => {
+        if (!currentUser) {
+            setIsAllowed(false);
+            return;
+        }
 
-    const handleFetchStudentCourses = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/student/enrolled_courses`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/${courseId}/has-purchased`, {
                 method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 credentials: "include",
             });
             const data = await res.json();
             if (!res.ok) {
-                console.log("Fetching student enrolled courses failed: ", data.message);
+                console.log("Fetching purchased courses failed: ", data.message);
                 return;
             }
-            setStudentEnrolledCourses(data.courses || []);
+
+            setIsAllowed(data.hasPurchased);
         } catch (error: any) {
             console.log(error.message);
-        } finally {
-            setIsLoading(false);
         }
-    }
-
-    const checkCourseAccessed = (courseId: string) => {
-
-        if (!currentUser) {
-            return false;
-        }
-
-        if (currentUser?.role === "admin") {
-            return true;
-        }
-
-        const isCreator = courseData?.creatorId?._id === currentUser?._id;
-        if (isCreator) {
-            return true;
-        }
-
-        const isEnrolled = studentEnrolledCourses.some(course => course._id === courseId);
-        if (isEnrolled) {
-            return true;
-        }
-
-        return false;
     }
 
     useEffect(() => {
         handleFetchCourseOverview();
+        handleCheckPurchasedCourses();
     }, [courseId]);
 
     const toggleSection = (index: number) => {
@@ -209,10 +193,6 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
     const handleEnroll = (courseId: string) => {
         setLoadingEnroll(true);
         router.push(`/course-enroll/${courseId}`)
-    }
-
-    const getValidThumbnail = (thumbnailUrl?: string) => {
-        return thumbnailUrl || MissingImage;
     }
 
     const getCategoriesString = (categories: IOverviewCategory[]) => {
@@ -257,6 +237,8 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
             toast.error(error.message || "Failed to add item to cart");
         }
     }
+
+
 
     return (
         <div className='theme-mode min-h-screen'>
@@ -312,7 +294,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                 </div>
                                 <div className="flex items-center gap-2 bg-white/80 dark:bg-blue-800/40 text-slate-700 dark:text-blue-50 px-3 py-2 rounded-lg shadow-sm border border-blue-200 dark:border-blue-400/40 backdrop-blur-sm">
                                     <Clock size={18} className="text-blue-600 dark:text-blue-300" />
-                                    <span>{courseData.totalTime}</span>
+                                    <span>{formatDuration(courseData.totalTime)}</span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-white/80 dark:bg-blue-800/40 text-slate-700 dark:text-blue-50 px-3 py-2 rounded-lg shadow-sm border border-blue-200 dark:border-blue-400/40 backdrop-blur-sm">
                                     <BookOpen size={18} className="text-blue-600 dark:text-blue-300" />
@@ -475,7 +457,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="md:w-1/4 flex flex-col items-center md:items-start">
                                     <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-100 dark:border-blue-900 shadow-md mb-3">
-                                        {courseData.creatorId?.avatar && courseData.creatorId.avatar.url && courseData.creatorId.avatar.url.trim() !== "" ? (
+                                        {courseData.creatorId?.avatar?.url && isValidImageUrl(courseData.creatorId.avatar.url) ? (
                                             <Image
                                                 src={courseData.creatorId.avatar.url}
                                                 alt={courseData.creatorId.name || "Instructor"}
@@ -555,21 +537,17 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                         <Clock className="text-indigo-600 dark:text-indigo-400" size={18} />
                                         <span className="text-gray-700 dark:text-gray-200">Duration</span>
                                     </div>
-                                    <span className="font-medium text-gray-800 dark:text-white">{courseData.totalTime}</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">{formatDuration(courseData.totalTime)}</span>
                                 </div>
                             </div>
 
                             <button
                                 className={`w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5
         ${loadingEnroll || isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
-                                onClick={
-                                    checkCourseAccessed(courseId)
-                                        ? () => handleEnroll(courseId)
-                                        : handleAddToCart
-                                }
+                                onClick={isAllowed ? () => handleEnroll(courseId) : handleAddToCart}
                                 disabled={loadingEnroll || isLoading}
                             >
-                                {checkCourseAccessed(courseId)
+                                {isAllowed
                                     ? (loadingEnroll ? "Enrolling..." : "Enter to course")
                                     : (loading ? "Adding..." : "Add to cart")}
                             </button>

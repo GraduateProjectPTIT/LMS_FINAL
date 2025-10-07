@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { FaRegPlayCircle, FaCheckCircle, FaLock } from "react-icons/fa";
 import { RiArrowDropDownLine } from "react-icons/ri";
 import { CourseSection, SectionLecture } from "@/type";
+import { formatDuration } from '@/utils/convertToMinutes';
 
 interface CourseSidebarProps {
     courseData: CourseSection[];
@@ -35,12 +36,6 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
             ...prev,
             [sectionIndex]: !prev[sectionIndex],
         }));
-    };
-
-    const formatTime = (minutes: number) => {
-        const hrs = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return `${hrs > 0 ? `${hrs}h ` : ''}${mins}m`;
     };
 
     // Create flat array of all lectures with their order
@@ -86,37 +81,36 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
     const handleLectureSelect = (lecture: SectionLecture) => {
         if (isLectureAccessible(lecture)) {
             setSelectedVideo(lecture);
-            // Close sidebar on mobile after selecting video
-            if (window.innerWidth < 768) {
-                // This logic might need to be passed up to parent component
-            }
         }
     };
 
+    const totalLectures = getAllLecturesInOrder().length;
+    const completedCount = completedLectures.length;
+    const progressPercentage = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
     return (
         <div className="flex flex-col h-full overflow-y-auto">
-            <div className="p-4 border-b border-gray-300 dark:border-slate-700 bg-white dark:bg-[#1f2227] sticky top-0">
+            <div className="p-4 border-b border-gray-300 dark:border-slate-700 bg-white dark:bg-[#1f2227] sticky top-0 z-10">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Course Content</h2>
 
-                {/* Progress summary for non-bypass users */}
-                {!canBypass && (
-                    <div className="mb-2">
-                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            <span>Overall Progress</span>
-                            <span>{completedLectures.length}/{getAllLecturesInOrder().length}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div
-                                className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                style={{
-                                    width: `${getAllLecturesInOrder().length > 0
-                                        ? (completedLectures.length / getAllLecturesInOrder().length) * 100
-                                        : 0}%`
-                                }}
-                            ></div>
-                        </div>
+                {/* Progress summary */}
+                <div className="mb-2">
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        <span>Overall Progress</span>
+                        <span>{completedCount}/{totalLectures} completed</span>
                     </div>
-                )}
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                            className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                    </div>
+                    {progressPercentage === 100 && (
+                        <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                            🎉 Course completed!
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* Course sections */}
@@ -176,7 +170,7 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                                                         {lecture.videoTitle}
                                                     </span>
                                                     <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                        {formatTime(lecture.videoLength)}
+                                                        {formatDuration(lecture.videoLength)}
                                                     </span>
 
                                                     {/* Status text */}

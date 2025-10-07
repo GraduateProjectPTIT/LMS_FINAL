@@ -175,19 +175,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -212,19 +212,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -249,19 +249,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -286,24 +286,24 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
 
-    
+
 
     const course = await CourseModel.create(data);
 
@@ -422,33 +422,34 @@ export const getTopPurchasedCoursesService = async (
     const mapped = courses.map((c: any) => {
       const totalLectures = Array.isArray(c.courseData)
         ? c.courseData.reduce(
-            (acc: number, sec: any) =>
-              acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
-            0
-          )
+          (acc: number, sec: any) =>
+            acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+          0
+        )
         : 0;
-      const totalMinutes = Array.isArray(c.courseData)
+      const totalSeconds = Array.isArray(c.courseData)
         ? c.courseData.reduce(
-            (acc: number, sec: any) =>
-              acc +
-              (Array.isArray(sec.sectionContents)
-                ? sec.sectionContents.reduce(
-                    (a: number, lec: any) => a + (lec?.videoLength || 0),
-                    0
-                  )
-                : 0),
-            0
-          )
+          (acc: number, sec: any) =>
+            acc +
+            (Array.isArray(sec.sectionContents)
+              ? sec.sectionContents.reduce(
+                (a: number, lec: any) => a + (lec?.videoLength || 0),
+                0
+              )
+              : 0),
+          0
+        )
         : 0;
-      const totalDuration = totalMinutes * 60;
+
       return {
+        _id: c._id,
         thumbnail: { url: c.thumbnail?.url },
         name: c.name,
         price: c.price,
         estimatedPrice: c.estimatedPrice,
         enrolledCounts: c.purchased,
         totalLectures,
-        totalDuration,
+        totalDuration: totalSeconds,
       };
     });
 
@@ -479,33 +480,34 @@ export const getTopRatedCoursesService = async (
     const mapped = courses.map((c: any) => {
       const totalLectures = Array.isArray(c.courseData)
         ? c.courseData.reduce(
-            (acc: number, sec: any) =>
-              acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
-            0
-          )
+          (acc: number, sec: any) =>
+            acc + (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+          0
+        )
         : 0;
-      const totalMinutes = Array.isArray(c.courseData)
+      const totalSeconds = Array.isArray(c.courseData)
         ? c.courseData.reduce(
-            (acc: number, sec: any) =>
-              acc +
-              (Array.isArray(sec.sectionContents)
-                ? sec.sectionContents.reduce(
-                    (a: number, lec: any) => a + (lec?.videoLength || 0),
-                    0
-                  )
-                : 0),
-            0
-          )
+          (acc: number, sec: any) =>
+            acc +
+            (Array.isArray(sec.sectionContents)
+              ? sec.sectionContents.reduce(
+                (a: number, lec: any) => a + (lec?.videoLength || 0),
+                0
+              )
+              : 0),
+          0
+        )
         : 0;
-      const totalDuration = totalMinutes * 60; // seconds
+
       return {
+        _id: c._id,
         thumbnail: { url: c.thumbnail?.url },
         name: c.name,
         price: c.price,
         estimatedPrice: c.estimatedPrice,
         enrolledCounts: c.purchased,
         totalLectures,
-        totalDuration,
+        totalDuration: totalSeconds,
       };
     });
 
@@ -794,7 +796,7 @@ export const editCourseService = async (
             await cloudinary.v2.uploader.destroy(existingDemo.public_id, {
               resource_type: "video",
             });
-          } catch {}
+          } catch { }
         }
       } else {
         return next(
@@ -841,19 +843,19 @@ export const editCourseService = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -905,7 +907,7 @@ export const getCourseOverviewService = async (
 
     const totalSections = course.courseData.length;
     let totalLectures = 0;
-    let totalTimeMinutes = 0;
+    let totalTimeSeconds = 0;
 
     const sections = course.courseData.map((section: any) => {
       const lectures = section.sectionContents.map((lecture: any) => ({
@@ -922,7 +924,7 @@ export const getCourseOverviewService = async (
       );
 
       totalLectures += sectionTotalLectures;
-      totalTimeMinutes += sectionTotalTime;
+      totalTimeSeconds += sectionTotalTime;
 
       return {
         _id: section._id,
@@ -930,8 +932,6 @@ export const getCourseOverviewService = async (
         sectionContents: lectures,
       };
     });
-
-    const totalTimeSeconds = totalTimeMinutes * 60;
 
     const courseData = {
       _id: course._id,
@@ -1046,12 +1046,12 @@ export const enrollCourseService = async (
       levelRaw === ECourseLevel.Beginner.toLowerCase()
         ? ECourseLevel.Beginner
         : levelRaw === ECourseLevel.Intermediate.toLowerCase()
-        ? ECourseLevel.Intermediate
-        : levelRaw === ECourseLevel.Advanced.toLowerCase()
-        ? ECourseLevel.Advanced
-        : levelRaw === ECourseLevel.Professional.toLowerCase()
-        ? ECourseLevel.Professional
-        : null;
+          ? ECourseLevel.Intermediate
+          : levelRaw === ECourseLevel.Advanced.toLowerCase()
+            ? ECourseLevel.Advanced
+            : levelRaw === ECourseLevel.Professional.toLowerCase()
+              ? ECourseLevel.Professional
+              : null;
 
     if (course) {
       (course as any).level = levelEnumValue;
@@ -1075,9 +1075,9 @@ export const enrollCourseService = async (
           ...section,
           sectionContents: Array.isArray(section.sectionContents)
             ? section.sectionContents.map((lecture: any) => ({
-                ...lecture,
-                video: lecture?.video ? { url: lecture.video?.url } : lecture?.video,
-              }))
+              ...lecture,
+              video: lecture?.video ? { url: lecture.video?.url } : lecture?.video,
+            }))
             : [],
         }));
       }
@@ -1116,7 +1116,7 @@ export const searchCoursesService = async (
 
     if (typeof searchQuery !== "undefined") {
       const keyword = String(searchQuery ?? "").trim();
-      
+
       if (keyword.length >= 2) {
         const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regexPattern = new RegExp(escaped, "i");
@@ -1129,7 +1129,7 @@ export const searchCoursesService = async (
         const matchingCategories = await CategoryModel.find({
           title: { $regex: regexPattern }
         }).select("_id");
-        
+
         if (matchingCategories.length > 0) {
           const categoryIds = matchingCategories.map(cat => cat._id);
           searchConditions.push({ categories: { $in: categoryIds } });
@@ -1935,11 +1935,11 @@ export const markLectureCompletedService = async (
     if (!isEnrolled && !isCreator && user?.role !== "admin") {
       return next(new ErrorHandler("You are not enrolled in this course", 403));
     }
-    
+
     const totalLectures = (course.courseData || []).reduce((acc: number, section: any) => {
       return acc + (section.sectionContents ? section.sectionContents.length : 0);
     }, 0);
-    
+
     if (totalLectures === 0) {
       return next(new ErrorHandler("Course has no lectures", 400));
     }
@@ -1953,11 +1953,11 @@ export const markLectureCompletedService = async (
       },
       { new: true, upsert: user?.role === "admin" || isCreator ? true : false }
     );
-    
+
     if (!updated) {
       return next(new ErrorHandler("Enrollment record not found", 404));
     }
-    
+
     const completedCount = (updated.completedLectures || []).length;
     const progress = Math.min(100, Math.round((completedCount / totalLectures) * 100));
     const completed = progress >= 100;
