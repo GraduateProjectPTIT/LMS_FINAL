@@ -5,6 +5,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { SectionLecture, IVideoLinkResponse } from "@/type";
 import { FaRegPlayCircle, FaLink, FaCheck } from "react-icons/fa";
+import LectureQuestions from './LectureQuestions';
+import LectureResources from './LectureResources';
 
 interface VideoPlayerProps {
     lecture: SectionLecture | null;
@@ -192,29 +194,18 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                 {/* Tab content */}
                 <div className="pb-8">
                     {activeTab === 'description' && (
-                        <div className="prose dark:prose-invert max-w-none">
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{lecture.videoDescription}</p>
+
+                        <div className="mb-8 p-4 bg-gray-100 dark:bg-slate-800 rounded-lg border-l-4 border-blue-500">
+                            <p className="text-gray-700 dark:text-gray-300">
+                                {lecture.videoDescription}
+                            </p>
                         </div>
                     )}
 
                     {activeTab === 'resources' && (
                         <div>
                             {lecture.videoLinks && lecture.videoLinks.length > 0 ? (
-                                <ul className="space-y-3">
-                                    {lecture.videoLinks.map((link: IVideoLinkResponse) => (
-                                        <li key={link._id} className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-300 dark:border-slate-600">
-                                            <a
-                                                href={link.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center"
-                                            >
-                                                <FaLink className='h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400' />
-                                                {link.title}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <LectureResources lecture={lecture} />
                             ) : (
                                 <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
                                     <p className="text-gray-500 dark:text-gray-400">No resources available for this video</p>

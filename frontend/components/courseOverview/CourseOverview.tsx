@@ -387,7 +387,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                 <span>•</span>
                                 <span>{courseData.totalLectures} lectures</span>
                                 <span>•</span>
-                                <span>{courseData.totalTime} total length</span>
+                                <span>{formatDuration(courseData.totalTime)} total length</span>
                             </div>
 
                             {sections.map((section, sIndex) => (

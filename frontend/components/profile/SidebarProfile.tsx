@@ -42,7 +42,7 @@ const sidebarLinks = [
         value: 'notifications'
     },
     {
-        label: 'Enroll Courses',
+        label: 'Enrolled Courses',
         icon: <SiGoogleclassroom />,
         value: 'enroll_courses'
     }

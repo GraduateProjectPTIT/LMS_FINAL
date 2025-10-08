@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { FaRegPlayCircle, FaCheckCircle, FaLock } from "react-icons/fa";
 import { RiArrowDropDownLine } from "react-icons/ri";
@@ -20,9 +20,7 @@ interface RootState {
 }
 
 const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course }: CourseSidebarProps) => {
-    const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>(
-        courseData.reduce((acc, _, index) => ({ ...acc, [index]: index === 0 }), {}) // First section expanded by default
-    );
+    const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
     const { currentUser } = useSelector((state: RootState) => state.user);
 
@@ -30,6 +28,32 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
     const isAdmin = currentUser?.role === 'admin';
     const isCreator = currentUser?._id === course?.creatorId?._id;
     const canBypass = isAdmin || isCreator;
+
+    // Khởi tạo trạng thái mở rộng các section dựa trên selectedVideoId
+    useEffect(() => {
+        if (selectedVideoId) {
+            // Tìm section chứa video được chọn
+            const sectionIndex = courseData.findIndex(section =>
+                section.sectionContents.some(lecture => lecture._id === selectedVideoId)
+            );
+
+            if (sectionIndex !== -1) {
+                // Chỉ mở rộng section chứa video được chọn
+                const newExpandedState: { [key: number]: boolean } = {};
+                courseData.forEach((_, index) => {
+                    newExpandedState[index] = index === sectionIndex;
+                });
+                setExpandedSections(newExpandedState);
+            }
+        } else {
+            // Mặc định mở rộng section đầu tiên nếu không có video được chọn
+            const defaultState: { [key: number]: boolean } = {};
+            courseData.forEach((_, index) => {
+                defaultState[index] = index === 0;
+            });
+            setExpandedSections(defaultState);
+        }
+    }, [selectedVideoId, courseData]);
 
     const toggleSection = (sectionIndex: number) => {
         setExpandedSections((prev) => ({

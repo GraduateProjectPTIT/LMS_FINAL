@@ -40,17 +40,39 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             setCourse(data.course);
 
-            // Set completed lectures from API response
+            // Set các lecture đã hoàn thành từ API response
             if (data.completedLectures && Array.isArray(data.completedLectures)) {
                 setCompletedLectures(data.completedLectures);
             } else {
                 setCompletedLectures([]);
             }
 
-            // Auto-select first accessible lecture
-            if (data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
-                const firstLecture = data.course.courseData[0].sectionContents[0];
-                setSelectedLecture(firstLecture);
+            // Tìm lecture đầu tiên chưa hoàn thành hoặc lecture cuối cùng nếu tất cả đã hoàn thành
+            const allLectures = getAllLecturesFromCourse(data.course);
+            const completedSet = new Set(data.completedLectures || []);
+
+            let lectureToSelect = null;
+
+            // Tìm lecture chưa hoàn thành đầu tiên
+            for (const lecture of allLectures) {
+                if (!completedSet.has(lecture._id)) {
+                    lectureToSelect = lecture;
+                    break;
+                }
+            }
+
+            // Nếu tất cả đã hoàn thành, chọn lecture cuối cùng
+            if (!lectureToSelect && allLectures.length > 0) {
+                lectureToSelect = allLectures[allLectures.length - 1];
+            }
+
+            // Nếu vẫn không có lecture (không nên xảy ra), chọn lecture đầu tiên
+            if (!lectureToSelect && data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
+                lectureToSelect = data.course.courseData[0].sectionContents[0];
+            }
+
+            if (lectureToSelect) {
+                setSelectedLecture(lectureToSelect);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -59,13 +81,24 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         }
     }
 
+    // Helper function to get all lectures from course data
+    const getAllLecturesFromCourse = (courseData: CourseEnrollResponse) => {
+        const allLectures: SectionLecture[] = [];
+        courseData.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push(lecture);
+            });
+        });
+        return allLectures;
+    };
+
     useEffect(() => {
         if (courseId) {
             handleEnrollCourse();
         }
     }, [courseId]);
 
-    // Create flat array of all lectures with their order
+    // Tạo một flat array tất cả các lecture với thứ tự
     const getAllLecturesInOrder = () => {
         if (!course) return [];
 
@@ -82,7 +115,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         return allLectures;
     };
 
-    // Check if lecture is accessible
+    // Kiểm tra xem một lecture có thể truy cập được không
     const isLectureAccessible = (lecture: SectionLecture) => {
         if (canBypass) return true;
 

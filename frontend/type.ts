@@ -24,7 +24,7 @@ export interface UploadSignatureResponse {
 // ------------------- BASE INTERFACES -------------------
 
 export interface IImageAsset {
-    public_id: string;
+    public_id?: string;
     url: string;
 }
 
