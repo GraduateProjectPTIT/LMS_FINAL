@@ -56,7 +56,7 @@ export const getAdminDashboardSummaryService = async () => {
   ] = await Promise.all([
     userModel.countDocuments({}),
     userModel.countDocuments({ role: "tutor" }),
-    userModel.countDocuments({ role: "user" }),
+    userModel.countDocuments({ role: "student" }),
     CourseModel.countDocuments({}),
     OrderModel.aggregate([
       { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
@@ -114,10 +114,10 @@ export const getAdminRevenueChartService = async (range: string = "30d") => {
   const groupId = isMonthly
     ? { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }
     : {
-        year: { $year: "$createdAt" },
-        month: { $month: "$createdAt" },
-        day: { $dayOfMonth: "$createdAt" },
-      };
+      year: { $year: "$createdAt" },
+      month: { $month: "$createdAt" },
+      day: { $dayOfMonth: "$createdAt" },
+    };
 
   const data = await OrderModel.aggregate([
     { $match: matchStage },

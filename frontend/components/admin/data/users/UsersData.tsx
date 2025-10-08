@@ -266,7 +266,7 @@ const UsersData = () => {
     };
 
     return (
-        <div className="w-full p-4">
+        <div className="w-full">
             <div className="mb-6">
                 <p className="text-gray-600 dark:text-gray-300 mt-1 uppercase font-semibold">
                     Manage and track all users

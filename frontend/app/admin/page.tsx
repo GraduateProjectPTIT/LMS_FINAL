@@ -1,7 +1,9 @@
+import AdminDashboard from "@/components/admin/dashboard/AdminDashboard"
+
 const AdminHomePage = () => {
     return (
-        <div className="w-full container theme-mode">
-            Main dashboard of admin
+        <div className="flex-1 h-screen max-h-[1473px] theme-mode p-4">
+            <AdminDashboard />
         </div>
     )
 }
