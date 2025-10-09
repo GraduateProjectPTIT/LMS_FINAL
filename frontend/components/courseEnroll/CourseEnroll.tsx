@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { RootState } from '@/redux/store';
 import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
@@ -17,6 +18,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [completedLectures, setCompletedLectures] = useState<string[]>([]);
 
     const { currentUser } = useSelector((state: RootState) => state.user);
+    const router = useRouter();
 
     const isAdmin = currentUser?.role === 'admin';
     const isCreator = course ? currentUser?._id === course.creatorId?._id : false;
@@ -81,6 +83,32 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         }
     }
 
+    useEffect(() => {
+        const checkAndFetch = async () => {
+            if (!courseId) return;
+
+            // Kiểm tra quyền truy cập trước
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/${courseId}/has-purchased`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                });
+                const data = await res.json();
+                if (!res.ok || !data.hasPurchased) {
+                    router.replace("/error/unauthorized");
+                    return;
+                }
+                // Nếu hợp lệ, mới gọi API lấy dữ liệu khóa học
+                handleEnrollCourse();
+            } catch (error: any) {
+                router.replace("/error/unauthorized");
+            }
+        };
+
+        checkAndFetch();
+    }, [courseId]);
+
     // Helper function to get all lectures from course data
     const getAllLecturesFromCourse = (courseData: CourseEnrollResponse) => {
         const allLectures: SectionLecture[] = [];
@@ -91,12 +119,6 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         });
         return allLectures;
     };
-
-    useEffect(() => {
-        if (courseId) {
-            handleEnrollCourse();
-        }
-    }, [courseId]);
 
     // Tạo một flat array tất cả các lecture với thứ tự
     const getAllLecturesInOrder = () => {

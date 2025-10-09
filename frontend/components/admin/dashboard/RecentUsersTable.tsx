@@ -1,5 +1,7 @@
 import React from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, User } from "lucide-react";
+import { isValidImageUrl } from '@/utils/handleImage';
+import Image from "next/image";
 
 interface IAvatar {
     public_id?: string;
@@ -83,11 +85,23 @@ const RecentUsersTable = ({ users }: RecentUsersTableProps) => {
                                 <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img
-                                                src={user.avatar.url}
-                                                alt={user.name}
-                                                className="w-10 h-10 rounded-full object-cover"
-                                            />
+                                            {
+                                                user.avatar?.url && isValidImageUrl(user.avatar.url) ? (
+                                                    <div className="relative h-10 w-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                                                        <Image
+                                                            src={user.avatar.url}
+                                                            alt={user.name}
+                                                            fill
+                                                            className="object-cover"
+                                                            sizes="40px"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                        <User className="h-5 w-5 text-gray-400" />
+                                                    </div>
+                                                )
+                                            }
                                             <div className="ml-3">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                                                     {user.name}
