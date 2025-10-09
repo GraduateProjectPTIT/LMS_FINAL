@@ -361,15 +361,18 @@ export const resendCodeService = async (body: IResendCodeRequest) => {
 export const activateUserService = async (body: IActivationRequest) => {
   const { email, activation_code } = body;
 
-  const user = await userModel.findOne({
-    email: email,
-    activationCode: activation_code,
-  });
+  const user = await userModel
+    .findOne({
+      email: email,
+      activationCode: activation_code,
+    })
+    .select("+activationCode +activationToken");
 
   if (!user) {
     throw new ErrorHandler("Invalid activation code or token", 400);
   }
 
+  console.log(user);
   if (!user.activationToken) {
     throw new ErrorHandler("Activation token not found for this user.", 400);
   }
