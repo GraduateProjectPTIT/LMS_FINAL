@@ -44,7 +44,7 @@ const sidebarLinks = [
     {
         label: 'Enrolled Courses',
         icon: <SiGoogleclassroom />,
-        value: 'enroll_courses'
+        value: 'enrolled_courses'
     }
 ]
 

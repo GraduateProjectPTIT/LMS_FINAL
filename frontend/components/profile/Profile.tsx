@@ -25,7 +25,7 @@ const Profile = ({ user, activeSection }: ProfileProps) => {
                 return <Expertise user={user} />;
             case 'notifications':
                 return <Notifications user={user} />;
-            case 'enroll_courses':
+            case 'enrolled_courses':
                 return <EnrolledCourses />;
             default:
                 return <Personal user={user} />;

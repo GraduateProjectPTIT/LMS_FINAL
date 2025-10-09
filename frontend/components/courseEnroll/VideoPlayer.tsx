@@ -217,37 +217,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                     {activeTab === 'questions' && (
                         <div>
                             {lecture.lectureQuestions && lecture.lectureQuestions.length > 0 ? (
-                                <div className="space-y-4">
-                                    {lecture.lectureQuestions.map((item: any) => (
-                                        <div key={item._id} className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg border border-gray-300 dark:border-slate-600">
-                                            <div className="mb-4">
-                                                <div className="flex justify-between mb-2">
-                                                    <h3 className="font-medium text-gray-900 dark:text-white">Question:</h3>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {new Date(item.createdAt).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                <p className="text-gray-700 dark:text-gray-300">{item.question}</p>
-                                            </div>
-
-                                            {item.replies && item.replies.length > 0 && (
-                                                <div className="mt-3 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
-                                                    {item.replies.map((reply: any, index: number) => (
-                                                        <div key={index} className="mb-3">
-                                                            <div className="flex justify-between mb-1">
-                                                                <h4 className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Reply:</h4>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    {new Date(reply.createdAt).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm text-gray-700 dark:text-gray-300">{reply.answer}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                                <LectureQuestions />
                             ) : (
                                 <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
                                     <p className="text-gray-500 dark:text-gray-400">No questions available for this video</p>
@@ -256,8 +226,8 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

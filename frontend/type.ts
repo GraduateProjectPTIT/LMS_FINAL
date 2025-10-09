@@ -226,6 +226,19 @@ export interface ICourseResponseFromServer {
 
 // ------------------- ENROLL COURSE -------------------
 
+export interface IUser {
+    _id: string;
+    name: string;
+    avatar: IImageAsset;
+}
+
+export interface ILectureQuestion {
+    _id: string;
+    question: string;
+    replies: any[];
+    userId: IUser;
+}
+
 export interface SectionLecture {
     _id: string;
     videoTitle: string;
