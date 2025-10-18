@@ -140,3 +140,36 @@ export const getUserDetailService = async (userId: string) => {
       return userObject;
   }
 };
+
+export const adminCreateEnrollmentService = async (
+  userId: string,
+  courseId: string
+) => {
+  const userIdObj = new Types.ObjectId(userId);
+  const courseIdObj = new Types.ObjectId(courseId);
+
+  // 2. Kiểm tra sự tồn tại (User, Course, và Enrollment) song song
+  const [userExists, courseExists, existingEnrollment] = await Promise.all([
+    userRepository.findSimpleById(userIdObj),
+    courseRepository.findSimpleById(courseIdObj),
+    enrolledCourseRepository.findByUserAndCourse(userIdObj, courseIdObj),
+  ]);
+
+  // 3. Xử lý kết quả validation
+  if (!userExists) {
+    throw new ErrorHandler("Không tìm thấy người dùng với ID này.", 404);
+  }
+  if (!courseExists) {
+    throw new ErrorHandler("Không tìm thấy khóa học với ID này.", 404);
+  }
+  if (existingEnrollment) {
+    throw new ErrorHandler("Học viên này đã được ghi danh vào khóa học.", 409); // 409 Conflict
+  }
+
+  // 4. Tạo bản ghi mới VÀ cập nhật số lượt mua của khóa học
+  const [newEnrollment] = await Promise.all([
+    enrolledCourseRepository.create(userIdObj, courseIdObj),
+  ]);
+
+  return newEnrollment;
+};

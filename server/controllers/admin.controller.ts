@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import {
+  adminCreateEnrollmentService,
   getAllUsersService,
   getUserDetailService,
 } from "../services/admin.service";
@@ -43,6 +44,23 @@ export const getUserDetail = CatchAsyncError(
     res.status(200).json({
       success: true,
       user: userDetail,
+    });
+  }
+);
+
+export const createEnrollment = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Lấy từ body của request
+    const { userId, courseId } = req.body;
+
+    // Validation đầu vào cơ bản
+
+    const newEnrollment = await adminCreateEnrollmentService(userId, courseId);
+
+    res.status(201).json({
+      success: true,
+      message: "Ghi danh học viên thành công.",
+      enrollment: newEnrollment,
     });
   }
 );

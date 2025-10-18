@@ -51,6 +51,11 @@ const getTutorStatistics = async (
   };
 };
 
+const findSimpleById = async (id: Types.ObjectId) =>
+  courseModel.findById(id).select("_id").lean();
+// ... (thêm vào export)
+
 export const courseRepository = {
   getTutorStatistics,
+  findSimpleById,
 };
