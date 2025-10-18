@@ -44,6 +44,10 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 // --- LẤY TẤT CẢ USERS (đã có) ---
 // Đảm bảo bạn import SortOptions từ file helper
 import { SortOptions } from "../utils/pagination.helper";
+import { userRepository } from "../repositories/user.repository";
+import { orderRepository } from "../repositories/order.repository";
+import { enrolledCourseRepository } from "../repositories/enrolledCourse.repository";
+import { courseRepository } from "../repositories/course.repository";
 
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
   const {
@@ -99,4 +103,40 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
   return {
     paginatedResult,
   };
+};
+
+export const getUserDetailService = async (userId: string) => {
+  const user = await userRepository.findUserDetailById(userId);
+
+  if (!user) {
+    throw new ErrorHandler("Không tìm thấy người dùng.", 404);
+  }
+
+  const userObject = user.toObject();
+
+  switch (user.role) {
+    case UserRole.Student: {
+      const [totalSpent, enrolledCoursesCount] = await Promise.all([
+        orderRepository.getTotalSpentByStudent(user._id),
+        enrolledCourseRepository.countEnrolledCoursesByStudent(user._id),
+      ]);
+
+      return {
+        ...userObject,
+        enrolledCoursesCount, // <-- Giá trị đúng
+        totalSpent,
+      };
+    }
+
+    case UserRole.Tutor: {
+      const tutorStats = await courseRepository.getTutorStatistics(user._id);
+      return {
+        ...userObject,
+        ...tutorStats,
+      };
+    }
+
+    default:
+      return userObject;
+  }
 };
