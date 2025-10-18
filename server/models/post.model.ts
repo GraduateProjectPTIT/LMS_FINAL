@@ -12,6 +12,7 @@ export interface IPost extends Document {
   };
   tags: string[];
   status: "draft" | "published";
+  views: number;
   authorId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +31,7 @@ const postSchema = new Schema<IPost>(
     },
     tags: { type: [String], default: [] },
     status: { type: String, enum: ["draft", "published"], default: "draft" },
+    views: { type: Number, default: 0 },
     authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

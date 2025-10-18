@@ -1,6 +1,7 @@
 import { NextFunction, Response } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import PostModel from "../models/post.model";
+import CategoryModel from "../models/category.model";
 import { v2 as cloudinary } from "cloudinary";
 
 export const createPostService = async (
@@ -14,7 +15,7 @@ export const createPostService = async (
       return next(new ErrorHandler("Unauthorized", 401));
     }
 
-    const { title, contentHtml, tags, status, coverImage, shortDescription } = data || {};
+    const { title, contentHtml, status, coverImage, shortDescription } = data || {};
     if (!title || !contentHtml) {
       return next(new ErrorHandler("title and contentHtml are required", 400));
     }
@@ -31,10 +32,22 @@ export const createPostService = async (
       cover = coverImage;
     }
 
+    let categoryIds: string[] = [];
+    if (Array.isArray((data as any)?.categoryIds)) {
+      categoryIds = (data as any).categoryIds as string[];
+    } else if (Array.isArray((data as any)?.categories)) {
+      categoryIds = (data as any).categories as string[];
+    }
+    let derivedTags: string[] = [];
+    if (categoryIds.length) {
+      const cats = await CategoryModel.find({ _id: { $in: categoryIds } }).select("title");
+      derivedTags = cats.map((c: any) => String(c?.title || "").trim()).filter(Boolean);
+    }
+
     const post = await PostModel.create({
       title,
       contentHtml,
-      tags: Array.isArray(tags) ? tags : [],
+      tags: derivedTags,
       status: ["draft", "published"].includes(String(status)) ? status : "draft",
       coverImage: cover,
       authorId: user._id,
@@ -65,7 +78,7 @@ export const getPublicPostsService = async (
 
     const [rawItems, total] = await Promise.all([
       PostModel.find({ status: "published" })
-        .select("title slug tags createdAt coverImage authorId shortDescription contentHtml")
+        .select("title slug tags createdAt coverImage authorId shortDescription contentHtml views")
         .populate("authorId", "name avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -93,6 +106,7 @@ export const getPublicPostsService = async (
         authorId: p.authorId,
         coverImage: p.coverImage?.url ? { url: p.coverImage.url } : p.coverImage,
         shortDescription,
+        views: typeof (p as any).views === "number" ? (p as any).views : 0,
         readingTimeMinutes: estimateReadingTimeMinutes(plain),
       };
     });
@@ -121,8 +135,11 @@ export const getPublicPostBySlugService = async (
 ) => {
   try {
     if (!slug) return next(new ErrorHandler("Slug is required", 400));
-    const post = await PostModel.findOne({ slug, status: "published" })
-      .populate("authorId", "name avatar");
+    const post = await PostModel.findOneAndUpdate(
+      { slug, status: "published" },
+      { $inc: { views: 1 } },
+      { new: true }
+    ).populate("authorId", "name avatar");
     if (!post) return next(new ErrorHandler("Post not found", 404));
     return res.status(200).json({ success: true, post });
   } catch (error: any) {
@@ -184,7 +201,7 @@ export const getPostsService = async (
 
     const [rawItems, total] = await Promise.all([
       PostModel.find(filter)
-        .select("title slug status tags createdAt updatedAt authorId shortDescription contentHtml coverImage")
+        .select("title slug status tags createdAt updatedAt authorId shortDescription contentHtml coverImage views")
         .populate("authorId", "name email avatar")
         .sort(sort)
         .skip(skip)
@@ -192,7 +209,6 @@ export const getPostsService = async (
       PostModel.countDocuments(filter),
     ]);
 
-    // Helpers to produce short description and reading time
     const stripHtml = (html: string) => String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     const estimateReadingTimeMinutes = (text: string) => {
       const words = text.split(/\s+/).filter(Boolean).length;
@@ -216,6 +232,7 @@ export const getPostsService = async (
         authorId: p.authorId,
         coverImage: p.coverImage?.url ? { url: p.coverImage.url } : p.coverImage,
         shortDescription,
+        views: typeof (p as any).views === "number" ? (p as any).views : 0,
         readingTimeMinutes,
       };
     });
@@ -257,6 +274,119 @@ export const uploadTinyImageService = async (
     });
 
     return res.status(200).json({ location: result.url });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const updatePostService = async (
+  user: any,
+  id: string,
+  data: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!user?._id) {
+      return next(new ErrorHandler("Unauthorized", 401));
+    }
+
+    const post = await PostModel.findById(id);
+    if (!post) {
+      return next(new ErrorHandler("Post not found", 404));
+    }
+
+    const isOwner = String(post.authorId) === String(user._id);
+    const isAdmin = user?.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return next(new ErrorHandler("Forbidden", 403));
+    }
+
+    const { title, contentHtml, status, coverImage, shortDescription, slug } = data || {};
+
+    if (typeof title !== "undefined") post.title = title;
+    if (typeof contentHtml !== "undefined") post.contentHtml = contentHtml;
+    if (typeof slug !== "undefined") post.slug = String(slug);
+    if (Array.isArray((data as any)?.categoryIds) || Array.isArray((data as any)?.categories)) {
+      let categoryIds: string[] = [];
+      if (Array.isArray((data as any)?.categoryIds)) categoryIds = (data as any).categoryIds as string[];
+      if (!categoryIds.length && Array.isArray((data as any)?.categories)) categoryIds = (data as any).categories as string[];
+      const cats = categoryIds.length
+        ? await CategoryModel.find({ _id: { $in: categoryIds } }).select("title")
+        : [];
+      post.tags = cats.map((c: any) => String(c?.title || "").trim()).filter(Boolean);
+    }
+    if (typeof status !== "undefined" && ["draft", "published"].includes(String(status))) {
+      post.status = status;
+    }
+    if (typeof shortDescription !== "undefined") {
+      post.shortDescription = typeof shortDescription === "string" ? shortDescription : undefined;
+    }
+
+    if (typeof coverImage !== "undefined") {
+      let newCover: any = undefined;
+      if (coverImage === null) {
+        if (post.coverImage?.public_id) {
+          try { await cloudinary.uploader.destroy(post.coverImage.public_id); } catch {}
+        }
+        newCover = undefined;
+      } else if (typeof coverImage === "string" && (coverImage.startsWith("data:") || coverImage.startsWith("http"))) {
+        const uploaded = await cloudinary.uploader.upload(coverImage, {
+          folder: "posts",
+          resource_type: "image",
+        });
+        if (post.coverImage?.public_id) {
+          try { await cloudinary.uploader.destroy(post.coverImage.public_id); } catch {}
+        }
+        newCover = { public_id: uploaded.public_id, url: uploaded.secure_url };
+      } else if (coverImage && coverImage.url) {
+        newCover = coverImage;
+      }
+      post.coverImage = newCover;
+    }
+
+    try {
+      const saved = await post.save();
+      return res.status(200).json({ success: true, post: saved });
+    } catch (error: any) {
+      if (error?.code === 11000 && error?.keyPattern?.slug) {
+        return next(new ErrorHandler("Post slug already exists", 409));
+      }
+      throw error;
+    }
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const deletePostService = async (
+  user: any,
+  id: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!user?._id) {
+      return next(new ErrorHandler("Unauthorized", 401));
+    }
+
+    const post = await PostModel.findById(id);
+    if (!post) {
+      return next(new ErrorHandler("Post not found", 404));
+    }
+
+    const isOwner = String(post.authorId) === String(user._id);
+    const isAdmin = user?.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return next(new ErrorHandler("Forbidden", 403));
+    }
+
+    if (post.coverImage?.public_id) {
+      try { await cloudinary.uploader.destroy(post.coverImage.public_id); } catch {}
+    }
+
+    await post.deleteOne();
+    return res.status(200).json({ success: true });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
