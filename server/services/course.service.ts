@@ -2043,7 +2043,6 @@ export const getStudentDetailsInCourseService = async (
               },
             },
           },
-          lastAccessed: "$updatedAt", // Dùng updatedAt làm lần truy cập cuối
           isCompleted: "$completed",
         },
       },
