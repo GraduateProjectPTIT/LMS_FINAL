@@ -60,10 +60,14 @@ export const createCourse = async (
     }
     const levelStr = String(data.level).trim().toLowerCase();
     const mapLevel = (val: string) => {
-      if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
-      if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
-      if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
-      if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+      if (val === ECourseLevel.Beginner.toLowerCase())
+        return ECourseLevel.Beginner;
+      if (val === ECourseLevel.Intermediate.toLowerCase())
+        return ECourseLevel.Intermediate;
+      if (val === ECourseLevel.Advanced.toLowerCase())
+        return ECourseLevel.Advanced;
+      if (val === ECourseLevel.Professional.toLowerCase())
+        return ECourseLevel.Professional;
       return null;
     };
     const enumLevel = mapLevel(levelStr);
@@ -127,10 +131,14 @@ export const createCourse = async (
     if (typeof data.level !== "undefined") {
       const levelStr = String(data.level).trim().toLowerCase();
       const mapLevel = (val: string) => {
-        if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
-        if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
-        if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
-        if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+        if (val === ECourseLevel.Beginner.toLowerCase())
+          return ECourseLevel.Beginner;
+        if (val === ECourseLevel.Intermediate.toLowerCase())
+          return ECourseLevel.Intermediate;
+        if (val === ECourseLevel.Advanced.toLowerCase())
+          return ECourseLevel.Advanced;
+        if (val === ECourseLevel.Professional.toLowerCase())
+          return ECourseLevel.Professional;
         return null;
       };
       const enumLevel = mapLevel(levelStr);
@@ -142,15 +150,30 @@ export const createCourse = async (
 
     if (data.categories) {
       if (!Array.isArray(data.categories) || data.categories.length === 0) {
-        return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
+        return next(
+          new ErrorHandler(
+            "categories must be a non-empty array of Category ids",
+            400
+          )
+        );
       }
       const ids: string[] = data.categories;
-      if (!ids.every((id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id))) {
-        return next(new ErrorHandler("One or more category ids are invalid", 400));
+      if (
+        !ids.every(
+          (id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id)
+        )
+      ) {
+        return next(
+          new ErrorHandler("One or more category ids are invalid", 400)
+        );
       }
-      const found = await CategoryModel.find({ _id: { $in: ids } }).select("_id");
+      const found = await CategoryModel.find({ _id: { $in: ids } }).select(
+        "_id"
+      );
       if (found.length !== ids.length) {
-        return next(new ErrorHandler("One or more categories do not exist", 400));
+        return next(
+          new ErrorHandler("One or more categories do not exist", 400)
+        );
       }
       data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
@@ -302,8 +325,6 @@ export const createCourse = async (
           : [],
       }));
     }
-
-    
 
     const course = await CourseModel.create(data);
 
@@ -605,9 +626,12 @@ export const getStudentEnrolledCoursesService = async (
       ]),
     ]);
 
-    const validEnrollments = enrollments.filter((en: any) => Boolean(en.courseId));
+    const validEnrollments = enrollments.filter((en: any) =>
+      Boolean(en.courseId)
+    );
 
-    const total = Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
+    const total =
+      Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
     const courses = validEnrollments.map((en) => {
       const courseDoc = (en as any).courseId as any;
@@ -730,15 +754,30 @@ export const editCourseService = async (
 
     if (data.categories) {
       if (!Array.isArray(data.categories) || data.categories.length === 0) {
-        return next(new ErrorHandler("categories must be a non-empty array of Category ids", 400));
+        return next(
+          new ErrorHandler(
+            "categories must be a non-empty array of Category ids",
+            400
+          )
+        );
       }
       const ids: string[] = data.categories;
-      if (!ids.every((id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id))) {
-        return next(new ErrorHandler("One or more category ids are invalid", 400));
+      if (
+        !ids.every(
+          (id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id)
+        )
+      ) {
+        return next(
+          new ErrorHandler("One or more category ids are invalid", 400)
+        );
       }
-      const found = await CategoryModel.find({ _id: { $in: ids } }).select("_id");
+      const found = await CategoryModel.find({ _id: { $in: ids } }).select(
+        "_id"
+      );
       if (found.length !== ids.length) {
-        return next(new ErrorHandler("One or more categories do not exist", 400));
+        return next(
+          new ErrorHandler("One or more categories do not exist", 400)
+        );
       }
       data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
@@ -919,7 +958,6 @@ export const getCourseOverviewService = async (
   }
 };
 
-
 /**
  * Lấy toàn bộ nội dung chi tiết của khóa học cho người đủ điều kiện truy cập.
  * - Điều kiện: đã mua/ghi danh, là creator hoặc admin
@@ -943,7 +981,10 @@ export const enrollCourseService = async (
     ]);
 
     const isEnrolled = Boolean(enrollment);
-    const isCreator = courseDoc && courseDoc.creatorId && courseDoc.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      courseDoc &&
+      courseDoc.creatorId &&
+      courseDoc.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1005,7 +1046,9 @@ export const enrollCourseService = async (
           sectionContents: Array.isArray(section.sectionContents)
             ? section.sectionContents.map((lecture: any) => ({
                 ...lecture,
-                video: lecture?.video ? { url: lecture.video?.url } : lecture?.video,
+                video: lecture?.video
+                  ? { url: lecture.video?.url }
+                  : lecture?.video,
               }))
             : [],
         }));
@@ -1045,7 +1088,7 @@ export const searchCoursesService = async (
 
     if (typeof searchQuery !== "undefined") {
       const keyword = String(searchQuery ?? "").trim();
-      
+
       if (keyword.length >= 2) {
         const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regexPattern = new RegExp(escaped, "i");
@@ -1056,11 +1099,11 @@ export const searchCoursesService = async (
         ];
 
         const matchingCategories = await CategoryModel.find({
-          title: { $regex: regexPattern }
+          title: { $regex: regexPattern },
         }).select("_id");
-        
+
         if (matchingCategories.length > 0) {
-          const categoryIds = matchingCategories.map(cat => cat._id);
+          const categoryIds = matchingCategories.map((cat) => cat._id);
           searchConditions.push({ categories: { $in: categoryIds } });
         }
 
@@ -1073,14 +1116,19 @@ export const searchCoursesService = async (
         return res.status(200).json({
           success: true,
           courses: [],
-          message: "Keyword must be at least 2 characters long"
+          message: "Keyword must be at least 2 characters long",
         });
       }
     }
 
     if (category) {
-      const keyword = Array.isArray(category) ? category.join(",") : String(category);
-      const ids = keyword.split(",").map((s) => s.trim()).filter(Boolean);
+      const keyword = Array.isArray(category)
+        ? category.join(",")
+        : String(category);
+      const ids = keyword
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const areValid = ids.every((id) => mongoose.Types.ObjectId.isValid(id));
       if (!areValid) {
         return next(new ErrorHandler("Invalid category id in filter", 400));
@@ -1184,7 +1232,8 @@ export const addQuestionService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForQuestion);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1256,7 +1305,8 @@ export const addAnswerService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForAnswer);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1353,7 +1403,8 @@ export const addReviewService = async (
       CourseModel.findById(courseId),
     ]);
     const isEnrolled = Boolean(enrollmentForReview);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1428,7 +1479,8 @@ export const addReplyToReviewService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForReviewReply);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1504,10 +1556,7 @@ export const deleteCourseService = async (
  * @param res Express Response
  * @returns 200 { success, courses, pagination }
  */
-export const getAdminCoursesService = async (
-  query: any,
-  res: Response
-) => {
+export const getAdminCoursesService = async (query: any, res: Response) => {
   let page = Number.parseInt(String(query?.page), 10);
   if (Number.isNaN(page) || page < 1) page = 1;
   let limit = Number.parseInt(String(query?.limit), 10);
@@ -1515,7 +1564,8 @@ export const getAdminCoursesService = async (
   if (limit > 100) limit = 100;
   const skip = (page - 1) * limit;
 
-  const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+  const keyword =
+    typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
   const filter: any = {};
   if (keyword.length >= 2) {
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1571,7 +1621,8 @@ export const getCourseStudentsService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
-    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    const keyword =
+      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
 
     const matchStage: any = { courseId: new mongoose.Types.ObjectId(courseId) };
 
@@ -1628,7 +1679,8 @@ export const getCourseStudentsService = async (
       EnrolledCourseModel.aggregate(countPipeline),
     ]);
 
-    const totalItems = Array.isArray(countRes) && countRes.length > 0 ? countRes[0].count : 0;
+    const totalItems =
+      Array.isArray(countRes) && countRes.length > 0 ? countRes[0].count : 0;
     const totalPages = Math.ceil(totalItems / limit) || 0;
 
     res.status(200).json({
@@ -1659,7 +1711,9 @@ export const getAllCategoriesService = async (
   next: NextFunction
 ) => {
   try {
-    const categories = await CategoryModel.find().sort({ createdAt: -1 }).select("_id title");
+    const categories = await CategoryModel.find()
+      .sort({ createdAt: -1 })
+      .select("_id title");
     res.status(200).json({ success: true, categories });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1762,15 +1816,16 @@ export const updateLectureVideoService = async (
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
-    const isOwner = course.creatorId && course.creatorId.toString() === String(user?._id);
+    const isOwner =
+      course.creatorId && course.creatorId.toString() === String(user?._id);
     if (user?.role !== "admin" && !isOwner) {
       return next(new ErrorHandler("Forbidden", 403));
     }
 
     let targetLecture: any | null = null;
     for (const section of (course as any).courseData || []) {
-      const found = (section.sectionContents || []).find((lec: any) =>
-        lec._id && lec._id.equals(lectureId)
+      const found = (section.sectionContents || []).find(
+        (lec: any) => lec._id && lec._id.equals(lectureId)
       );
       if (found) {
         targetLecture = found;
@@ -1782,12 +1837,15 @@ export const updateLectureVideoService = async (
       return next(new ErrorHandler("Lecture not found", 404));
     }
 
-    const prevVid = targetLecture.video as { public_id?: string; url?: string } | undefined;
+    const prevVid = targetLecture.video as
+      | { public_id?: string; url?: string }
+      | undefined;
     if (prevVid?.public_id && prevVid.public_id !== video.public_id) {
       try {
-        await cloudinary.v2.uploader.destroy(prevVid.public_id, { resource_type: "video" });
-      } catch (e) {
-      }
+        await cloudinary.v2.uploader.destroy(prevVid.public_id, {
+          resource_type: "video",
+        });
+      } catch (e) {}
     }
 
     targetLecture.video = { public_id: video.public_id, url: video.url };
@@ -1836,22 +1894,28 @@ export const markLectureCompletedService = async (
       }),
       CourseModel.findById(courseId).select(
         "courseData.sectionContents._id creatorId"
-      )
+      ),
     ]);
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     const isEnrolled = Boolean(isEnrolledByUserDoc);
-    const isCreator = course.creatorId && course.creatorId.toString() === String(user?._id);
+    const isCreator =
+      course.creatorId && course.creatorId.toString() === String(user?._id);
 
     if (!isEnrolled && !isCreator && user?.role !== "admin") {
       return next(new ErrorHandler("You are not enrolled in this course", 403));
     }
-    
-    const totalLectures = (course.courseData || []).reduce((acc: number, section: any) => {
-      return acc + (section.sectionContents ? section.sectionContents.length : 0);
-    }, 0);
-    
+
+    const totalLectures = (course.courseData || []).reduce(
+      (acc: number, section: any) => {
+        return (
+          acc + (section.sectionContents ? section.sectionContents.length : 0)
+        );
+      },
+      0
+    );
+
     if (totalLectures === 0) {
       return next(new ErrorHandler("Course has no lectures", 400));
     }
@@ -1865,13 +1929,16 @@ export const markLectureCompletedService = async (
       },
       { new: true, upsert: user?.role === "admin" || isCreator ? true : false }
     );
-    
+
     if (!updated) {
       return next(new ErrorHandler("Enrollment record not found", 404));
     }
-    
+
     const completedCount = (updated.completedLectures || []).length;
-    const progress = Math.min(100, Math.round((completedCount / totalLectures) * 100));
+    const progress = Math.min(
+      100,
+      Math.round((completedCount / totalLectures) * 100)
+    );
     const completed = progress >= 100;
 
     if (progress !== updated.progress || completed !== updated.completed) {
@@ -1890,4 +1957,111 @@ export const markLectureCompletedService = async (
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
+};
+
+export const getStudentDetailsInCourseService = async (
+  courseId: string,
+  studentId: string,
+  tutorId: string
+) => {
+  // --- Bước 1: Xây dựng Aggregation Pipeline ---
+  const pipeline = [
+    // Giai đoạn 1: Lọc chính xác bản ghi đăng ký cần tìm
+    {
+      $match: {
+        courseId: new mongoose.Types.ObjectId(courseId),
+        userId: new mongoose.Types.ObjectId(studentId),
+      },
+    },
+
+    // Giai đoạn 2: JOIN với collection 'courses' ĐỂ XÁC THỰC QUYỀN 🛡️
+    // Đây là bước "thần kỳ", nó sẽ chỉ trả về kết quả nếu tutorId là người tạo khóa học
+    {
+      $lookup: {
+        from: "courses", // Tên collection của CourseModel
+        let: { cId: "$courseId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$_id", "$$cId"] },
+                  { $eq: ["$creatorId", new mongoose.Types.ObjectId(tutorId)] },
+                ],
+              },
+            },
+          },
+          { $project: { courseData: 1 } }, // Chỉ lấy trường cần thiết để tính toán
+        ],
+        as: "courseDetails",
+      },
+    },
+
+    // Giai đoạn 3: "Mở" mảng courseDetails và lọc bỏ nếu không có quyền
+    // Nếu lookup ở trên không tìm thấy (do sai tutorId), $unwind sẽ loại bỏ bản ghi này
+    {
+      $unwind: "$courseDetails",
+    },
+
+    // Giai đoạn 4: JOIN với collection 'users' để lấy thông tin học viên
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "studentInfo",
+      },
+    },
+
+    // Giai đoạn 5: Mở mảng thông tin học viên
+    {
+      $unwind: "$studentInfo",
+    },
+
+    // Giai đoạn 6: Định dạng lại toàn bộ kết quả đầu ra 🚀
+    {
+      $project: {
+        _id: "$studentInfo._id", // Lấy ID của học viên
+        name: "$studentInfo.name",
+        email: "$studentInfo.email",
+        avatar: {
+          url: { $ifNull: ["$studentInfo.avatar.url", ""] }, // Xử lý nếu avatar null
+        },
+        enrollmentDetails: {
+          _id: "$_id", // ID của bản ghi enrollment
+          enrolledAt: "$enrolledAt",
+          progress: "$progress",
+          // Đếm số bài giảng đã hoàn thành
+          completedLectures: { $size: "$completedLectures" },
+          // Tính tổng số bài giảng trong khóa học
+          totalLecturesInCourse: {
+            $sum: {
+              $map: {
+                input: "$courseDetails.courseData",
+                as: "section",
+                in: { $size: "$$section.sectionContents" },
+              },
+            },
+          },
+          lastAccessed: "$updatedAt", // Dùng updatedAt làm lần truy cập cuối
+          isCompleted: "$completed",
+        },
+      },
+    },
+  ];
+
+  // --- Bước 2: Thực thi pipeline ---
+  const result = await EnrolledCourseModel.aggregate(pipeline);
+
+  // --- Bước 3: Kiểm tra kết quả ---
+  // Nếu mảng rỗng, nghĩa là không tìm thấy hoặc không có quyền
+  if (result.length === 0) {
+    throw new ErrorHandler(
+      "Student not found in this course or access denied",
+      404
+    );
+  }
+
+  // Trả về phần tử duy nhất trong mảng kết quả
+  return result[0];
 };

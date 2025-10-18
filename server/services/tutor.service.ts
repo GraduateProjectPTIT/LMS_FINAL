@@ -144,7 +144,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
     return {
       name: user?.name,
       avatar: {
-        url: user.avatar?.url || "",
+        url: user?.avatar?.url || "",
       },
       bio: user?.bio,
       totalStudents: 0,

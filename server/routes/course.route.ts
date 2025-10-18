@@ -28,6 +28,7 @@ import {
   getTopPurchasedCourses,
   getTopRatedCourses,
   checkUserPurchasedCourse,
+  getStudentDetailsInCourse,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -45,10 +46,7 @@ courseRouter.put(
   checkOwnership(CourseModel),
   editCourse
 );
-courseRouter.get(
-  "/course/overview/:id",
-  getCourseOverview
-);
+courseRouter.get("/course/overview/:id", getCourseOverview);
 courseRouter.get(
   "/course/data/:id",
   isAuthenticated,
@@ -56,11 +54,7 @@ courseRouter.get(
   checkOwnership(CourseModel),
   getOwnerSingleCourse
 );
-courseRouter.get(
-  "/course/enroll/:id",
-  isAuthenticated,
-  enrollCourse
-);
+courseRouter.get("/course/enroll/:id", isAuthenticated, enrollCourse);
 courseRouter.get(
   "/course/:id/students",
   isAuthenticated,
@@ -138,6 +132,13 @@ courseRouter.get(
   isAuthenticated,
   authorizeRoles("admin", "tutor"),
   generateUploadSignature
+);
+
+courseRouter.get(
+  "/courses/:courseId/students/:studentId",
+  isAuthenticated,
+  authorizeRoles("tutor", "admin"),
+  getStudentDetailsInCourse
 );
 
 export default courseRouter;
