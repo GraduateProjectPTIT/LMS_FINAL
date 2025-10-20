@@ -1,7 +1,15 @@
 // src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
-import { getAllUsersService, getAdminDashboardSummaryService, getAdminRevenueChartService } from "../services/admin.service";
+import {
+  adminCreateEnrollmentService,
+  getAllUsersService,
+  getUserDetailService,
+} from "../services/admin.service";
+import {
+  getAdminDashboardSummaryService,
+  getAdminRevenueChartService,
+} from "../services/admin.service";
 
 // --- XÓA USER (ADMIN) ---
 // export const deleteUser = CatchAsyncError(
@@ -28,6 +36,38 @@ export const getAllUsers = CatchAsyncError(
   }
 );
 
+export const getUserDetail = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Lấy id từ URL params
+    const { id } = req.params;
+
+    // Gọi service đã được refactor
+    const userDetail = await getUserDetailService(id);
+
+    // Service sẽ ném ErrorHandler nếu không tìm thấy
+    res.status(200).json({
+      success: true,
+      user: userDetail,
+    });
+  }
+);
+
+export const createEnrollment = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Lấy từ body của request
+    const { userId, courseId } = req.body;
+
+    // Validation đầu vào cơ bản
+
+    const newEnrollment = await adminCreateEnrollmentService(userId, courseId);
+
+    res.status(201).json({
+      success: true,
+      message: "Ghi danh học viên thành công.",
+      enrollment: newEnrollment,
+    });
+  }
+);
 export const getAdminDashboardSummary = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const data = await getAdminDashboardSummaryService();

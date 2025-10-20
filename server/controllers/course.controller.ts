@@ -25,6 +25,7 @@ import {
   getTopPurchasedCoursesService,
   getTopRatedCoursesService,
   checkUserPurchasedCourseService,
+  getStudentDetailsInCourseService,
 } from "../services/course.service";
 import {
   IAddQuestionData,
@@ -279,9 +280,16 @@ export const markLectureCompleted = CatchAsyncError(
     try {
       const { courseId, lectureId } = req.body || {};
       if (!courseId || !lectureId) {
-        return next(new ErrorHandler("courseId and lectureId are required", 400));
+        return next(
+          new ErrorHandler("courseId and lectureId are required", 400)
+        );
       }
-      await markLectureCompletedService(req.user, { courseId, lectureId }, res, next);
+      await markLectureCompletedService(
+        req.user,
+        { courseId, lectureId },
+        res,
+        next
+      );
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -294,7 +302,9 @@ export const updateLectureVideo = CatchAsyncError(
     try {
       const { courseId, lectureId, video, videoLength } = req.body || {};
       if (!courseId || !lectureId || !video) {
-        return next(new ErrorHandler("courseId, lectureId and video are required", 400));
+        return next(
+          new ErrorHandler("courseId, lectureId and video are required", 400)
+        );
       }
       await updateLectureVideoService(
         req.user,
@@ -305,5 +315,28 @@ export const updateLectureVideo = CatchAsyncError(
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+);
+
+export const getStudentDetailsInCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { courseId, studentId } = req.params;
+    const tutorId = req.user?._id.toString();
+
+    if (!tutorId) {
+      return next(new ErrorHandler("Authentication required", 401));
+    }
+
+    // Chỉ cần gọi service đã được tối ưu
+    const student = await getStudentDetailsInCourseService(
+      courseId,
+      studentId,
+      tutorId
+    );
+
+    res.status(200).json({
+      success: true,
+      student,
+    });
   }
 );

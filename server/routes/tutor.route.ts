@@ -15,12 +15,7 @@ tutorRouter.put(
   setupTutorProfile
 );
 
-tutorRouter.get(
-  "/tutor/overview/:id/",
-  isAuthenticated,
-  authorizeRoles("tutor"),
-  getTutorOverview
-);
+tutorRouter.get("/tutor/overview/:id/", isAuthenticated, getTutorOverview);
 
 export default tutorRouter;
 

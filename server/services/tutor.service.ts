@@ -177,7 +177,9 @@ export const getTutorDetailsService = async (tutorId: string) => {
       $project: {
         _id: 0, // Bỏ trường _id mặc định
         name: "$creatorInfo.name",
-        avatar: "$creatorInfo.avatar.url",
+        avatar: {
+          url: "$creatorInfo.avatar.url",
+        },
         bio: "$creatorInfo.bio", // Giả sử bạn có trường bio trong user model
         totalStudents: 1, // Giữ lại trường đã tính toán
         totalCourses: 1,
@@ -196,7 +198,9 @@ export const getTutorDetailsService = async (tutorId: string) => {
       .select("name avatar.url bio");
     return {
       name: user?.name,
-      avatar: user?.avatar?.url,
+      avatar: {
+        url: user?.avatar?.url || "",
+      },
       bio: user?.bio,
       totalStudents: 0,
       totalCourses: 0,

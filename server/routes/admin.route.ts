@@ -1,7 +1,15 @@
 import express from "express";
 
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
-import { getAllUsers, getAdminDashboardSummary, getAdminRevenue } from "../controllers/admin.controller";
+import {
+  createEnrollment,
+  getAllUsers,
+  getUserDetail,
+} from "../controllers/admin.controller";
+import {
+  getAdminDashboardSummary,
+  getAdminRevenue,
+} from "../controllers/admin.controller";
 const adminRouter = express.Router();
 
 adminRouter.get(
@@ -10,6 +18,15 @@ adminRouter.get(
   authorizeRoles("admin"),
   getAllUsers
 );
+
+adminRouter.get(
+  "/admin/get_user_detail/:id",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  getUserDetail
+);
+
+adminRouter.post("/admin/enrollments", createEnrollment); // <-- ROUTE MỚI
 
 adminRouter.get(
   "/admin/dashboard/summary",

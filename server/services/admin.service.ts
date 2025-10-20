@@ -4,6 +4,10 @@ import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
+import { userRepository } from "../repositories/user.repository";
+import { orderRepository } from "../repositories/order.repository";
+import { enrolledCourseRepository } from "../repositories/enrolledCourse.repository";
+import { courseRepository } from "../repositories/course.repository";
 import {
   IStudent,
   ITutor,
@@ -114,10 +118,10 @@ export const getAdminRevenueChartService = async (range: string = "30d") => {
   const groupId = isMonthly
     ? { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }
     : {
-      year: { $year: "$createdAt" },
-      month: { $month: "$createdAt" },
-      day: { $dayOfMonth: "$createdAt" },
-    };
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
 
   const data = await OrderModel.aggregate([
     { $match: matchStage },
@@ -200,4 +204,73 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
   return {
     paginatedResult,
   };
+};
+
+export const getUserDetailService = async (userId: string) => {
+  const user = await userRepository.findUserDetailById(userId);
+
+  if (!user) {
+    throw new ErrorHandler("Không tìm thấy người dùng.", 404);
+  }
+
+  const userObject = user.toObject();
+
+  switch (user.role) {
+    case UserRole.Student: {
+      const [totalSpent, enrolledCoursesCount] = await Promise.all([
+        orderRepository.getTotalSpentByStudent(user._id),
+        enrolledCourseRepository.countEnrolledCoursesByStudent(user._id),
+      ]);
+
+      return {
+        ...userObject,
+        enrolledCoursesCount, // <-- Giá trị đúng
+        totalSpent,
+      };
+    }
+
+    case UserRole.Tutor: {
+      const tutorStats = await courseRepository.getTutorStatistics(user._id);
+      return {
+        ...userObject,
+        ...tutorStats,
+      };
+    }
+
+    default:
+      return userObject;
+  }
+};
+
+export const adminCreateEnrollmentService = async (
+  userId: string,
+  courseId: string
+) => {
+  const userIdObj = new Types.ObjectId(userId);
+  const courseIdObj = new Types.ObjectId(courseId);
+
+  // 2. Kiểm tra sự tồn tại (User, Course, và Enrollment) song song
+  const [userExists, courseExists, existingEnrollment] = await Promise.all([
+    userRepository.findSimpleById(userIdObj),
+    courseRepository.findSimpleById(courseIdObj),
+    enrolledCourseRepository.findByUserAndCourse(userIdObj, courseIdObj),
+  ]);
+
+  // 3. Xử lý kết quả validation
+  if (!userExists) {
+    throw new ErrorHandler("Không tìm thấy người dùng với ID này.", 404);
+  }
+  if (!courseExists) {
+    throw new ErrorHandler("Không tìm thấy khóa học với ID này.", 404);
+  }
+  if (existingEnrollment) {
+    throw new ErrorHandler("Học viên này đã được ghi danh vào khóa học.", 409); // 409 Conflict
+  }
+
+  // 4. Tạo bản ghi mới VÀ cập nhật số lượt mua của khóa học
+  const [newEnrollment] = await Promise.all([
+    enrolledCourseRepository.create(userIdObj, courseIdObj),
+  ]);
+
+  return newEnrollment;
 };

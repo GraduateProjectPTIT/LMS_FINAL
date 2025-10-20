@@ -90,7 +90,12 @@ export const createCourse = async (
     try {
       assertSectionVideosHavePublicIdUrl(data.courseData);
     } catch (e: any) {
-      return next(new ErrorHandler(e?.message || "Invalid courseData videos", e?.statusCode || 400));
+      return next(
+        new ErrorHandler(
+          e?.message || "Invalid courseData videos",
+          e?.statusCode || 400
+        )
+      );
     }
 
     if (
@@ -130,9 +135,16 @@ export const createCourse = async (
 
     if (data.categories) {
       try {
-        data.categories = await validateAndMaterializeCategoryIds(data.categories);
+        data.categories = await validateAndMaterializeCategoryIds(
+          data.categories
+        );
       } catch (e: any) {
-        return next(new ErrorHandler(e?.message || "Invalid categories", e?.statusCode || 400));
+        return next(
+          new ErrorHandler(
+            e?.message || "Invalid categories",
+            e?.statusCode || 400
+          )
+        );
       }
     }
 
@@ -165,19 +177,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-            videoTitle: lecture?.videoTitle,
-            videoDescription: lecture?.videoDescription,
-            video: lecture?.video,
-            videoLength: lecture?.videoLength,
-            videoLinks: Array.isArray(lecture?.videoLinks)
-              ? lecture.videoLinks.map((vl: any) => ({
-                ...(vl && vl._id ? { _id: vl._id } : {}),
-                title: vl?.title,
-                url: vl?.url,
-              }))
-              : [],
-          }))
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
           : [],
       }));
     }
@@ -202,24 +214,22 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-            videoTitle: lecture?.videoTitle,
-            videoDescription: lecture?.videoDescription,
-            video: lecture?.video,
-            videoLength: lecture?.videoLength,
-            videoLinks: Array.isArray(lecture?.videoLinks)
-              ? lecture.videoLinks.map((vl: any) => ({
-                ...(vl && vl._id ? { _id: vl._id } : {}),
-                title: vl?.title,
-                url: vl?.url,
-              }))
-              : [],
-          }))
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
           : [],
       }));
     }
-
-
 
     const course = await CourseModel.create(data);
 
@@ -258,7 +268,8 @@ export const getTutorCoursesService = async (
       return next(new ErrorHandler("Forbidden", 403));
     }
     const { page, limit, skip } = parsePaging(query, 100, 10);
-    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    const keyword =
+      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     const filter: any = { creatorId: user._id };
     if (keyword.length >= 2) {
       const regex = makeCaseInsensitiveRegex(keyword);
@@ -513,7 +524,8 @@ export const getStudentEnrolledCoursesService = async (
     }
 
     // Filters
-    const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    const keyword =
+      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     let categoryIds: string[] = [];
     if (typeof query?.categoryIds !== "undefined") {
       if (Array.isArray(query.categoryIds)) {
@@ -524,40 +536,73 @@ export const getStudentEnrolledCoursesService = async (
           .map((s) => s.trim())
           .filter(Boolean);
       }
-      categoryIds = categoryIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      categoryIds = categoryIds.filter((id) =>
+        mongoose.Types.ObjectId.isValid(id)
+      );
     }
 
-    const levelStr = typeof query?.level !== "undefined" ? String(query.level).trim().toLowerCase() : "";
+    const levelStr =
+      typeof query?.level !== "undefined"
+        ? String(query.level).trim().toLowerCase()
+        : "";
     const mapLevel = (val: string) => {
-      if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
-      if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
-      if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
-      if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+      if (val === ECourseLevel.Beginner.toLowerCase())
+        return ECourseLevel.Beginner;
+      if (val === ECourseLevel.Intermediate.toLowerCase())
+        return ECourseLevel.Intermediate;
+      if (val === ECourseLevel.Advanced.toLowerCase())
+        return ECourseLevel.Advanced;
+      if (val === ECourseLevel.Professional.toLowerCase())
+        return ECourseLevel.Professional;
       return null;
     };
     const enumLevel = levelStr ? mapLevel(levelStr) : null;
 
-    const completedParam = typeof query?.completed !== "undefined" ? String(query.completed).toLowerCase() : "";
-    const completedFilter = completedParam === "true" ? true : completedParam === "false" ? false : undefined;
+    const completedParam =
+      typeof query?.completed !== "undefined"
+        ? String(query.completed).toLowerCase()
+        : "";
+    const completedFilter =
+      completedParam === "true"
+        ? true
+        : completedParam === "false"
+        ? false
+        : undefined;
 
-    const minProgress = query?.minProgress !== undefined ? Math.max(0, Number(query.minProgress)) : undefined;
-    const maxProgress = query?.maxProgress !== undefined ? Math.min(100, Number(query.maxProgress)) : undefined;
+    const minProgress =
+      query?.minProgress !== undefined
+        ? Math.max(0, Number(query.minProgress))
+        : undefined;
+    const maxProgress =
+      query?.maxProgress !== undefined
+        ? Math.min(100, Number(query.maxProgress))
+        : undefined;
 
     const from = query?.from ? new Date(String(query.from)) : undefined;
     const to = query?.to ? new Date(String(query.to)) : undefined;
 
-    const allowedSortBy = ["enrolledAt", "name", "createdAt", "ratings"] as const;
+    const allowedSortBy = [
+      "enrolledAt",
+      "name",
+      "createdAt",
+      "ratings",
+    ] as const;
     const sortBy = allowedSortBy.includes(String(query?.sortBy) as any)
       ? String(query.sortBy)
       : "enrolledAt";
     const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
 
-    const enrollmentMatch: any = { userId: new mongoose.Types.ObjectId(String(user._id)) };
-    if (typeof completedFilter !== "undefined") enrollmentMatch.completed = completedFilter;
+    const enrollmentMatch: any = {
+      userId: new mongoose.Types.ObjectId(String(user._id)),
+    };
+    if (typeof completedFilter !== "undefined")
+      enrollmentMatch.completed = completedFilter;
     if (typeof minProgress === "number" || typeof maxProgress === "number") {
       enrollmentMatch.progress = {} as any;
-      if (typeof minProgress === "number") (enrollmentMatch.progress as any).$gte = minProgress;
-      if (typeof maxProgress === "number") (enrollmentMatch.progress as any).$lte = maxProgress;
+      if (typeof minProgress === "number")
+        (enrollmentMatch.progress as any).$gte = minProgress;
+      if (typeof maxProgress === "number")
+        (enrollmentMatch.progress as any).$lte = maxProgress;
     }
     if (from || to) {
       enrollmentMatch.enrolledAt = {} as any;
@@ -568,10 +613,15 @@ export const getStudentEnrolledCoursesService = async (
     const courseMatch: any = {};
     if (keyword.length >= 2) {
       const regex = makeCaseInsensitiveRegex(keyword);
-      courseMatch.$or = [{ "course.name": { $regex: regex } }, { "course.tags": { $regex: regex } }];
+      courseMatch.$or = [
+        { "course.name": { $regex: regex } },
+        { "course.tags": { $regex: regex } },
+      ];
     }
     if (categoryIds.length > 0) {
-      courseMatch["course.categories"] = { $in: categoryIds.map((id) => new mongoose.Types.ObjectId(id)) };
+      courseMatch["course.categories"] = {
+        $in: categoryIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
     }
     if (enumLevel) {
       courseMatch["course.level"] = enumLevel;
@@ -638,9 +688,14 @@ export const getStudentEnrolledCoursesService = async (
     });
 
     const aggResult = await EnrolledCourseModel.aggregate(aggPipeline);
-    const dataArr = Array.isArray(aggResult) && aggResult.length > 0 ? aggResult[0].data : [];
-    const totalAgg = Array.isArray(aggResult) && aggResult.length > 0 ? aggResult[0].total : [];
-    const total = Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
+    const dataArr =
+      Array.isArray(aggResult) && aggResult.length > 0 ? aggResult[0].data : [];
+    const totalAgg =
+      Array.isArray(aggResult) && aggResult.length > 0
+        ? aggResult[0].total
+        : [];
+    const total =
+      Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
     const courseIds = dataArr.map((d: any) => d.course._id);
@@ -705,7 +760,10 @@ export const editCourseService = async (
     }
 
     const availableCourseThumbnail = findCourse?.thumbnail;
-    data.thumbnail = await upsertCourseThumbnail(data.thumbnail, availableCourseThumbnail);
+    data.thumbnail = await upsertCourseThumbnail(
+      data.thumbnail,
+      availableCourseThumbnail
+    );
 
     if (data.videoDemo) {
       const existingDemo = (findCourse as any).videoDemo as
@@ -724,7 +782,7 @@ export const editCourseService = async (
             await cloudinary.v2.uploader.destroy(existingDemo.public_id, {
               resource_type: "video",
             });
-          } catch { }
+          } catch {}
         }
       } else {
         return next(
@@ -738,9 +796,16 @@ export const editCourseService = async (
 
     if (data.categories) {
       try {
-        data.categories = await validateAndMaterializeCategoryIds(data.categories);
+        data.categories = await validateAndMaterializeCategoryIds(
+          data.categories
+        );
       } catch (e: any) {
-        return next(new ErrorHandler(e?.message || "Invalid categories", e?.statusCode || 400));
+        return next(
+          new ErrorHandler(
+            e?.message || "Invalid categories",
+            e?.statusCode || 400
+          )
+        );
       }
     }
 
@@ -764,19 +829,19 @@ export const editCourseService = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-            videoTitle: lecture?.videoTitle,
-            videoDescription: lecture?.videoDescription,
-            video: lecture?.video,
-            videoLength: lecture?.videoLength,
-            videoLinks: Array.isArray(lecture?.videoLinks)
-              ? lecture.videoLinks.map((vl: any) => ({
-                ...(vl && vl._id ? { _id: vl._id } : {}),
-                title: vl?.title,
-                url: vl?.url,
-              }))
-              : [],
-          }))
+              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+              videoTitle: lecture?.videoTitle,
+              videoDescription: lecture?.videoDescription,
+              video: lecture?.video,
+              videoLength: lecture?.videoLength,
+              videoLinks: Array.isArray(lecture?.videoLinks)
+                ? lecture.videoLinks.map((vl: any) => ({
+                    ...(vl && vl._id ? { _id: vl._id } : {}),
+                    title: vl?.title,
+                    url: vl?.url,
+                  }))
+                : [],
+            }))
           : [],
       }));
     }
@@ -899,7 +964,6 @@ export const getCourseOverviewService = async (
   }
 };
 
-
 /**
  * Lấy toàn bộ nội dung chi tiết của khóa học cho người đủ điều kiện truy cập.
  * - Điều kiện: đã mua/ghi danh, là creator hoặc admin
@@ -923,7 +987,10 @@ export const enrollCourseService = async (
     ]);
 
     const isEnrolled = Boolean(enrollment);
-    const isCreator = courseDoc && courseDoc.creatorId && courseDoc.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      courseDoc &&
+      courseDoc.creatorId &&
+      courseDoc.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -955,12 +1022,12 @@ export const enrollCourseService = async (
       levelRaw === ECourseLevel.Beginner.toLowerCase()
         ? ECourseLevel.Beginner
         : levelRaw === ECourseLevel.Intermediate.toLowerCase()
-          ? ECourseLevel.Intermediate
-          : levelRaw === ECourseLevel.Advanced.toLowerCase()
-            ? ECourseLevel.Advanced
-            : levelRaw === ECourseLevel.Professional.toLowerCase()
-              ? ECourseLevel.Professional
-              : null;
+        ? ECourseLevel.Intermediate
+        : levelRaw === ECourseLevel.Advanced.toLowerCase()
+        ? ECourseLevel.Advanced
+        : levelRaw === ECourseLevel.Professional.toLowerCase()
+        ? ECourseLevel.Professional
+        : null;
 
     if (course) {
       (course as any).level = levelEnumValue;
@@ -1014,11 +1081,11 @@ export const searchCoursesService = async (
         ];
 
         const matchingCategories = await CategoryModel.find({
-          title: { $regex: regexPattern }
+          title: { $regex: regexPattern },
         }).select("_id");
 
         if (matchingCategories.length > 0) {
-          const categoryIds = matchingCategories.map(cat => cat._id);
+          const categoryIds = matchingCategories.map((cat) => cat._id);
           searchConditions.push({ categories: { $in: categoryIds } });
         }
 
@@ -1031,14 +1098,19 @@ export const searchCoursesService = async (
         return res.status(200).json({
           success: true,
           courses: [],
-          message: "Keyword must be at least 2 characters long"
+          message: "Keyword must be at least 2 characters long",
         });
       }
     }
 
     if (category) {
-      const keyword = Array.isArray(category) ? category.join(",") : String(category);
-      const ids = keyword.split(",").map((s) => s.trim()).filter(Boolean);
+      const keyword = Array.isArray(category)
+        ? category.join(",")
+        : String(category);
+      const ids = keyword
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const areValid = ids.every((id) => mongoose.Types.ObjectId.isValid(id));
       if (!areValid) {
         return next(new ErrorHandler("Invalid category id in filter", 400));
@@ -1142,7 +1214,8 @@ export const addQuestionService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForQuestion);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1214,7 +1287,8 @@ export const addAnswerService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForAnswer);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1311,7 +1385,8 @@ export const addReviewService = async (
       CourseModel.findById(courseId),
     ]);
     const isEnrolled = Boolean(enrollmentForReview);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1386,7 +1461,8 @@ export const addReplyToReviewService = async (
       courseId,
     });
     const isEnrolled = Boolean(enrollmentForReviewReply);
-    const isCreator = course?.creatorId && course.creatorId.toString() === String(userId?._id);
+    const isCreator =
+      course?.creatorId && course.creatorId.toString() === String(userId?._id);
 
     if (!isEnrolled && !isCreator && userId?.role !== "admin") {
       return next(
@@ -1476,12 +1552,10 @@ export const deleteCourseService = async (
  * @param res Express Response
  * @returns 200 { success, courses, pagination }
  */
-export const getAdminCoursesService = async (
-  query: any,
-  res: Response
-) => {
+export const getAdminCoursesService = async (query: any, res: Response) => {
   const { page, limit, skip } = parsePaging(query, 100, 10);
-  const keyword = typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+  const keyword =
+    typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
   const filter: any = {};
   if (keyword.length >= 2) {
     const regex = makeCaseInsensitiveRegex(keyword);
@@ -1534,7 +1608,8 @@ export const getCourseStudentsService = async (
   try {
     const q: any = query || {};
     const { page, limit, skip } = parsePaging(q, 100, 10);
-    const keyword = typeof q?.keyword !== "undefined" ? String(q.keyword).trim() : "";
+    const keyword =
+      typeof q?.keyword !== "undefined" ? String(q.keyword).trim() : "";
 
     const matchStage: any = { courseId: new mongoose.Types.ObjectId(courseId) };
 
@@ -1569,7 +1644,9 @@ export const getCourseStudentsService = async (
       : "createdAt";
     const sortOrder = String(q?.sortOrder) === "asc" ? 1 : -1;
     const sortStage =
-      sortBy === "name" ? { $sort: { "user.name": sortOrder } } : { $sort: { enrolledAt: sortOrder } };
+      sortBy === "name"
+        ? { $sort: { "user.name": sortOrder } }
+        : { $sort: { enrolledAt: sortOrder } };
 
     const countPipeline = [...pipeline, { $count: "count" }];
     const dataPipeline = [
@@ -1598,7 +1675,8 @@ export const getCourseStudentsService = async (
       EnrolledCourseModel.aggregate(countPipeline),
     ]);
 
-    const totalItems = Array.isArray(countRes) && countRes.length > 0 ? countRes[0].count : 0;
+    const totalItems =
+      Array.isArray(countRes) && countRes.length > 0 ? countRes[0].count : 0;
     const totalPages = Math.ceil(totalItems / limit) || 0;
 
     res.status(200).json({
@@ -1629,7 +1707,9 @@ export const getAllCategoriesService = async (
   next: NextFunction
 ) => {
   try {
-    const categories = await CategoryModel.find().sort({ createdAt: -1 }).select("_id title");
+    const categories = await CategoryModel.find()
+      .sort({ createdAt: -1 })
+      .select("_id title");
     res.status(200).json({ success: true, categories });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1732,15 +1812,16 @@ export const updateLectureVideoService = async (
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
-    const isOwner = course.creatorId && course.creatorId.toString() === String(user?._id);
+    const isOwner =
+      course.creatorId && course.creatorId.toString() === String(user?._id);
     if (user?.role !== "admin" && !isOwner) {
       return next(new ErrorHandler("Forbidden", 403));
     }
 
     let targetLecture: any | null = null;
     for (const section of (course as any).courseData || []) {
-      const found = (section.sectionContents || []).find((lec: any) =>
-        lec._id && lec._id.equals(lectureId)
+      const found = (section.sectionContents || []).find(
+        (lec: any) => lec._id && lec._id.equals(lectureId)
       );
       if (found) {
         targetLecture = found;
@@ -1752,12 +1833,15 @@ export const updateLectureVideoService = async (
       return next(new ErrorHandler("Lecture not found", 404));
     }
 
-    const prevVid = targetLecture.video as { public_id?: string; url?: string } | undefined;
+    const prevVid = targetLecture.video as
+      | { public_id?: string; url?: string }
+      | undefined;
     if (prevVid?.public_id && prevVid.public_id !== video.public_id) {
       try {
-        await cloudinary.v2.uploader.destroy(prevVid.public_id, { resource_type: "video" });
-      } catch (e) {
-      }
+        await cloudinary.v2.uploader.destroy(prevVid.public_id, {
+          resource_type: "video",
+        });
+      } catch (e) {}
     }
 
     targetLecture.video = { public_id: video.public_id, url: video.url };
@@ -1806,21 +1890,27 @@ export const markLectureCompletedService = async (
       }),
       CourseModel.findById(courseId).select(
         "courseData.sectionContents._id creatorId"
-      )
+      ),
     ]);
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     const isEnrolled = Boolean(isEnrolledByUserDoc);
-    const isCreator = course.creatorId && course.creatorId.toString() === String(user?._id);
+    const isCreator =
+      course.creatorId && course.creatorId.toString() === String(user?._id);
 
     if (!isEnrolled && !isCreator && user?.role !== "admin") {
       return next(new ErrorHandler("You are not enrolled in this course", 403));
     }
 
-    const totalLectures = (course.courseData || []).reduce((acc: number, section: any) => {
-      return acc + (section.sectionContents ? section.sectionContents.length : 0);
-    }, 0);
+    const totalLectures = (course.courseData || []).reduce(
+      (acc: number, section: any) => {
+        return (
+          acc + (section.sectionContents ? section.sectionContents.length : 0)
+        );
+      },
+      0
+    );
 
     if (totalLectures === 0) {
       return next(new ErrorHandler("Course has no lectures", 400));
@@ -1841,7 +1931,10 @@ export const markLectureCompletedService = async (
     }
 
     const completedCount = (updated.completedLectures || []).length;
-    const progress = Math.min(100, Math.round((completedCount / totalLectures) * 100));
+    const progress = Math.min(
+      100,
+      Math.round((completedCount / totalLectures) * 100)
+    );
     const completed = progress >= 100;
 
     if (progress !== updated.progress || completed !== updated.completed) {
@@ -1860,4 +1953,110 @@ export const markLectureCompletedService = async (
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
+};
+
+export const getStudentDetailsInCourseService = async (
+  courseId: string,
+  studentId: string,
+  tutorId: string
+) => {
+  // --- Bước 1: Xây dựng Aggregation Pipeline ---
+  const pipeline = [
+    // Giai đoạn 1: Lọc chính xác bản ghi đăng ký cần tìm
+    {
+      $match: {
+        courseId: new mongoose.Types.ObjectId(courseId),
+        userId: new mongoose.Types.ObjectId(studentId),
+      },
+    },
+
+    // Giai đoạn 2: JOIN với collection 'courses' ĐỂ XÁC THỰC QUYỀN 🛡️
+    // Đây là bước "thần kỳ", nó sẽ chỉ trả về kết quả nếu tutorId là người tạo khóa học
+    {
+      $lookup: {
+        from: "courses", // Tên collection của CourseModel
+        let: { cId: "$courseId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$_id", "$$cId"] },
+                  { $eq: ["$creatorId", new mongoose.Types.ObjectId(tutorId)] },
+                ],
+              },
+            },
+          },
+          { $project: { courseData: 1 } }, // Chỉ lấy trường cần thiết để tính toán
+        ],
+        as: "courseDetails",
+      },
+    },
+
+    // Giai đoạn 3: "Mở" mảng courseDetails và lọc bỏ nếu không có quyền
+    // Nếu lookup ở trên không tìm thấy (do sai tutorId), $unwind sẽ loại bỏ bản ghi này
+    {
+      $unwind: "$courseDetails",
+    },
+
+    // Giai đoạn 4: JOIN với collection 'users' để lấy thông tin học viên
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "studentInfo",
+      },
+    },
+
+    // Giai đoạn 5: Mở mảng thông tin học viên
+    {
+      $unwind: "$studentInfo",
+    },
+
+    // Giai đoạn 6: Định dạng lại toàn bộ kết quả đầu ra 🚀
+    {
+      $project: {
+        _id: "$studentInfo._id", // Lấy ID của học viên
+        name: "$studentInfo.name",
+        email: "$studentInfo.email",
+        avatar: {
+          url: { $ifNull: ["$studentInfo.avatar.url", ""] }, // Xử lý nếu avatar null
+        },
+        enrollmentDetails: {
+          _id: "$_id", // ID của bản ghi enrollment
+          enrolledAt: "$enrolledAt",
+          progress: "$progress",
+          // Đếm số bài giảng đã hoàn thành
+          completedLectures: { $size: "$completedLectures" },
+          // Tính tổng số bài giảng trong khóa học
+          totalLecturesInCourse: {
+            $sum: {
+              $map: {
+                input: "$courseDetails.courseData",
+                as: "section",
+                in: { $size: "$$section.sectionContents" },
+              },
+            },
+          },
+          isCompleted: "$completed",
+        },
+      },
+    },
+  ];
+
+  // --- Bước 2: Thực thi pipeline ---
+  const result = await EnrolledCourseModel.aggregate(pipeline);
+
+  // --- Bước 3: Kiểm tra kết quả ---
+  // Nếu mảng rỗng, nghĩa là không tìm thấy hoặc không có quyền
+  if (result.length === 0) {
+    throw new ErrorHandler(
+      "Student not found in this course or access denied",
+      404
+    );
+  }
+
+  // Trả về phần tử duy nhất trong mảng kết quả
+  return result[0];
 };
