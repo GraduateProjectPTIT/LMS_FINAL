@@ -6,6 +6,10 @@ import {
   getAllUsersService,
   getUserDetailService,
 } from "../services/admin.service";
+import {
+  getAdminDashboardSummaryService,
+  getAdminRevenueChartService,
+} from "../services/admin.service";
 
 // --- XÓA USER (ADMIN) ---
 // export const deleteUser = CatchAsyncError(
@@ -62,6 +66,20 @@ export const createEnrollment = CatchAsyncError(
       message: "Ghi danh học viên thành công.",
       enrollment: newEnrollment,
     });
+  }
+);
+export const getAdminDashboardSummary = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const data = await getAdminDashboardSummaryService();
+    res.status(200).json({ success: true, ...data });
+  }
+);
+
+export const getAdminRevenue = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const range = String(req.query?.range || "30d");
+    const data = await getAdminRevenueChartService(range);
+    res.status(200).json({ success: true, ...data });
   }
 );
 

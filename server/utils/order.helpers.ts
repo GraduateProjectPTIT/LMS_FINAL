@@ -1,10 +1,10 @@
 export const toPlain = (o: any) => (o && typeof o.toObject === 'function' ? o.toObject() : o);
 
 export const normalizeOrder = (o: any) => {
-  if (o && Array.isArray(o.items) && typeof (o as any).total !== 'undefined') {
-    return o;
-  }
   const obj = toPlain(o);
+  if (obj && Array.isArray(obj.items) && typeof (obj as any).total !== 'undefined') {
+    return obj;
+  }
   const amt = Number(obj?.payment_info?.amount || 0);
   return {
     ...obj,

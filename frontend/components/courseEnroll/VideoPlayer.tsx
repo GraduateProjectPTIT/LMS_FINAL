@@ -5,6 +5,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { SectionLecture, IVideoLinkResponse } from "@/type";
 import { FaRegPlayCircle, FaLink, FaCheck } from "react-icons/fa";
+import LectureQuestions from './LectureQuestions';
+import LectureResources from './LectureResources';
 
 interface VideoPlayerProps {
     lecture: SectionLecture | null;
@@ -35,7 +37,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
     // Handle video time update to track progress
     const handleTimeUpdate = () => {
-        if (videoRef.current) {
+        if (videoRef.current && !isLectureCompleted) {
             const video = videoRef.current;
             const percentage = (video.currentTime / video.duration) * 100;
             setWatchedPercentage(Math.round(percentage));
@@ -64,15 +66,12 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
             if (response.ok && data.success) {
                 onLectureCompleted(lecture._id);
-                // Optionally show success message
                 console.log('Lecture marked as completed successfully');
             } else {
                 console.error('Failed to mark lecture as completed:', data.message);
-                // Optionally show error message
             }
         } catch (error) {
             console.error('Error marking lecture as completed:', error);
-            // Optionally show error message
         } finally {
             setIsMarkingCompleted(false);
         }
@@ -91,7 +90,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
         );
     }
 
-    const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80);
+    const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80 || canBypass);
 
     return (
         <div className="flex flex-col h-screen overflow-y-scroll">
@@ -121,7 +120,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                         <button
                             onClick={handleMarkAsCompleted}
                             disabled={isMarkingCompleted}
-                            className="ml-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors duration-200"
+                            className="ml-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors duration-200 flex-shrink-0"
                         >
                             <FaCheck className="mr-2" />
                             {isMarkingCompleted ? 'Marking...' : 'Mark as Completed'}
@@ -130,14 +129,14 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
                     {/* Completed indicator */}
                     {isLectureCompleted && (
-                        <div className="ml-4 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg font-medium text-sm flex items-center">
+                        <div className="ml-4 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg font-medium text-sm flex items-center flex-shrink-0">
                             <FaCheck className="mr-2" />
                             Completed
                         </div>
                     )}
                 </div>
 
-                {/* Progress indicator (only show for non-bypass users) */}
+                {/* Progress indicator (only show for non-bypass users and incomplete lectures) */}
                 {!canBypass && !isLectureCompleted && (
                     <div className="mb-4">
                         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -195,29 +194,18 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                 {/* Tab content */}
                 <div className="pb-8">
                     {activeTab === 'description' && (
-                        <div className="prose dark:prose-invert max-w-none">
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{lecture.videoDescription}</p>
+
+                        <div className="mb-8 p-4 bg-gray-100 dark:bg-slate-800 rounded-lg border-l-4 border-blue-500">
+                            <p className="text-gray-700 dark:text-gray-300">
+                                {lecture.videoDescription}
+                            </p>
                         </div>
                     )}
 
                     {activeTab === 'resources' && (
                         <div>
                             {lecture.videoLinks && lecture.videoLinks.length > 0 ? (
-                                <ul className="space-y-3">
-                                    {lecture.videoLinks.map((link: IVideoLinkResponse) => (
-                                        <li key={link._id} className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-300 dark:border-slate-600">
-                                            <a
-                                                href={link.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center"
-                                            >
-                                                <FaLink className='h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400' />
-                                                {link.title}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <LectureResources lecture={lecture} />
                             ) : (
                                 <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
                                     <p className="text-gray-500 dark:text-gray-400">No resources available for this video</p>
@@ -229,37 +217,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                     {activeTab === 'questions' && (
                         <div>
                             {lecture.lectureQuestions && lecture.lectureQuestions.length > 0 ? (
-                                <div className="space-y-4">
-                                    {lecture.lectureQuestions.map((item: any) => (
-                                        <div key={item._id} className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg border border-gray-300 dark:border-slate-600">
-                                            <div className="mb-4">
-                                                <div className="flex justify-between mb-2">
-                                                    <h3 className="font-medium text-gray-900 dark:text-white">Question:</h3>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {new Date(item.createdAt).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                <p className="text-gray-700 dark:text-gray-300">{item.question}</p>
-                                            </div>
-
-                                            {item.replies && item.replies.length > 0 && (
-                                                <div className="mt-3 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
-                                                    {item.replies.map((reply: any, index: number) => (
-                                                        <div key={index} className="mb-3">
-                                                            <div className="flex justify-between mb-1">
-                                                                <h4 className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Reply:</h4>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    {new Date(reply.createdAt).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm text-gray-700 dark:text-gray-300">{reply.answer}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                                <LectureQuestions />
                             ) : (
                                 <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
                                     <p className="text-gray-500 dark:text-gray-400">No questions available for this video</p>
@@ -268,8 +226,8 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

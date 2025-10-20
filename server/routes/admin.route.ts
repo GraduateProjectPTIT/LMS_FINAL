@@ -6,6 +6,10 @@ import {
   getAllUsers,
   getUserDetail,
 } from "../controllers/admin.controller";
+import {
+  getAdminDashboardSummary,
+  getAdminRevenue,
+} from "../controllers/admin.controller";
 const adminRouter = express.Router();
 
 adminRouter.get(
@@ -23,6 +27,20 @@ adminRouter.get(
 );
 
 adminRouter.post("/admin/enrollments", createEnrollment); // <-- ROUTE MỚI
+
+adminRouter.get(
+  "/admin/dashboard/summary",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  getAdminDashboardSummary
+);
+
+adminRouter.get(
+  "/admin/dashboard/revenue",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  getAdminRevenue
+);
 // adminRouter.put(
 //   "/admin/update-user-role",
 //   isAuthenticated,

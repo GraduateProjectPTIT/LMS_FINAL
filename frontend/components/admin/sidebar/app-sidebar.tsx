@@ -94,14 +94,9 @@ const sectionData = {
             isOpen: false,
             items: [
                 {
-                    title: "All Posts",
+                    title: "Manage Posts",
                     url: "/admin/posts",
-                    value: "posts_list",
-                },
-                {
-                    title: "Create Post",
-                    url: "/admin/posts/create",
-                    value: "posts_create",
+                    value: "manage_posts",
                 },
             ],
         },

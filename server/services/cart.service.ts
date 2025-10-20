@@ -4,38 +4,30 @@ import CourseModel from "../models/course.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 
-const formatTime = (minutes: number) => {
-  if (!minutes || minutes <= 0) return "0m";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
-};
-
 const mapCourseToCartItem = (course: any) => {
   const totalSections = Array.isArray(course.courseData)
     ? course.courseData.length
     : 0;
   const totalLectures = Array.isArray(course.courseData)
     ? course.courseData.reduce(
-        (acc: number, sec: any) =>
-          acc +
-          (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
-        0
-      )
+      (acc: number, sec: any) =>
+        acc +
+        (Array.isArray(sec.sectionContents) ? sec.sectionContents.length : 0),
+      0
+    )
     : 0;
-  const totalTimeMinutes = Array.isArray(course.courseData)
+  const totalTimeSeconds = Array.isArray(course.courseData)
     ? course.courseData.reduce(
-        (acc: number, sec: any) =>
-          acc +
-          (Array.isArray(sec.sectionContents)
-            ? sec.sectionContents.reduce(
-                (a: number, lec: any) => a + (lec?.videoLength || 0),
-                0
-              )
-            : 0),
-        0
-      )
+      (acc: number, sec: any) =>
+        acc +
+        (Array.isArray(sec.sectionContents)
+          ? sec.sectionContents.reduce(
+            (a: number, lec: any) => a + (lec?.videoLength || 0),
+            0
+          )
+          : 0),
+      0
+    )
     : 0;
 
   return {
@@ -47,7 +39,7 @@ const mapCourseToCartItem = (course: any) => {
     level: course.level,
     totalSections,
     totalLectures,
-    totalTime: formatTime(totalTimeMinutes),
+    totalTime: totalTimeSeconds,
     instructorName: (course as any).creatorId?.name,
     ratings: course.ratings,
   };

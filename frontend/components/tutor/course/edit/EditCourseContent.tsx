@@ -42,7 +42,7 @@ interface EditCourseContentProps {
     active: number;
     setActive: (active: number) => void;
     courseData: IEditSection[];
-    setCourseData: (newData: IEditSection[]) => void;
+    setCourseData: React.Dispatch<React.SetStateAction<IEditSection[]>>;
 }
 
 interface CollapsedState {
@@ -189,6 +189,7 @@ const EditCourseContent = ({ active, setActive, courseData, setCourseData }: Edi
         const hasUploading = courseData.some(s =>
             s.sectionContents.some(l => l.isUploading)
         );
+
         if (hasUploading) {
             toast.error("Please wait for all uploads to finish");
             return;
@@ -219,21 +220,23 @@ const EditCourseContent = ({ active, setActive, courseData, setCourseData }: Edi
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    const getSectionId = (section: IEditSection) => {
+        return section._id || section.id || '';
+    };
+
     // Drag end (khi thả section) → reorder theo id
     const handleDragEnd = (event: DragEndEvent): void => {
         const { active, over } = event;
         if (!over) return;
 
-        if (active.id !== over.id) {
-            const oldIndex = courseData.findIndex((item) => getSectionId(item) === active.id);
-            const newIndex = courseData.findIndex((item) => getSectionId(item) === over.id);
-            if (oldIndex === -1 || newIndex === -1) return;
-            setCourseData(arrayMove(courseData, oldIndex, newIndex));
-        }
-    };
-
-    const getSectionId = (section: IEditSection) => {
-        return section._id || section.id || '';
+        setCourseData((prevCourseData) => {
+            const oldIndex = prevCourseData.findIndex((item) => getSectionId(item) === active.id);
+            const newIndex = prevCourseData.findIndex((item) => getSectionId(item) === over.id);
+            if (oldIndex === -1 || newIndex === -1) {
+                return prevCourseData;
+            }
+            return arrayMove(prevCourseData, oldIndex, newIndex);
+        });
     };
 
     const handleAddNewSection = () => {
@@ -258,7 +261,7 @@ const EditCourseContent = ({ active, setActive, courseData, setCourseData }: Edi
             ]
         };
 
-        setCourseData([...courseData, newSection]);
+        setCourseData(prevData => [...prevData, newSection]);
     };
 
     const handleRemoveSection = (sectionId: string) => {
@@ -277,17 +280,26 @@ const EditCourseContent = ({ active, setActive, courseData, setCourseData }: Edi
 
     const confirmDeleteSection = () => {
         if (deleteModal.sectionIndex !== null) {
-            const updatedData = courseData.filter((_, index) => index !== deleteModal.sectionIndex);
-            setCourseData(updatedData);
+            setCourseData(prevData => prevData.filter((_, index) => index !== deleteModal.sectionIndex));
             toast.success("Section deleted successfully");
         }
     };
 
-    const handleSectionChange = (sectionId: string, updatedSection: IEditSection) => {
-        const updatedData = courseData.map((section) =>
-            getSectionId(section) === sectionId ? updatedSection : section
-        );
-        setCourseData(updatedData);
+    const handleSectionChange = (
+        sectionId: string,
+        sectionUpdater: IEditSection | ((prevSection: IEditSection) => IEditSection)
+    ) => {
+        setCourseData((prevCourseData) => {
+            return prevCourseData.map((currentSection) => {
+                if (getSectionId(currentSection) === sectionId) {
+                    if (typeof sectionUpdater === 'function') {
+                        return sectionUpdater(currentSection);
+                    }
+                    return sectionUpdater;
+                }
+                return currentSection;
+            });
+        });
     };
 
     // Đếm số section đã hoàn thành

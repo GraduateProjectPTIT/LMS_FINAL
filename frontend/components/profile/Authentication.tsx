@@ -118,7 +118,6 @@ const Authentication = ({ user }: AuthenticationProps) => {
         <Card className="w-full theme-mode border-gray-200 dark:border-slate-600 shadow-md dark:shadow-slate-600">
             <CardHeader>
                 <div className="flex items-center gap-2">
-                    <FaLock className="text-blue-500" size={20} />
                     <CardTitle className="text-2xl font-bold">Security Settings</CardTitle>
                 </div>
                 <CardDescription>Manage your email and password settings</CardDescription>

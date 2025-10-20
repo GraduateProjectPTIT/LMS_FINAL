@@ -8,7 +8,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Copy, Users, ArrowRightToLine } from "lucide-react";
 import toast from 'react-hot-toast';
 import Link from "next/link";
 
@@ -91,7 +91,7 @@ const CourseActions = ({
 
                 <Link href={`/course-enroll/${course._id}`}>
                     <DropdownMenuItem className="cursor-pointer">
-                        <Eye className="mr-2 h-4 w-4" />
+                        <ArrowRightToLine className="mr-2 h-4 w-4" />
                         Enroll Course
                     </DropdownMenuItem>
                 </Link>
@@ -100,6 +100,13 @@ const CourseActions = ({
                     <DropdownMenuItem className="cursor-pointer">
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Course
+                    </DropdownMenuItem>
+                </Link>
+
+                <Link href={`/tutor/data/students/${course._id}`}>
+                    <DropdownMenuItem className="cursor-pointer">
+                        <Users className="mr-2 h-4 w-4" />
+                        Manage Students
                     </DropdownMenuItem>
                 </Link>
 

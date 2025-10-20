@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Personal from './Personal';
 import Authentication from './Authentication';
 import Notifications from './Notifications';
-import EnrollCourses from './EnrollCourses';
+import EnrolledCourses from './EnrolledCourses';
 import Interests from './Interests';
 import Expertise from './Expertise';
 
@@ -25,8 +25,8 @@ const Profile = ({ user, activeSection }: ProfileProps) => {
                 return <Expertise user={user} />;
             case 'notifications':
                 return <Notifications user={user} />;
-            case 'enroll_courses':
-                return <EnrollCourses user={user} />;
+            case 'enrolled_courses':
+                return <EnrolledCourses />;
             default:
                 return <Personal user={user} />;
         }

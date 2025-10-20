@@ -41,7 +41,7 @@ const sectionData = {
         // Data for tutor (course, student, order)
         {
             title: "Data",
-            url: "/admin/data",
+            url: "/tutor/data",
             icon: FileText,
             isOpen: false,
             items: [
@@ -49,11 +49,6 @@ const sectionData = {
                     title: "Courses Data",
                     url: "/tutor/data/courses",
                     value: "courses_data",
-                },
-                {
-                    title: "Students Data",
-                    url: "/tutor/data/students",
-                    value: "students_data",
                 },
                 {
                     title: "Orders Data",
@@ -65,7 +60,7 @@ const sectionData = {
         // Manage course for tutor
         {
             title: "Courses",
-            url: "/admin/courses",
+            url: "/tutor/courses",
             icon: TvMinimalPlay,
             items: [
                 {

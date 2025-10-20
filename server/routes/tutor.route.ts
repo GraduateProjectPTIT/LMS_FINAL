@@ -3,6 +3,8 @@ import { isAuthenticated, authorizeRoles } from "../middleware/auth";
 import {
   getTutorOverview,
   setupTutorProfile,
+  getTutorDashboardSummary,
+  getTutorEarnings,
 } from "../controllers/tutor.controller";
 const tutorRouter = express.Router();
 
@@ -16,3 +18,17 @@ tutorRouter.put(
 tutorRouter.get("/tutor/overview/:id/", isAuthenticated, getTutorOverview);
 
 export default tutorRouter;
+
+tutorRouter.get(
+  "/tutor/dashboard/summary",
+  isAuthenticated,
+  authorizeRoles("tutor"),
+  getTutorDashboardSummary
+);
+
+tutorRouter.get(
+  "/tutor/dashboard/earnings",
+  isAuthenticated,
+  authorizeRoles("tutor"),
+  getTutorEarnings
+);

@@ -5,12 +5,14 @@ export interface IPost extends Document {
   slug: string;
   contentHtml: string;
   excerpt?: string;
+  shortDescription?: string;
   coverImage?: {
     public_id: string;
     url: string;
   };
   tags: string[];
   status: "draft" | "published";
+  views: number;
   authorId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -22,12 +24,14 @@ const postSchema = new Schema<IPost>(
     slug: { type: String, required: true, unique: true, lowercase: true, index: true },
     contentHtml: { type: String, required: true },
     excerpt: { type: String },
+    shortDescription: { type: String },
     coverImage: {
       public_id: { type: String },
       url: { type: String },
     },
     tags: { type: [String], default: [] },
     status: { type: String, enum: ["draft", "published"], default: "draft" },
+    views: { type: Number, default: 0 },
     authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

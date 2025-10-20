@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/table";
 import CourseActions from './CourseActions';
 import Image from 'next/image';
-import { Calendar, DollarSign, Star, Users } from 'lucide-react';
-import Loader from "@/components/Loader";
 import { HiOutlineBookOpen } from "react-icons/hi";
 
 interface ICategory {
@@ -79,7 +77,7 @@ const CoursesTable = ({
         });
     };
 
-    // hiển thị skeleton khi isLoading là true
+    // Display skeleton when isLoading is true
     if (isLoading) {
         return (
             <div className="w-full">
@@ -88,12 +86,13 @@ const CoursesTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Course Name</TableHead>
+                                <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
                                 <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
-                                <TableHead>Created</TableHead>
+                                <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -101,25 +100,28 @@ const CoursesTable = ({
                             {[...Array(5)].map((_, index) => (
                                 <TableRow key={index}>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -141,12 +143,13 @@ const CoursesTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Course Name</TableHead>
+                                <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
                                 <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
-                                <TableHead>Created</TableHead>
+                                <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -175,58 +178,77 @@ const CoursesTable = ({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Course Name</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Estimated Price</TableHead>
-                            <TableHead>Level</TableHead>
-                            <TableHead>Ratings</TableHead>
-                            <TableHead>Purchased</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead className="w-16">Actions</TableHead>
+                            <TableHead className='border-r'>Course Name</TableHead>
+                            <TableHead className='border-r'>Creator</TableHead>
+                            <TableHead className='border-r'>Price</TableHead>
+                            <TableHead className='border-r'>Estimated Price</TableHead>
+                            <TableHead className='border-r'>Level</TableHead>
+                            <TableHead className='border-r'>Ratings</TableHead>
+                            <TableHead className='border-r'>Purchased</TableHead>
+                            <TableHead className='border-r'>Created At</TableHead>
+                            <TableHead className="w-16 text-center">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {courses.map((course) => (
                             <TableRow key={course._id}>
-                                <TableCell>
+                                {/* Course Name */}
+                                <TableCell className='border-r'>
                                     <div className="max-w-[300px]">
-                                        <p className="font-medium text-sm truncate" title={course.name}>
+                                        <p className="font-medium text-sm text-gray-900 dark:text-white truncate" title={course.name}>
                                             {course.name}
                                         </p>
                                     </div>
                                 </TableCell>
-                                <TableCell>
-                                    <span className="flex items-center space-x-1">
+                                {/* Creator */}
+                                <TableCell className='border-r'>
+                                    <div className="max-w-[150px]">
+                                        <span className="text-sm text-gray-600 dark:text-gray-300 truncate block" title={course.creatorId?.name}>
+                                            {course.creatorId?.name || 'N/A'}
+                                        </span>
+                                    </div>
+                                </TableCell>
+                                {/* Price */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
                                         {formatPrice(course.price)}
                                     </span>
                                 </TableCell>
-                                <TableCell>
-                                    <span className="flex items-center space-x-1">
+                                {/* Estimated Price */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
                                         {formatPrice(course.estimatedPrice)}
                                     </span>
                                 </TableCell>
-                                <TableCell>
-                                    <span className="flex items-center space-x-1">
+                                {/* Level */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
                                         {course.level}
                                     </span>
                                 </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center space-x-1">
-                                        <span className="text-sm">{course.ratings}</span>
-                                    </div>
+                                {/* Ratings */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        {course.ratings.toFixed(1)}
+                                    </span>
                                 </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center space-x-1">
-                                        <span className="text-sm">{course.purchased}</span>
-                                    </div>
+                                {/* Purchased */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        {course.purchased}
+                                    </span>
                                 </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center space-x-1">
-                                        <span className="text-sm">{formatDate(course.createdAt)}</span>
-                                    </div>
+                                {/* Created At */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        {formatDate(course.createdAt)}
+                                    </span>
                                 </TableCell>
+                                {/* Actions */}
                                 <TableCell>
-                                    <CourseActions course={course} onDelete={onDelete} />
+                                    <div className='w-full h-full flex justify-center items-center'>
+                                        <CourseActions course={course} onDelete={onDelete} />
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

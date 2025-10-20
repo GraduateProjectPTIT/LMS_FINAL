@@ -16,6 +16,7 @@ const SidebarMenuPanel = ({ closeMainMenu, isMobileMenuOpen }: SidebarMenuPanelP
         { name: 'Home', url: '/' },
         { name: 'Policy', url: '/policy' },
         { name: 'About Us', url: '/about' },
+        { name: 'Posts', url: '/posts' },
     ];
 
     return (

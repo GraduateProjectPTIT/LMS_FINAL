@@ -131,7 +131,6 @@ const Interests = ({ user }: InterestsProps) => {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <FaHeart className="text-blue-500" size={20} />
                         <CardTitle className="text-xl md:text-2xl font-bold">Learning Interests</CardTitle>
                     </div>
                     {!isEditing && (

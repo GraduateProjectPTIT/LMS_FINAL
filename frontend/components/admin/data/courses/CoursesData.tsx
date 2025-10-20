@@ -1,19 +1,17 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import SearchCourses from "./SearchCourses";
 import CoursesTable from "./CoursesTable";
 import PaginationCourses from "./PaginationCourses";
-import CourseModal from "./CourseModal";
+import DeleteCourseModal from "./DeleteCourseModal";
 
 interface PaginationInfo {
-    page: number;
-    limit: number;
-    total: number;
+    totalItems: number;
     totalPages: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
+    currentPage: number;
+    pageSize: number;
 }
 
 interface ICategory {
@@ -55,228 +53,106 @@ interface ICourseData {
 }
 
 interface FilterState {
-    selectedLevel: string;
-    selectedCategory: string;
-    priceRange: string;
     sortBy: string;
+    sortOrder: string;
 }
 
 const CoursesData = () => {
     const [allCourses, setAllCourses] = useState<ICourseData[]>([]);
-    const [levels, setLevels] = useState<string[]>([]);
-    const [categories, setCategories] = useState<ICategory[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [pagination, setPagination] = useState<PaginationInfo>({
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: 1,
+        pageSize: 10
+    });
+    const [loading, setLoading] = useState(false);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
     // Filter states
     const [filters, setFilters] = useState<FilterState>({
-        selectedLevel: "",
-        selectedCategory: "",
-        priceRange: "all",
-        sortBy: "default"
+        sortBy: "createdAt",
+        sortOrder: "desc"
     });
 
-    // Client-side pagination
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
-
-    // Modal
+    // Modal states
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [courseToDelete, setCourseToDelete] = useState<ICourseData | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Fetch all courses from server
-    const fetchAllCourses = useCallback(async () => {
-        try {
-            setIsLoading(true);
+    // Build query parameters
+    const buildQueryParams = useCallback(() => {
+        const params = new URLSearchParams();
 
+        // Always include page and limit
+        params.set('page', pagination.currentPage.toString());
+        params.set('limit', pagination.pageSize.toString());
+
+        // Add search keyword if present
+        if (searchQuery.trim()) {
+            params.set('keyword', searchQuery.trim());
+        }
+
+        // Add sort parameters
+        if (filters.sortBy && filters.sortBy !== 'default') {
+            params.set('sortBy', filters.sortBy);
+            params.set('sortOrder', filters.sortOrder);
+        }
+
+        return params.toString();
+    }, [pagination.currentPage, pagination.pageSize, searchQuery, filters]);
+
+    // Fetch courses from API
+    const handleFetchCourses = useCallback(async () => {
+        setLoading(true);
+        try {
+            const queryParams = buildQueryParams();
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/admin/courses`,
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/admin/courses?${queryParams}`,
                 {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: 'include',
                 }
             );
 
-            const data = await res.json();
+            const coursesData = await res.json();
 
             if (!res.ok) {
-                toast.error(data.message || "Failed to fetch courses");
-                console.log("Fetching courses failed: ", data.message);
+                toast.error(coursesData.message || "Failed to fetch courses");
+                console.log("Fetching courses failed: ", coursesData.message);
                 return;
             }
 
-            setAllCourses(data.courses || []);
-        } catch (err: any) {
+            setAllCourses(coursesData.paginatedResult.data || []);
+            setPagination({
+                totalItems: coursesData.paginatedResult.meta.totalItems,
+                totalPages: coursesData.paginatedResult.meta.totalPages,
+                currentPage: coursesData.paginatedResult.meta.currentPage,
+                pageSize: coursesData.paginatedResult.meta.pageSize
+            });
+        } catch (error: any) {
             toast.error("Error fetching courses");
-            console.log(err?.message || err);
+            console.log("Get all courses error:", error?.message || error);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
-    }, []);
+    }, [buildQueryParams]);
 
-    // Fetch levels
-    const fetchLevels = useCallback(async () => {
-        try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/levels`,
-                {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                }
-            );
-
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                setLevels(data.levels || []);
-            }
-        } catch (err: any) {
-            console.log("Error fetching levels:", err?.message || err);
-        }
-    }, []);
-
-    // Fetch categories
-    const fetchCategories = useCallback(async () => {
-        try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/categories`,
-                {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                }
-            );
-
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                setCategories(data.categories || []);
-            }
-        } catch (err: any) {
-            console.log("Error fetching categories:", err?.message || err);
-        }
-    }, []);
-
-    // Helper function to parse price range
-    const getPriceRangeFilter = (priceRange: string) => {
-        switch (priceRange) {
-            case '0-25':
-                return { min: 0, max: 25 };
-            case '25-50':
-                return { min: 25, max: 50 };
-            case '50-100':
-                return { min: 50, max: 100 };
-            case '100+':
-                return { min: 100, max: Infinity };
-            default:
-                return { min: 0, max: Infinity };
-        }
-    };
-
-    // Sort function
-    const sortCourses = (courses: ICourseData[], sortBy: string) => {
-        if (sortBy === 'default') return courses;
-
-        const sorted = [...courses];
-
-        switch (sortBy) {
-            case 'price-low':
-                return sorted.sort((a, b) => a.price - b.price);
-            case 'price-high':
-                return sorted.sort((a, b) => b.price - a.price);
-            case 'date-newest':
-                return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            case 'date-oldest':
-                return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            case 'rating':
-                return sorted.sort((a, b) => b.ratings - a.ratings);
-            case 'popularity':
-                return sorted.sort((a, b) => b.purchased - a.purchased);
-            default:
-                return sorted;
-        }
-    };
-
-    // Filter and search courses
-    const filteredCourses = useMemo(() => {
-        let filtered = allCourses;
-
-        // Apply search filter
-        if (searchQuery.trim()) {
-            filtered = filtered.filter(course =>
-                course.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        // Apply level filter
-        if (filters.selectedLevel) {
-            filtered = filtered.filter(course =>
-                course.level === filters.selectedLevel
-            );
-        }
-
-        // Apply category filter
-        if (filters.selectedCategory) {
-            filtered = filtered.filter(course =>
-                Array.isArray(course.categories) &&
-                course.categories.some(cat => cat._id === filters.selectedCategory)
-            );
-        }
-
-        // Apply price range filter
-        if (filters.priceRange && filters.priceRange !== 'all') {
-            const { min, max } = getPriceRangeFilter(filters.priceRange);
-            filtered = filtered.filter(course =>
-                course.price >= min && course.price <= max
-            );
-        }
-
-        // Apply sorting
-        if (filters.sortBy && filters.sortBy !== 'default') {
-            filtered = sortCourses(filtered, filters.sortBy);
-        }
-
-        return filtered;
-    }, [allCourses, searchQuery, filters]);
-
-    // Client-side pagination for filtered courses
-    const paginatedCourses = useMemo(() => {
-        const startIndex = (page - 1) * limit;
-        return filteredCourses.slice(startIndex, startIndex + limit);
-    }, [filteredCourses, page, limit]);
-
-    // Pagination info for filtered courses
-    const pagination: PaginationInfo = useMemo(() => {
-        const total = filteredCourses.length;
-        const totalPages = Math.ceil(total / limit);
-
-        return {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-        };
-    }, [filteredCourses.length, page, limit]);
-
-    // Fetch data when component mounts
+    // Fetch data when component mounts or when dependencies change
     useEffect(() => {
-        fetchAllCourses();
-        fetchLevels();
-        fetchCategories();
-    }, [fetchAllCourses, fetchLevels, fetchCategories]);
+        handleFetchCourses();
+    }, [handleFetchCourses]);
 
-    // Reset page when search query or filters change
+    // Reset to page 1 when search or filter changes
     useEffect(() => {
-        setPage(1);
+        if (pagination.currentPage !== 1) {
+            setPagination(prev => ({ ...prev, currentPage: 1 }));
+        }
     }, [searchQuery, filters]);
 
-    // Search handlers
     const handleSearchChange = (value: string) => {
         setSearchInput(value);
     };
@@ -290,25 +166,28 @@ const CoursesData = () => {
         setSearchQuery("");
     };
 
-    // Filter handlers
     const handleFilterChange = (newFilters: Partial<FilterState>) => {
         setFilters(prev => ({ ...prev, ...newFilters }));
     };
 
     const handleClearFilters = () => {
         setFilters({
-            selectedLevel: "",
-            selectedCategory: "",
-            priceRange: "all",
-            sortBy: "default"
+            sortBy: "createdAt",
+            sortOrder: "desc"
         });
     };
 
     // Pagination handlers
-    const handlePageChange = (nextPage: number) => setPage(nextPage);
+    const handlePageChange = (nextPage: number) => {
+        setPagination(prev => ({ ...prev, currentPage: nextPage }));
+    };
+
     const handleLimitChange = (nextLimit: number) => {
-        setPage(1);
-        setLimit(nextLimit);
+        setPagination(prev => ({
+            ...prev,
+            currentPage: 1,
+            pageSize: nextLimit
+        }));
     };
 
     // Delete handlers
@@ -319,6 +198,7 @@ const CoursesData = () => {
 
     const handleDeleteConfirm = async () => {
         if (!courseToDelete) return;
+
         try {
             setIsDeleting(true);
             const res = await fetch(
@@ -329,18 +209,21 @@ const CoursesData = () => {
                     credentials: "include",
                 }
             );
+
             const data = await res.json();
+
             if (!res.ok) {
                 toast.error(data.message || "Failed to delete course");
                 console.log("Delete course failed: ", data.message);
                 return;
             }
+
             toast.success("Course deleted successfully");
             setIsDeleteModalOpen(false);
             setCourseToDelete(null);
 
-            // Update courses list after deletion
-            fetchAllCourses();
+            // Refresh courses list after deletion
+            handleFetchCourses();
         } catch (err: any) {
             toast.error("Error deleting course");
             console.log(err?.message || err);
@@ -354,11 +237,21 @@ const CoursesData = () => {
         setCourseToDelete(null);
     };
 
+    // Create pagination info for the PaginationCourses component
+    const paginationInfo = {
+        page: pagination.currentPage,
+        limit: pagination.pageSize,
+        total: pagination.totalItems,
+        totalPages: pagination.totalPages,
+        hasNextPage: pagination.currentPage < pagination.totalPages,
+        hasPrevPage: pagination.currentPage > 1,
+    };
+
     return (
-        <div className="w-full p-4">
+        <div className="w-full">
             <div className="mb-6">
                 <p className="text-gray-600 dark:text-gray-300 mt-1 uppercase font-semibold">
-                    Manage and track your created courses
+                    Manage and track all courses
                 </p>
             </div>
 
@@ -369,45 +262,27 @@ const CoursesData = () => {
                 onClearSearch={handleClearSearch}
                 currentSearch={searchQuery}
                 // Filter props
-                levels={levels}
-                categories={categories}
                 filters={filters}
                 onFilterChange={handleFilterChange}
                 onClearFilters={handleClearFilters}
             />
 
             <CoursesTable
-                courses={paginatedCourses}
+                courses={allCourses}
                 onDelete={handleDeleteClick}
-                isLoading={isLoading}
+                isLoading={loading}
             />
 
-            {!isLoading && paginatedCourses.length > 0 && (
+            {!loading && allCourses.length > 0 && (
                 <PaginationCourses
-                    pagination={pagination}
+                    pagination={paginationInfo}
                     onPageChange={handlePageChange}
                     onLimitChange={handleLimitChange}
-                    isLoading={isLoading}
+                    isLoading={loading}
                 />
             )}
 
-            {!isLoading && (searchQuery || filters.selectedLevel || filters.selectedCategory) && filteredCourses.length === 0 && (
-                <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">
-                        No courses found with current search and filter criteria
-                    </p>
-                </div>
-            )}
-
-            {!isLoading && allCourses.length === 0 && (
-                <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">
-                        You haven't created any courses yet.
-                    </p>
-                </div>
-            )}
-
-            <CourseModal
+            <DeleteCourseModal
                 isOpen={isDeleteModalOpen}
                 onClose={handleDeleteCancel}
                 onConfirm={handleDeleteConfirm}

@@ -4,16 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Search, X, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface ICategory {
-    _id: string;
-    title: string;
-}
-
 interface FilterState {
-    selectedLevel: string;
-    selectedCategory: string;
-    priceRange: string;
     sortBy: string;
+    sortOrder: string;
 }
 
 interface SearchCoursesProps {
@@ -22,9 +15,6 @@ interface SearchCoursesProps {
     onSearchSubmit: () => void;
     onClearSearch: () => void;
     currentSearch?: string;
-    // Filter props
-    levels: string[];
-    categories: ICategory[];
     filters: FilterState;
     onFilterChange: (filters: Partial<FilterState>) => void;
     onClearFilters: () => void;
@@ -36,8 +26,6 @@ const SearchCourses = ({
     onSearchSubmit,
     onClearSearch,
     currentSearch = "",
-    levels,
-    categories,
     filters,
     onFilterChange,
     onClearFilters,
@@ -62,32 +50,28 @@ const SearchCourses = ({
         onSearchSubmit();
     };
 
-    const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onFilterChange({ selectedLevel: e.target.value });
-    };
-
-    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onFilterChange({ selectedCategory: e.target.value });
-    };
-
-    const handlePriceRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onFilterChange({ priceRange: e.target.value });
-    };
-
     const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onFilterChange({ sortBy: e.target.value });
+        const value = e.target.value;
+
+        // Parse the combined sort value
+        if (value === 'default') {
+            onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
+        } else if (value === 'date-newest') {
+            onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
+        } else if (value === 'date-oldest') {
+            onFilterChange({ sortBy: 'createdAt', sortOrder: 'asc' });
+        } else if (value === 'name-asc') {
+            onFilterChange({ sortBy: 'name', sortOrder: 'asc' });
+        } else if (value === 'name-desc') {
+            onFilterChange({ sortBy: 'name', sortOrder: 'desc' });
+        }
     };
 
-    const hasActiveFilters = filters.selectedLevel || filters.selectedCategory ||
-        (filters.priceRange && filters.priceRange !== 'all') ||
-        (filters.sortBy && filters.sortBy !== 'default');
+    const hasActiveFilters = (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc');
 
     const getActiveFiltersCount = () => {
         let count = 0;
-        if (filters.selectedLevel) count++;
-        if (filters.selectedCategory) count++;
-        if (filters.priceRange && filters.priceRange !== 'all') count++;
-        if (filters.sortBy && filters.sortBy !== 'default') count++;
+        if (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') count++;
         return count;
     };
 
@@ -95,26 +79,21 @@ const SearchCourses = ({
         setIsFilterOpen(!isFilterOpen);
     };
 
-    const getPriceRangeLabel = (value: string) => {
-        const priceLabels: Record<string, string> = {
-            'all': 'All Prices',
-            '0-25': '$0 - $25',
-            '25-50': '$25 - $50',
-            '50-100': '$50 - $100',
-            '100+': '$100+'
-        };
-        return priceLabels[value] || value;
+    const getSortValue = () => {
+        if (filters.sortBy === 'createdAt' && filters.sortOrder === 'desc') return 'date-newest';
+        if (filters.sortBy === 'createdAt' && filters.sortOrder === 'asc') return 'date-oldest';
+        if (filters.sortBy === 'name' && filters.sortOrder === 'asc') return 'name-asc';
+        if (filters.sortBy === 'name' && filters.sortOrder === 'desc') return 'name-desc';
+        return 'default';
     };
 
     const getSortLabel = (value: string) => {
         const sortLabels: Record<string, string> = {
-            'default': 'Default',
-            'price-low': 'Price: Low to High',
-            'price-high': 'Price: High to Low',
+            'default': 'Default (Newest)',
+            'name-asc': 'Name: A to Z',
+            'name-desc': 'Name: Z to A',
             'date-newest': 'Newest',
             'date-oldest': 'Oldest',
-            'rating': 'Highest Rated',
-            'popularity': 'Most Popular'
         };
         return sortLabels[value] || value;
     };
@@ -123,13 +102,13 @@ const SearchCourses = ({
         <div className="py-4 space-y-4">
             {/* Search and Filter Header */}
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                {/* Search Section - Left */}
+                {/* Search Section */}
                 <form onSubmit={handleSubmit} className="relative flex-1 max-w-md">
                     <div className="relative flex">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
-                                placeholder="Search courses by name..."
+                                placeholder="Search courses by name or tags..."
                                 value={searchQuery}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyPress}
@@ -149,7 +128,7 @@ const SearchCourses = ({
                         </div>
                         <Button
                             type="submit"
-                            className="ml-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                            className="ml-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
                             disabled={!searchQuery.trim()}
                         >
                             Search
@@ -157,13 +136,13 @@ const SearchCourses = ({
                     </div>
                 </form>
 
-                {/* Filter Toggle Button - Right */}
+                {/* Filter Toggle Button */}
                 <div className="flex items-center gap-2">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={toggleFilter}
-                        className="flex items-center gap-2 border-gray-300 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
+                        className="flex items-center gap-2 border-gray-300 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 hover:cursor-pointer"
                     >
                         <Filter className="h-4 w-4" />
                         Filters
@@ -181,7 +160,7 @@ const SearchCourses = ({
                             variant="ghost"
                             size="sm"
                             onClick={onClearFilters}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer"
                         >
                             Clear All
                         </Button>
@@ -213,71 +192,6 @@ const SearchCourses = ({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {/* Level Filter */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Level
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.selectedLevel}
-                                        onChange={handleLevelChange}
-                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
-                                    >
-                                        <option value="">All Levels</option>
-                                        {levels.map(level => (
-                                            <option key={level} value={level}>
-                                                {level}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                </div>
-                            </div>
-
-                            {/* Category Filter */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Category
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.selectedCategory}
-                                        onChange={handleCategoryChange}
-                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
-                                    >
-                                        <option value="">All Categories</option>
-                                        {categories.map(category => (
-                                            <option key={category._id} value={category._id}>
-                                                {category.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                </div>
-                            </div>
-
-                            {/* Price Range Filter */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Price Range
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.priceRange || 'all'}
-                                        onChange={handlePriceRangeChange}
-                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
-                                    >
-                                        <option value="all">All Prices</option>
-                                        <option value="0-25">$0 - $25</option>
-                                        <option value="25-50">$25 - $50</option>
-                                        <option value="50-100">$50 - $100</option>
-                                        <option value="100+">$100+</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                </div>
-                            </div>
-
                             {/* Sort By Filter */}
                             <div className="flex flex-col gap-2">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -285,17 +199,15 @@ const SearchCourses = ({
                                 </label>
                                 <div className="relative">
                                     <select
-                                        value={filters.sortBy || 'default'}
+                                        value={getSortValue()}
                                         onChange={handleSortChange}
                                         className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
                                     >
-                                        <option value="default">Default</option>
-                                        <option value="price-low">Price: Low to High</option>
-                                        <option value="price-high">Price: High to Low</option>
+                                        <option value="default">Default (Newest)</option>
+                                        <option value="name-asc">Name: A to Z</option>
+                                        <option value="name-desc">Name: Z to A</option>
                                         <option value="date-newest">Newest</option>
                                         <option value="date-oldest">Oldest</option>
-                                        <option value="rating">Highest Rated</option>
-                                        <option value="popularity">Most Popular</option>
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                 </div>
@@ -309,7 +221,7 @@ const SearchCourses = ({
                                 variant="ghost"
                                 onClick={onClearFilters}
                                 disabled={!hasActiveFilters}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer"
                             >
                                 Reset All Filters
                             </Button>
@@ -318,14 +230,14 @@ const SearchCourses = ({
                                     type="button"
                                     variant="outline"
                                     onClick={toggleFilter}
-                                    className="border-gray-300 dark:border-slate-800"
+                                    className="border-gray-300 dark:border-slate-800 hover:cursor-pointer"
                                 >
                                     Close
                                 </Button>
                                 <Button
                                     type="button"
                                     onClick={toggleFilter}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
                                 >
                                     Apply Filters
                                 </Button>
@@ -340,50 +252,14 @@ const SearchCourses = ({
                 <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Active filters:</span>
 
-                    {filters.selectedLevel && (
-                        <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Level: {filters.selectedLevel}</span>
-                            <button
-                                onClick={() => onFilterChange({ selectedLevel: "" })}
-                                className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </div>
-                    )}
-
-                    {filters.selectedCategory && (
-                        <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Category: {categories.find(cat => cat._id === filters.selectedCategory)?.title}</span>
-                            <button
-                                onClick={() => onFilterChange({ selectedCategory: "" })}
-                                className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </div>
-                    )}
-
-                    {filters.priceRange && filters.priceRange !== 'all' && (
-                        <div className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Price: {getPriceRangeLabel(filters.priceRange)}</span>
-                            <button
-                                onClick={() => onFilterChange({ priceRange: 'all' })}
-                                className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </div>
-                    )}
-
-                    {filters.sortBy && filters.sortBy !== 'default' && (
+                    {(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') && (
                         <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Sort: {getSortLabel(filters.sortBy)}</span>
+                            <span>Sort: {getSortLabel(getSortValue())}</span>
                             <button
-                                onClick={() => onFilterChange({ sortBy: 'default' })}
+                                onClick={() => onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' })}
                                 className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
                             >
-                                <X className="h-3 w-3" />
+                                <X className="h-3 w-3 hover:cursor-pointer" />
                             </button>
                         </div>
                     )}

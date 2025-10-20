@@ -28,7 +28,7 @@ interface SectionItemProps {
     sectionIndex: number;
     canRemoveSection: boolean;
     collapsedStates: { [key: string]: boolean };
-    onSectionChange: (updatedSection: ICreateSection) => void;
+    onSectionChange: (updater: ICreateSection | ((prevSection: ICreateSection) => ICreateSection)) => void;
     onRemoveSection: () => void;
     onToggleLectureCollapse: (sectionIndex: number, lectureIndex: number) => void;
     // Thêm props cho drag-and-drop
@@ -71,8 +71,10 @@ const SectionItem = ({
     });
 
     const handleSectionTitleChange = (value: string) => {
-        const updatedSection = { ...section, sectionTitle: value };
-        onSectionChange(updatedSection);
+        onSectionChange(prevSection => ({
+            ...prevSection,
+            sectionTitle: value
+        }));
     };
 
     // Hàm kiểm tra xem lecture có đầy đủ thông tin bắt buộc không
@@ -108,11 +110,10 @@ const SectionItem = ({
             uploadProgress: 0
         };
 
-        const updatedSection = {
-            ...section,
-            sectionContents: [...section.sectionContents, newLecture]
-        };
-        onSectionChange(updatedSection);
+        onSectionChange(prevSection => ({
+            ...prevSection,
+            sectionContents: [...prevSection.sectionContents, newLecture]
+        }));
     };
 
     const handleRemoveLecture = (lectureIndex: number) => {
@@ -131,23 +132,39 @@ const SectionItem = ({
 
     const confirmDeleteLecture = () => {
         if (deleteModal.lectureIndex !== null) {
-            const updatedSection = {
-                ...section,
-                sectionContents: section.sectionContents.filter((_, index) => index !== deleteModal.lectureIndex)
-            };
-            onSectionChange(updatedSection);
+            onSectionChange(prevSection => ({
+                ...prevSection,
+                sectionContents: prevSection.sectionContents.filter((_, index) => index !== deleteModal.lectureIndex)
+            }));
             toast.success("Lecture deleted successfully");
         }
     };
 
-    const handleUpdateLecture = (lectureIndex: number, updatedLecture: ICreateLecture) => {
-        const updatedSection = {
-            ...section,
-            sectionContents: section.sectionContents.map((lecture, index) =>
-                index === lectureIndex ? updatedLecture : lecture
-            )
-        };
-        onSectionChange(updatedSection);
+    const handleUpdateLecture = (
+        lectureIndex: number,
+        // Cho phép nhận vào một object hoặc một hàm cập nhật
+        lectureUpdater: ICreateLecture | ((prevLecture: ICreateLecture) => ICreateLecture)
+    ) => {
+        // Truyền một HÀM vào onSectionChange thay vì một object
+        onSectionChange((prevSection) => {
+            // `prevSection` ở đây được đảm bảo là state mới nhất
+            const updatedContents = prevSection.sectionContents.map((currentLecture, index) => {
+                if (index === lectureIndex) {
+                    // Nếu lectureUpdater là một hàm, gọi nó với state hiện tại của lecture
+                    if (typeof lectureUpdater === 'function') {
+                        return lectureUpdater(currentLecture);
+                    }
+                    // Nếu không, nó là một object, cứ trả về nó
+                    return lectureUpdater;
+                }
+                return currentLecture;
+            });
+
+            return {
+                ...prevSection,
+                sectionContents: updatedContents,
+            };
+        });
     };
 
     // Đếm số lecture đã hoàn thành
@@ -156,20 +173,19 @@ const SectionItem = ({
 
     const handleLectureDragEnd = (event: DragEndEvent): void => {
         const { active, over } = event;
-        if (!over) return;
+        if (!over || active.id === over.id) return;
 
-        if (active.id !== over.id) {
-            const oldIndex = section.sectionContents.findIndex(lecture => lecture.id === active.id);
-            const newIndex = section.sectionContents.findIndex(lecture => lecture.id === over.id);
+        onSectionChange((prevSection) => {
+            const oldIndex = prevSection.sectionContents.findIndex(lecture => lecture.id === active.id);
+            const newIndex = prevSection.sectionContents.findIndex(lecture => lecture.id === over.id);
 
-            if (oldIndex === -1 || newIndex === -1) return;
+            if (oldIndex === -1 || newIndex === -1) return prevSection;
 
-            const updatedSection = {
-                ...section,
-                sectionContents: arrayMove(section.sectionContents, oldIndex, newIndex)
+            return {
+                ...prevSection,
+                sectionContents: arrayMove(prevSection.sectionContents, oldIndex, newIndex)
             };
-            onSectionChange(updatedSection);
-        }
+        });
     };
 
     return (

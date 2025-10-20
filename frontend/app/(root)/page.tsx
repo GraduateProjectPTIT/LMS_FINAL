@@ -6,16 +6,18 @@ import LogoTicker from '@/sections/LogoTicker'
 import ProductShowcase from '@/sections/ProductShowcase'
 import Testimonials from '@/sections/Testimonials'
 import CategoryCarousel from '@/sections/CategoryCarousel'
-import FavouriteCourses from '@/sections/FavouriteCourses'
 import RecommendCourses from '@/sections/RecommendCourses'
+import TopPurchasedCourses from '@/sections/TopPurchasedCourses'
+import TopRatedCourses from '@/sections/TopRatedCourses'
 
 const Page = () => {
   return (
     <Layout>
       <Hero />
       <LogoTicker />
+      <TopPurchasedCourses />
       <CategoryCarousel />
-      <FavouriteCourses />
+      <TopRatedCourses />
       <ProductShowcase />
       <RecommendCourses />
       <Testimonials />

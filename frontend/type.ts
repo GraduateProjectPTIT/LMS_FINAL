@@ -4,6 +4,12 @@ export interface ParamsProps {
     }
 }
 
+export interface SlugParamsProps {
+    params: {
+        slug: string
+    }
+}
+
 // ------------------- CLOUDINARY UPLOAD -------------------
 
 export interface UploadSignatureResponse {
@@ -18,7 +24,7 @@ export interface UploadSignatureResponse {
 // ------------------- BASE INTERFACES -------------------
 
 export interface IImageAsset {
-    public_id: string;
+    public_id?: string;
     url: string;
 }
 
@@ -220,6 +226,19 @@ export interface ICourseResponseFromServer {
 
 // ------------------- ENROLL COURSE -------------------
 
+export interface IUser {
+    _id: string;
+    name: string;
+    avatar: IImageAsset;
+}
+
+export interface ILectureQuestion {
+    _id: string;
+    question: string;
+    replies: any[];
+    userId: IUser;
+}
+
 export interface SectionLecture {
     _id: string;
     videoTitle: string;
@@ -271,7 +290,7 @@ export interface CartItem {
     level?: string;
     totalSections?: number;
     totalLectures?: number;
-    totalTime?: string;
+    totalTime?: number;
     instructorName?: string;
     ratings?: number;
 }

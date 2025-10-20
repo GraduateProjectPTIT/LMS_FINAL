@@ -4,6 +4,10 @@ import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
+import { userRepository } from "../repositories/user.repository";
+import { orderRepository } from "../repositories/order.repository";
+import { enrolledCourseRepository } from "../repositories/enrolledCourse.repository";
+import { courseRepository } from "../repositories/course.repository";
 import {
   IStudent,
   ITutor,
@@ -27,7 +31,9 @@ import { Types } from "mongoose";
 import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
 import { createKeywordSearchFilter } from "../utils/query.helper";
-
+import { SortOptions } from "../utils/pagination.helper";
+import CourseModel from "../models/course.model";
+import OrderModel from "../models/order.model";
 // --- XÓA USER ---
 // export const deleteUserService = async (id: string) => {
 //   const user = await userModel.findById(id);
@@ -41,13 +47,108 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 //   await redis.del(id);
 // };
 
+// Admin dashboard summary
+export const getAdminDashboardSummaryService = async () => {
+  const [
+    totalUsers,
+    totalTutors,
+    totalStudents,
+    totalCourses,
+    paidOrdersAgg,
+    recentUsers,
+    recentPaidOrders,
+  ] = await Promise.all([
+    userModel.countDocuments({}),
+    userModel.countDocuments({ role: "tutor" }),
+    userModel.countDocuments({ role: "student" }),
+    CourseModel.countDocuments({}),
+    OrderModel.aggregate([
+      { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $ifNull: ["$payment_info.amount", { $ifNull: ["$total", 0] }],
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    userModel
+      .find({})
+      .select("name email avatar createdAt role")
+      .sort({ createdAt: -1 })
+      .limit(5),
+    OrderModel.find({ "payment_info.status": { $in: ["succeeded", "paid"] } })
+      .sort({ createdAt: -1 })
+      .limit(5),
+  ]);
+
+  const totalOrders =
+    Array.isArray(paidOrdersAgg) && paidOrdersAgg.length
+      ? paidOrdersAgg[0].count
+      : 0;
+  const totalRevenue =
+    Array.isArray(paidOrdersAgg) && paidOrdersAgg.length
+      ? paidOrdersAgg[0].totalRevenue
+      : 0;
+
+  return {
+    summary: {
+      totalUsers,
+      totalTutors,
+      totalStudents,
+      totalCourses,
+      totalOrders,
+      totalRevenue,
+    },
+    recentUsers,
+    recentPaidOrders,
+  };
+};
+
+// Admin revenue chart
+export const getAdminRevenueChartService = async (range: string = "30d") => {
+  const isMonthly = range === "12m";
+  const matchStage = {
+    "payment_info.status": { $in: ["succeeded", "paid"] },
+  } as any;
+  const groupId = isMonthly
+    ? { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }
+    : {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
+
+  const data = await OrderModel.aggregate([
+    { $match: matchStage },
+    {
+      $group: {
+        _id: groupId,
+        revenue: {
+          $sum: {
+            $ifNull: ["$payment_info.amount", { $ifNull: ["$total", 0] }],
+          },
+        },
+      },
+    },
+    {
+      $sort: {
+        "_id.year": 1,
+        "_id.month": 1,
+        ...(isMonthly ? {} : { "_id.day": 1 }),
+      },
+    },
+  ]);
+
+  return { range, series: data };
+};
+
 // --- LẤY TẤT CẢ USERS (đã có) ---
 // Đảm bảo bạn import SortOptions từ file helper
-import { SortOptions } from "../utils/pagination.helper";
-import { userRepository } from "../repositories/user.repository";
-import { orderRepository } from "../repositories/order.repository";
-import { enrolledCourseRepository } from "../repositories/enrolledCourse.repository";
-import { courseRepository } from "../repositories/course.repository";
 
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
   const {

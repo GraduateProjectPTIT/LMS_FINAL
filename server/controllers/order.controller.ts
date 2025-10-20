@@ -8,6 +8,8 @@ import {
   getAllOrdersService,
   getPaidOrdersService,
   newOrder,
+  getOrderDetailService,
+  getTutorOrdersService,
 } from "../services/order.service";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -585,7 +587,7 @@ export const cancelPayPalPayment = CatchAsyncError(
 export const getAdminOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      getAllOrdersService(res);
+      getAllOrdersService(req.query, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
@@ -621,6 +623,27 @@ export const getPaidOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       getPaidOrdersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const getAdminOrderDetail = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orderId = req.params.id;
+      await getOrderDetailService(orderId, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const getTutorOrders = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getTutorOrdersService(req.user, req.query, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }

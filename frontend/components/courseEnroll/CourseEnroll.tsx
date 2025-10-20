@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { RootState } from '@/redux/store';
 import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
@@ -15,9 +16,9 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [completedLectures, setCompletedLectures] = useState<string[]>([]);
-    const [enrollmentData, setEnrollmentData] = useState<any>(null);
 
     const { currentUser } = useSelector((state: RootState) => state.user);
+    const router = useRouter();
 
     const isAdmin = currentUser?.role === 'admin';
     const isCreator = course ? currentUser?._id === course.creatorId?._id : false;
@@ -41,18 +42,39 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             setCourse(data.course);
 
-            // Set enrollment data and completed lectures
-            if (data.enrollment) {
-                setEnrollmentData(data.enrollment);
-                setCompletedLectures(data.enrollment.completedLectures || []); // api chưa trả về completedLectures
+            // Set các lecture đã hoàn thành từ API response
+            if (data.completedLectures && Array.isArray(data.completedLectures)) {
+                setCompletedLectures(data.completedLectures);
             } else {
                 setCompletedLectures([]);
             }
 
-            // Auto-select first accessible lecture
-            if (data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
-                const firstLecture = data.course.courseData[0].sectionContents[0];
-                setSelectedLecture(firstLecture);
+            // Tìm lecture đầu tiên chưa hoàn thành hoặc lecture cuối cùng nếu tất cả đã hoàn thành
+            const allLectures = getAllLecturesFromCourse(data.course);
+            const completedSet = new Set(data.completedLectures || []);
+
+            let lectureToSelect = null;
+
+            // Tìm lecture chưa hoàn thành đầu tiên
+            for (const lecture of allLectures) {
+                if (!completedSet.has(lecture._id)) {
+                    lectureToSelect = lecture;
+                    break;
+                }
+            }
+
+            // Nếu tất cả đã hoàn thành, chọn lecture cuối cùng
+            if (!lectureToSelect && allLectures.length > 0) {
+                lectureToSelect = allLectures[allLectures.length - 1];
+            }
+
+            // Nếu vẫn không có lecture (không nên xảy ra), chọn lecture đầu tiên
+            if (!lectureToSelect && data.course.courseData.length > 0 && data.course.courseData[0].sectionContents.length > 0) {
+                lectureToSelect = data.course.courseData[0].sectionContents[0];
+            }
+
+            if (lectureToSelect) {
+                setSelectedLecture(lectureToSelect);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -62,12 +84,43 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     }
 
     useEffect(() => {
-        if (courseId) {
-            handleEnrollCourse();
-        }
+        const checkAndFetch = async () => {
+            if (!courseId) return;
+
+            // Kiểm tra quyền truy cập trước
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/${courseId}/has-purchased`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                });
+                const data = await res.json();
+                if (!res.ok || !data.hasPurchased) {
+                    router.replace("/error/unauthorized");
+                    return;
+                }
+                // Nếu hợp lệ, mới gọi API lấy dữ liệu khóa học
+                handleEnrollCourse();
+            } catch (error: any) {
+                router.replace("/error/unauthorized");
+            }
+        };
+
+        checkAndFetch();
     }, [courseId]);
 
-    // Create flat array of all lectures with their order
+    // Helper function to get all lectures from course data
+    const getAllLecturesFromCourse = (courseData: CourseEnrollResponse) => {
+        const allLectures: SectionLecture[] = [];
+        courseData.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push(lecture);
+            });
+        });
+        return allLectures;
+    };
+
+    // Tạo một flat array tất cả các lecture với thứ tự
     const getAllLecturesInOrder = () => {
         if (!course) return [];
 
@@ -84,7 +137,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         return allLectures;
     };
 
-    // Check if lecture is accessible
+    // Kiểm tra xem một lecture có thể truy cập được không
     const isLectureAccessible = (lecture: SectionLecture) => {
         if (canBypass) return true;
 
@@ -124,20 +177,6 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             }
             return prev;
         });
-
-        // Update enrollment data progress if available
-        if (enrollmentData) {
-            const allLectures = getAllLecturesInOrder();
-            const newCompletedCount = completedLectures.length + 1;
-            const progress = Math.min(100, Math.round((newCompletedCount / allLectures.length) * 100));
-
-            setEnrollmentData(prev => ({
-                ...prev,
-                progress,
-                completed: progress >= 100,
-                completedLectures: [...completedLectures, lectureId]
-            }));
-        }
     };
 
     // Auto-select next accessible lecture when current one is completed

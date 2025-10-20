@@ -11,7 +11,21 @@ import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import { ECourseLevel } from "../constants/course-level.enum";
-import { normalizeLevel, formatTime } from "../utils/course.helpers";
+import { normalizeLevel } from "../utils/course.helpers";
+import CartModel from "../models/cart.model";
+
+import { makeCaseInsensitiveRegex } from "../utils/search.utils";
+import { parsePaging, buildSort } from "../utils/paging.utils";
+import {
+  parseCourseLevel,
+  normalizeTitleArray,
+  normalizeCourseSections,
+  assertSectionVideosHavePublicIdUrl,
+  validateAndMaterializeCategoryIds,
+  summarizeCourseData,
+  sanitizeCourseMedia,
+} from "../utils/course.utils";
+import { upsertCourseThumbnail } from "../utils/media.utils";
 
 import ErrorHandler from "../utils/ErrorHandler";
 
@@ -58,23 +72,11 @@ export const createCourse = async (
     if (!data.level) {
       return next(new ErrorHandler("Course level is required", 400));
     }
-    const levelStr = String(data.level).trim().toLowerCase();
-    const mapLevel = (val: string) => {
-      if (val === ECourseLevel.Beginner.toLowerCase())
-        return ECourseLevel.Beginner;
-      if (val === ECourseLevel.Intermediate.toLowerCase())
-        return ECourseLevel.Intermediate;
-      if (val === ECourseLevel.Advanced.toLowerCase())
-        return ECourseLevel.Advanced;
-      if (val === ECourseLevel.Professional.toLowerCase())
-        return ECourseLevel.Professional;
-      return null;
-    };
-    const enumLevel = mapLevel(levelStr);
-    if (!enumLevel) {
+    try {
+      data.level = parseCourseLevel(data.level);
+    } catch {
       return next(new ErrorHandler("Invalid course level", 400));
     }
-    data.level = enumLevel;
 
     if (!data.videoDemo || !data.videoDemo.public_id || !data.videoDemo.url) {
       return next(
@@ -85,20 +87,15 @@ export const createCourse = async (
       );
     }
 
-    if (Array.isArray(data.courseData)) {
-      for (const section of data.courseData) {
-        if (!Array.isArray(section.sectionContents)) continue;
-        for (const lecture of section.sectionContents) {
-          if (!lecture?.video?.public_id || !lecture?.video?.url) {
-            return next(
-              new ErrorHandler(
-                "Each lecture must include video { public_id, url } (upload via client with signature)",
-                400
-              )
-            );
-          }
-        }
-      }
+    try {
+      assertSectionVideosHavePublicIdUrl(data.courseData);
+    } catch (e: any) {
+      return next(
+        new ErrorHandler(
+          e?.message || "Invalid courseData videos",
+          e?.statusCode || 400
+        )
+      );
     }
 
     if (
@@ -129,128 +126,36 @@ export const createCourse = async (
     }
 
     if (typeof data.level !== "undefined") {
-      const levelStr = String(data.level).trim().toLowerCase();
-      const mapLevel = (val: string) => {
-        if (val === ECourseLevel.Beginner.toLowerCase())
-          return ECourseLevel.Beginner;
-        if (val === ECourseLevel.Intermediate.toLowerCase())
-          return ECourseLevel.Intermediate;
-        if (val === ECourseLevel.Advanced.toLowerCase())
-          return ECourseLevel.Advanced;
-        if (val === ECourseLevel.Professional.toLowerCase())
-          return ECourseLevel.Professional;
-        return null;
-      };
-      const enumLevel = mapLevel(levelStr);
-      if (!enumLevel) {
+      try {
+        data.level = parseCourseLevel(data.level);
+      } catch {
         return next(new ErrorHandler("Invalid course level", 400));
       }
-      data.level = enumLevel;
     }
 
     if (data.categories) {
-      if (!Array.isArray(data.categories) || data.categories.length === 0) {
+      try {
+        data.categories = await validateAndMaterializeCategoryIds(
+          data.categories
+        );
+      } catch (e: any) {
         return next(
           new ErrorHandler(
-            "categories must be a non-empty array of Category ids",
-            400
+            e?.message || "Invalid categories",
+            e?.statusCode || 400
           )
         );
       }
-      const ids: string[] = data.categories;
-      if (
-        !ids.every(
-          (id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id)
-        )
-      ) {
-        return next(
-          new ErrorHandler("One or more category ids are invalid", 400)
-        );
-      }
-      const found = await CategoryModel.find({ _id: { $in: ids } }).select(
-        "_id"
-      );
-      if (found.length !== ids.length) {
-        return next(
-          new ErrorHandler("One or more categories do not exist", 400)
-        );
-      }
-      data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
-    if (Array.isArray(data.benefits)) {
-      data.benefits = data.benefits.map((b: any) => ({
-        ...(b && b._id ? { _id: b._id } : {}),
-        title: b?.title,
-      }));
-    }
+    data.benefits = normalizeTitleArray(data.benefits);
+    data.prerequisites = normalizeTitleArray(data.prerequisites);
+    data.courseData = normalizeCourseSections(data.courseData);
 
-    if (Array.isArray(data.prerequisites)) {
-      data.prerequisites = data.prerequisites.map((p: any) => ({
-        ...(p && p._id ? { _id: p._id } : {}),
-        title: p?.title,
-      }));
-    }
+    data.benefits = normalizeTitleArray(data.benefits);
+    data.prerequisites = normalizeTitleArray(data.prerequisites);
 
-    if (Array.isArray(data.courseData)) {
-      data.courseData = data.courseData.map((section: any) => ({
-        ...(section && section._id ? { _id: section._id } : {}),
-        sectionTitle: section?.sectionTitle,
-        sectionContents: Array.isArray(section?.sectionContents)
-          ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
-          : [],
-      }));
-    }
-
-    if (Array.isArray(data.benefits)) {
-      data.benefits = data.benefits.map((b: any) => ({
-        ...(b && b._id ? { _id: b._id } : {}),
-        title: b?.title,
-      }));
-    }
-
-    if (Array.isArray(data.prerequisites)) {
-      data.prerequisites = data.prerequisites.map((p: any) => ({
-        ...(p && p._id ? { _id: p._id } : {}),
-        title: p?.title,
-      }));
-    }
-
-    if (Array.isArray(data.courseData)) {
-      data.courseData = data.courseData.map((section: any) => ({
-        ...(section && section._id ? { _id: section._id } : {}),
-        sectionTitle: section?.sectionTitle,
-        sectionContents: Array.isArray(section?.sectionContents)
-          ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
-          : [],
-      }));
-    }
+    data.courseData = normalizeCourseSections(data.courseData);
 
     if (Array.isArray(data.benefits)) {
       data.benefits = data.benefits.map((b: any) => ({
@@ -362,15 +267,17 @@ export const getTutorCoursesService = async (
     if (user?.role !== "tutor") {
       return next(new ErrorHandler("Forbidden", 403));
     }
-
-    let page = Number.parseInt(String(query?.page), 10);
-    if (Number.isNaN(page) || page < 1) page = 1;
-    let limit = Number.parseInt(String(query?.limit), 10);
-    if (Number.isNaN(limit) || limit < 1) limit = 10;
-    if (limit > 100) limit = 100;
-    const skip = (page - 1) * limit;
-
+    const { page, limit, skip } = parsePaging(query, 100, 10);
+    const keyword =
+      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     const filter: any = { creatorId: user._id };
+    if (keyword.length >= 2) {
+      const regex = makeCaseInsensitiveRegex(keyword);
+      filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
+    }
+
+    const allowedSortFields = ["createdAt", "name"] as const;
+    const sort = buildSort(query, allowedSortFields, "createdAt");
 
     const [courses, totalItems] = await Promise.all([
       CourseModel.find(filter)
@@ -379,7 +286,7 @@ export const getTutorCoursesService = async (
         )
         .populate("creatorId", "name avatar email")
         .populate("categories", "title")
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit),
       CourseModel.countDocuments(filter),
@@ -422,19 +329,24 @@ export const getTopPurchasedCoursesService = async (
 
     const courses = await CourseModel.find({})
       .select(
-        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        "name price estimatedPrice thumbnail purchased courseData.sectionContents.videoLength"
       )
-      .populate("creatorId", "name avatar email")
-      .populate("categories", "title")
       .sort({ purchased: -1, createdAt: -1 })
       .limit(limit);
 
-    const mapped = courses.map((c: any) => ({
-      ...c.toObject(),
-      level: normalizeLevel(c.level),
-      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
-      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
-    }));
+    const mapped = courses.map((c: any) => {
+      const sum = summarizeCourseData(c.courseData);
+      return {
+        _id: c._id,
+        thumbnail: { url: c.thumbnail?.url },
+        name: c.name,
+        price: c.price,
+        estimatedPrice: c.estimatedPrice,
+        enrolledCounts: c.purchased,
+        totalLectures: sum.totalLectures,
+        totalDuration: sum.totalDuration,
+      };
+    });
 
     return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
@@ -455,19 +367,24 @@ export const getTopRatedCoursesService = async (
 
     const courses = await CourseModel.find({})
       .select(
-        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+        "name price estimatedPrice thumbnail purchased ratings courseData.sectionContents.videoLength"
       )
-      .populate("creatorId", "name avatar email")
-      .populate("categories", "title")
       .sort({ ratings: -1, purchased: -1, createdAt: -1 })
       .limit(limit);
 
-    const mapped = courses.map((c: any) => ({
-      ...c.toObject(),
-      level: normalizeLevel(c.level),
-      thumbnail: c.thumbnail?.url ? { url: c.thumbnail.url } : c.thumbnail,
-      videoDemo: c.videoDemo?.url ? { url: c.videoDemo.url } : c.videoDemo,
-    }));
+    const mapped = courses.map((c: any) => {
+      const sum = summarizeCourseData(c.courseData);
+      return {
+        _id: c._id,
+        thumbnail: { url: c.thumbnail?.url },
+        name: c.name,
+        price: c.price,
+        estimatedPrice: c.estimatedPrice,
+        enrolledCounts: c.purchased,
+        totalLectures: sum.totalLectures,
+        totalDuration: sum.totalDuration,
+      };
+    });
 
     return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
@@ -490,6 +407,23 @@ export const checkUserPurchasedCourseService = async (
       return next(new ErrorHandler("Invalid course id", 400));
     }
 
+    // Admins are considered as having access
+    if (String(user.role) === "admin") {
+      return res.status(200).json({ success: true, hasPurchased: true });
+    }
+
+    // Check course existence and ownership
+    const courseDoc = await CourseModel.findById(courseId).select("creatorId");
+    if (!courseDoc) {
+      return next(new ErrorHandler("Course not found", 404));
+    }
+
+    // Course creator is considered as having access
+    if (String((courseDoc as any).creatorId) === String(user._id)) {
+      return res.status(200).json({ success: true, hasPurchased: true });
+    }
+
+    // Regular user: check enrollment
     const enrollment = await EnrolledCourseModel.findOne({
       userId: user._id,
       courseId: new mongoose.Types.ObjectId(courseId),
@@ -583,69 +517,207 @@ export const getStudentEnrolledCoursesService = async (
   next: NextFunction
 ) => {
   try {
-    const pageParam = query?.page;
-    const limitParam = query?.limit;
-    let page = Number.parseInt(String(pageParam), 10);
-    if (Number.isNaN(page) || page < 1) page = 1;
-    let limit = Number.parseInt(String(limitParam), 10);
-    if (Number.isNaN(limit) || limit < 1) limit = 10;
-    if (limit > 100) limit = 100;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePaging(query, 100, 10);
 
     if (!user?._id || user?.role === "admin") {
       return next(new ErrorHandler("Forbidden", 403));
     }
 
-    const [enrollments, totalAgg] = await Promise.all([
-      EnrolledCourseModel.find({ userId: user._id })
-        .select("courseId progress completed enrolledAt")
-        .populate({
-          path: "courseId",
-          select:
-            "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId",
-          populate: [
-            { path: "creatorId", select: "name avatar email" },
-            { path: "categories", select: "title" },
-          ],
-        })
-        .sort({ enrolledAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      EnrolledCourseModel.aggregate([
-        { $match: { userId: new mongoose.Types.ObjectId(String(user._id)) } },
-        {
-          $lookup: {
-            from: "courses",
-            localField: "courseId",
-            foreignField: "_id",
-            as: "course",
-          },
+    // Filters
+    const keyword =
+      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+    let categoryIds: string[] = [];
+    if (typeof query?.categoryIds !== "undefined") {
+      if (Array.isArray(query.categoryIds)) {
+        categoryIds = query.categoryIds as string[];
+      } else if (typeof query.categoryIds === "string") {
+        categoryIds = String(query.categoryIds)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      categoryIds = categoryIds.filter((id) =>
+        mongoose.Types.ObjectId.isValid(id)
+      );
+    }
+
+    const levelStr =
+      typeof query?.level !== "undefined"
+        ? String(query.level).trim().toLowerCase()
+        : "";
+    const mapLevel = (val: string) => {
+      if (val === ECourseLevel.Beginner.toLowerCase())
+        return ECourseLevel.Beginner;
+      if (val === ECourseLevel.Intermediate.toLowerCase())
+        return ECourseLevel.Intermediate;
+      if (val === ECourseLevel.Advanced.toLowerCase())
+        return ECourseLevel.Advanced;
+      if (val === ECourseLevel.Professional.toLowerCase())
+        return ECourseLevel.Professional;
+      return null;
+    };
+    const enumLevel = levelStr ? mapLevel(levelStr) : null;
+
+    const completedParam =
+      typeof query?.completed !== "undefined"
+        ? String(query.completed).toLowerCase()
+        : "";
+    const completedFilter =
+      completedParam === "true"
+        ? true
+        : completedParam === "false"
+        ? false
+        : undefined;
+
+    const minProgress =
+      query?.minProgress !== undefined
+        ? Math.max(0, Number(query.minProgress))
+        : undefined;
+    const maxProgress =
+      query?.maxProgress !== undefined
+        ? Math.min(100, Number(query.maxProgress))
+        : undefined;
+
+    const from = query?.from ? new Date(String(query.from)) : undefined;
+    const to = query?.to ? new Date(String(query.to)) : undefined;
+
+    const allowedSortBy = [
+      "enrolledAt",
+      "name",
+      "createdAt",
+      "ratings",
+    ] as const;
+    const sortBy = allowedSortBy.includes(String(query?.sortBy) as any)
+      ? String(query.sortBy)
+      : "enrolledAt";
+    const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+
+    const enrollmentMatch: any = {
+      userId: new mongoose.Types.ObjectId(String(user._id)),
+    };
+    if (typeof completedFilter !== "undefined")
+      enrollmentMatch.completed = completedFilter;
+    if (typeof minProgress === "number" || typeof maxProgress === "number") {
+      enrollmentMatch.progress = {} as any;
+      if (typeof minProgress === "number")
+        (enrollmentMatch.progress as any).$gte = minProgress;
+      if (typeof maxProgress === "number")
+        (enrollmentMatch.progress as any).$lte = maxProgress;
+    }
+    if (from || to) {
+      enrollmentMatch.enrolledAt = {} as any;
+      if (from) (enrollmentMatch.enrolledAt as any).$gte = from;
+      if (to) (enrollmentMatch.enrolledAt as any).$lte = to;
+    }
+
+    const courseMatch: any = {};
+    if (keyword.length >= 2) {
+      const regex = makeCaseInsensitiveRegex(keyword);
+      courseMatch.$or = [
+        { "course.name": { $regex: regex } },
+        { "course.tags": { $regex: regex } },
+      ];
+    }
+    if (categoryIds.length > 0) {
+      courseMatch["course.categories"] = {
+        $in: categoryIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    }
+    if (enumLevel) {
+      courseMatch["course.level"] = enumLevel;
+    }
+
+    const sort: any = {};
+    if (sortBy === "enrolledAt") sort.enrolledAt = sortOrder;
+    if (sortBy === "name") sort["course.name"] = sortOrder;
+    if (sortBy === "createdAt") sort["course.createdAt"] = sortOrder;
+    if (sortBy === "ratings") sort["course.ratings"] = sortOrder;
+
+    const aggPipeline: any[] = [
+      { $match: enrollmentMatch },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "courseId",
+          foreignField: "_id",
+          as: "course",
         },
-        { $unwind: "$course" },
-        { $count: "count" },
-      ]),
-    ]);
+      },
+      { $unwind: "$course" },
+      {
+        $project: {
+          course: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            overview: 1,
+            categories: 1,
+            price: 1,
+            estimatedPrice: 1,
+            thumbnail: 1,
+            tags: 1,
+            level: 1,
+            ratings: 1,
+            purchased: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            creatorId: 1,
+          },
+          progress: 1,
+          completed: 1,
+          enrolledAt: 1,
+        },
+      },
+    ];
 
-    const validEnrollments = enrollments.filter((en: any) =>
-      Boolean(en.courseId)
-    );
+    if (Object.keys(courseMatch).length > 0) {
+      aggPipeline.push({ $match: courseMatch });
+    }
 
+    if (Object.keys(sort).length > 0) {
+      aggPipeline.push({ $sort: sort });
+    } else {
+      aggPipeline.push({ $sort: { enrolledAt: -1 } });
+    }
+
+    aggPipeline.push({
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limit }],
+        total: [{ $count: "count" }],
+      },
+    });
+
+    const aggResult = await EnrolledCourseModel.aggregate(aggPipeline);
+    const dataArr =
+      Array.isArray(aggResult) && aggResult.length > 0 ? aggResult[0].data : [];
+    const totalAgg =
+      Array.isArray(aggResult) && aggResult.length > 0
+        ? aggResult[0].total
+        : [];
     const total =
       Array.isArray(totalAgg) && totalAgg.length > 0 ? totalAgg[0].count : 0;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    const courses = validEnrollments.map((en) => {
-      const courseDoc = (en as any).courseId as any;
-      const courseObj = courseDoc?.toObject ? courseDoc.toObject() : courseDoc;
-      if (courseObj) {
-        courseObj.level = normalizeLevel(courseObj.level);
-      }
-      return {
-        course: courseObj,
-        progress: (en as any).progress ?? 0,
-        completed: (en as any).completed ?? false,
-        enrolledAt: (en as any).enrolledAt,
-      };
+
+    const courseIds = dataArr.map((d: any) => d.course._id);
+    const coursesDocs = await CourseModel.find({ _id: { $in: courseIds } })
+      .select(
+        "_id name description overview categories price estimatedPrice thumbnail tags level ratings purchased createdAt updatedAt creatorId"
+      )
+      .populate("creatorId", "name avatar email")
+      .populate("categories", "title")
+      .lean();
+    const courseMap = new Map<string, any>();
+    coursesDocs.forEach((c: any) => {
+      c.level = normalizeLevel(c.level);
+      courseMap.set(String(c._id), c);
     });
+
+    const courses = dataArr.map((en: any) => ({
+      course: courseMap.get(String(en.course._id)) ?? en.course,
+      progress: en.progress ?? 0,
+      completed: en.completed ?? false,
+      enrolledAt: en.enrolledAt,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -688,40 +760,10 @@ export const editCourseService = async (
     }
 
     const availableCourseThumbnail = findCourse?.thumbnail;
-
-    if (data.thumbnail) {
-      if (typeof data.thumbnail === "string") {
-        if (
-          availableCourseThumbnail?.url &&
-          data.thumbnail.startsWith("http") &&
-          data.thumbnail === availableCourseThumbnail.url
-        ) {
-          data.thumbnail = availableCourseThumbnail;
-        } else {
-          if (availableCourseThumbnail?.public_id) {
-            await cloudinary.v2.uploader.destroy(
-              availableCourseThumbnail.public_id
-            );
-          }
-
-          const myCloud = await cloudinary.v2.uploader.upload(data.thumbnail, {
-            folder: "courses",
-            width: 750,
-            height: 422,
-            crop: "fill",
-          });
-
-          data.thumbnail = {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
-          };
-        }
-      } else if (typeof data.thumbnail === "object" && data.thumbnail.url) {
-        data.thumbnail = availableCourseThumbnail;
-      }
-    } else {
-      data.thumbnail = availableCourseThumbnail;
-    }
+    data.thumbnail = await upsertCourseThumbnail(
+      data.thumbnail,
+      availableCourseThumbnail
+    );
 
     if (data.videoDemo) {
       const existingDemo = (findCourse as any).videoDemo as
@@ -753,33 +795,18 @@ export const editCourseService = async (
     }
 
     if (data.categories) {
-      if (!Array.isArray(data.categories) || data.categories.length === 0) {
+      try {
+        data.categories = await validateAndMaterializeCategoryIds(
+          data.categories
+        );
+      } catch (e: any) {
         return next(
           new ErrorHandler(
-            "categories must be a non-empty array of Category ids",
-            400
+            e?.message || "Invalid categories",
+            e?.statusCode || 400
           )
         );
       }
-      const ids: string[] = data.categories;
-      if (
-        !ids.every(
-          (id) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id)
-        )
-      ) {
-        return next(
-          new ErrorHandler("One or more category ids are invalid", 400)
-        );
-      }
-      const found = await CategoryModel.find({ _id: { $in: ids } }).select(
-        "_id"
-      );
-      if (found.length !== ids.length) {
-        return next(
-          new ErrorHandler("One or more categories do not exist", 400)
-        );
-      }
-      data.categories = ids.map((id) => new mongoose.Types.ObjectId(id));
     }
 
     if (Array.isArray(data.benefits)) {
@@ -865,9 +892,6 @@ export const getCourseOverviewService = async (
     }
 
     const totalSections = course.courseData.length;
-    let totalLectures = 0;
-    let totalTimeMinutes = 0;
-
     const sections = course.courseData.map((section: any) => {
       const lectures = section.sectionContents.map((lecture: any) => ({
         _id: lecture._id,
@@ -875,31 +899,13 @@ export const getCourseOverviewService = async (
         videoDescription: lecture.videoDescription,
         videoLength: lecture.videoLength,
       }));
-
-      const sectionTotalLectures = lectures.length;
-      const sectionTotalTime = lectures.reduce(
-        (acc: number, curr: any) => acc + (curr.videoLength || 0),
-        0
-      );
-
-      totalLectures += sectionTotalLectures;
-      totalTimeMinutes += sectionTotalTime;
-
       return {
         _id: section._id,
         sectionTitle: section.sectionTitle,
         sectionContents: lectures,
       };
     });
-
-    const formatTime = (minutes: number) => {
-      if (minutes < 60) {
-        return `${minutes}m`;
-      }
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
-    };
+    const summary = summarizeCourseData(course.courseData);
 
     const courseData = {
       _id: course._id,
@@ -916,8 +922,8 @@ export const getCourseOverviewService = async (
       benefits: course.benefits,
       prerequisites: course.prerequisites,
       totalSections,
-      totalLectures,
-      totalTime: formatTime(totalTimeMinutes),
+      totalLectures: summary.totalLectures,
+      totalTime: summary.totalDuration,
       reviews: course.reviews.map((review: any) => ({
         _id: review._id,
         userId: {
@@ -1030,30 +1036,7 @@ export const enrollCourseService = async (
     const shouldSanitize = !isCreator && userId?.role !== "admin";
     let payloadCourse: any = course;
     if (shouldSanitize && course) {
-      const courseObj = (course as any).toObject();
-      if (courseObj.thumbnail) {
-        courseObj.thumbnail = { url: courseObj.thumbnail?.url };
-      }
-      if (courseObj.videoDemo) {
-        courseObj.videoDemo = { url: courseObj.videoDemo?.url };
-      }
-      if (courseObj.creatorId?.avatar) {
-        courseObj.creatorId.avatar = { url: courseObj.creatorId.avatar?.url };
-      }
-      if (Array.isArray(courseObj.courseData)) {
-        courseObj.courseData = courseObj.courseData.map((section: any) => ({
-          ...section,
-          sectionContents: Array.isArray(section.sectionContents)
-            ? section.sectionContents.map((lecture: any) => ({
-                ...lecture,
-                video: lecture?.video
-                  ? { url: lecture.video?.url }
-                  : lecture?.video,
-              }))
-            : [],
-        }));
-      }
-      payloadCourse = courseObj;
+      payloadCourse = sanitizeCourseMedia(course);
     }
 
     res.status(200).json({
@@ -1090,8 +1073,7 @@ export const searchCoursesService = async (
       const keyword = String(searchQuery ?? "").trim();
 
       if (keyword.length >= 2) {
-        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regexPattern = new RegExp(escaped, "i");
+        const regexPattern = makeCaseInsensitiveRegex(keyword);
 
         const searchConditions: any[] = [
           { name: { $regex: regexPattern } },
@@ -1539,6 +1521,20 @@ export const deleteCourseService = async (
 
     await CourseModel.findByIdAndDelete(courseId);
 
+    try {
+      await CartModel.updateMany(
+        {},
+        {
+          $pull: {
+            items: { courseId: new mongoose.Types.ObjectId(courseId) },
+            savedForLater: { courseId: new mongoose.Types.ObjectId(courseId) },
+          },
+        }
+      );
+    } catch (e) {
+      console.error("Failed to cleanup carts for deleted course", courseId, e);
+    }
+
     res.status(200).json({
       success: true,
       message: "Course deleted successfully",
@@ -1557,28 +1553,24 @@ export const deleteCourseService = async (
  * @returns 200 { success, courses, pagination }
  */
 export const getAdminCoursesService = async (query: any, res: Response) => {
-  let page = Number.parseInt(String(query?.page), 10);
-  if (Number.isNaN(page) || page < 1) page = 1;
-  let limit = Number.parseInt(String(query?.limit), 10);
-  if (Number.isNaN(limit) || limit < 1) limit = 10;
-  if (limit > 100) limit = 100;
-  const skip = (page - 1) * limit;
-
+  const { page, limit, skip } = parsePaging(query, 100, 10);
   const keyword =
     typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
   const filter: any = {};
   if (keyword.length >= 2) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(escaped, "i");
+    const regex = makeCaseInsensitiveRegex(keyword);
     filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
   }
+
+  const allowedSortFields = ["createdAt", "name"] as const;
+  const sort = buildSort(query, allowedSortFields, "createdAt");
 
   const [courses, totalItems] = await Promise.all([
     CourseModel.find(filter)
       .populate("reviews.userId", "name avatar")
       .populate("creatorId", "name avatar email")
       .populate("categories", "title")
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit),
     CourseModel.countDocuments(filter),
@@ -1610,19 +1602,14 @@ export const getAdminCoursesService = async (query: any, res: Response) => {
 export const getCourseStudentsService = async (
   courseId: string,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  query?: any
 ) => {
   try {
-    const query: any = (res as any).locals?.query || {};
-    let page = Number.parseInt(String(query?.page), 10);
-    if (Number.isNaN(page) || page < 1) page = 1;
-    let limit = Number.parseInt(String(query?.limit), 10);
-    if (Number.isNaN(limit) || limit < 1) limit = 10;
-    if (limit > 100) limit = 100;
-    const skip = (page - 1) * limit;
-
+    const q: any = query || {};
+    const { page, limit, skip } = parsePaging(q, 100, 10);
     const keyword =
-      typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
+      typeof q?.keyword !== "undefined" ? String(q.keyword).trim() : "";
 
     const matchStage: any = { courseId: new mongoose.Types.ObjectId(courseId) };
 
@@ -1640,8 +1627,7 @@ export const getCourseStudentsService = async (
     ];
 
     if (keyword && keyword.length >= 2) {
-      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
+      const regex = makeCaseInsensitiveRegex(keyword);
       pipeline.push({
         $match: {
           $or: [
@@ -1652,10 +1638,20 @@ export const getCourseStudentsService = async (
       });
     }
 
+    const allowedSortFields = ["createdAt", "name"] as const;
+    const sortBy = allowedSortFields.includes(String(q?.sortBy) as any)
+      ? String(q.sortBy)
+      : "createdAt";
+    const sortOrder = String(q?.sortOrder) === "asc" ? 1 : -1;
+    const sortStage =
+      sortBy === "name"
+        ? { $sort: { "user.name": sortOrder } }
+        : { $sort: { enrolledAt: sortOrder } };
+
     const countPipeline = [...pipeline, { $count: "count" }];
     const dataPipeline = [
       ...pipeline,
-      { $sort: { enrolledAt: -1 } },
+      sortStage,
       { $skip: skip },
       { $limit: limit },
       {

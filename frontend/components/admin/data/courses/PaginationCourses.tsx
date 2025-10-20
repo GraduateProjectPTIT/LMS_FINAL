@@ -20,12 +20,12 @@ interface PaginationCoursesProps {
     isLoading?: boolean;
 }
 
-const PaginationCourses: React.FC<PaginationCoursesProps> = ({
+const PaginationCourses = ({
     pagination,
     onPageChange,
     onLimitChange,
     isLoading = false
-}) => {
+}: PaginationCoursesProps) => {
     const { page, limit, total, totalPages, hasNextPage, hasPrevPage } = pagination;
 
     const handleFirstPage = () => {
@@ -69,7 +69,7 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     disabled={isLoading}
                     className="border border-gray-300 dark:border-slate-500 rounded px-2 py-1 text-sm bg-white dark:bg-slate-800 disabled:opacity-50"
                 >
-                    {[10, 20, 30, 40, 50].map(size => (
+                    {[5, 10, 20, 30, 40, 50].map(size => (
                         <option key={size} value={size}>
                             {size}
                         </option>
@@ -84,7 +84,8 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     size="sm"
                     onClick={handleFirstPage}
                     disabled={!hasPrevPage || isLoading}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hover:cursor-pointer"
+                    title="First page"
                 >
                     <ChevronsLeft className="h-4 w-4" />
                 </Button>
@@ -94,7 +95,8 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     size="sm"
                     onClick={handlePrevPage}
                     disabled={!hasPrevPage || isLoading}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hover:cursor-pointer"
+                    title="Previous page"
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -104,7 +106,7 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                         Page {page} of {totalPages}
                     </span>
                     <span className="hidden md:inline text-sm text-gray-500 dark:text-gray-400">
-                        ({total} results)
+                        ({total} courses)
                     </span>
                 </div>
 
@@ -113,7 +115,8 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     size="sm"
                     onClick={handleNextPage}
                     disabled={!hasNextPage || isLoading}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hover:cursor-pointer"
+                    title="Next page"
                 >
                     <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -123,7 +126,8 @@ const PaginationCourses: React.FC<PaginationCoursesProps> = ({
                     size="sm"
                     onClick={handleLastPage}
                     disabled={!hasNextPage || isLoading}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hover:cursor-pointer"
+                    title="Last page"
                 >
                     <ChevronsRight className="h-4 w-4" />
                 </Button>

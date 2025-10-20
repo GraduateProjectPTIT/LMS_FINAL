@@ -1,12 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2, Plus, Clock } from 'lucide-react';
 import VideoUploader from './VideoUploader';
-import { ICreateLecture, IBaseLink, IVideoUpload } from '@/type';
+import ConvertDurationModal from './ConvertDurationModal';
+import { ICreateLecture, IBaseLink } from '@/type';
 import { useVideoUpload } from '@/hooks/useVideoUpload';
 import toast from 'react-hot-toast';
 import { useSortable } from "@dnd-kit/sortable";
@@ -21,7 +22,7 @@ interface LectureItemProps {
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     onRemove: () => void;
-    onUpdateLecture: (updatedLecture: ICreateLecture) => void;
+    onUpdateLecture: (updater: ICreateLecture | ((prevLecture: ICreateLecture) => ICreateLecture)) => void;
 }
 
 const LectureItem = ({
@@ -34,6 +35,8 @@ const LectureItem = ({
     onRemove,
     onUpdateLecture
 }: LectureItemProps) => {
+
+    const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
 
     // hooks cho drag-and-drop
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -49,8 +52,7 @@ const LectureItem = ({
         field: K,
         value: ICreateLecture[K]
     ) => {
-        const updatedLecture = { ...lecture, [field]: value };
-        onUpdateLecture(updatedLecture);
+        onUpdateLecture(prev => ({ ...prev, [field]: value }));
     };
 
     const getVideoDuration = (file: File): Promise<number> => {
@@ -104,126 +106,119 @@ const LectureItem = ({
 
     const handleVideoSelect = async (file: File) => {
         try {
-            console.log('Processing video file:', {
-                name: file.name,
-                size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-                type: file.type
-            });
-
             // BƯỚC 1: Lấy duration từ file trước
             let videoDurationSeconds = 0;
-            let durationMinutes = 0;
 
             try {
                 videoDurationSeconds = await getVideoDuration(file);
-                durationMinutes = Math.ceil(videoDurationSeconds / 60); // Làm tròn lên
+                videoDurationSeconds = Math.ceil(videoDurationSeconds); // Làm tròn lên
 
                 console.log('Video duration:', {
-                    seconds: videoDurationSeconds,
-                    minutes: durationMinutes
+                    seconds: videoDurationSeconds
                 });
 
-                toast.success(`Video duration detected: ${durationMinutes} minutes`);
+                toast.success(`Video duration detected: ${videoDurationSeconds} seconds`);
             } catch (durationError) {
                 console.warn('Could not get video duration:', durationError);
                 toast.error('Could not detect video duration. You can set it manually after upload.');
             }
 
-            // BƯỚC 2: Bắt đầu upload với duration đã có và giữ nguyên trong suốt quá trình upload
-            const updatedLecture = {
-                ...lecture,
-                videoLength: durationMinutes, // Set duration ngay từ đầu
-                autoDetectedDuration: durationMinutes, // Lưu auto-detected duration riêng
+            // BƯỚC 2: Bắt đầu upload với duration đã có
+            onUpdateLecture(prev => ({
+                ...prev,
+                videoLength: videoDurationSeconds, // Set duration ngay từ đầu
+                autoDetectedDuration: videoDurationSeconds, // Lưu auto-detected duration riêng
                 isUploading: true,
                 uploadProgress: 0,
-            };
-            onUpdateLecture(updatedLecture);
+            }));
 
             // BƯỚC 3: Upload video
             const videoData = await uploadVideo(file, (progress) => {
-                onUpdateLecture({
-                    ...lecture,
-                    videoLength: durationMinutes, // Giữ nguyên duration trong suốt quá trình upload
-                    autoDetectedDuration: durationMinutes, // Giữ nguyên auto-detected duration
+                onUpdateLecture(prev => ({
+                    ...prev,
                     uploadProgress: progress,
                     isUploading: true,
-                });
+                }));
             });
 
             // BƯỚC 4: Hoàn thành upload
             if (videoData) {
-                const finalUpdatedLecture = {
-                    ...lecture,
+                onUpdateLecture(prev => ({
+                    ...prev,
                     video: videoData,
-                    videoLength: durationMinutes, // Giữ nguyên duration đã detect
-                    autoDetectedDuration: durationMinutes, // Lưu auto-detected duration để hiển thị
+                    videoLength: videoDurationSeconds, // Giữ nguyên duration đã detect
+                    autoDetectedDuration: videoDurationSeconds, // Lưu auto-detected duration
                     isUploading: false,
                     uploadProgress: 0,
-                };
+                }));
 
-                onUpdateLecture(finalUpdatedLecture);
-
-                const successMessage = durationMinutes > 0
-                    ? `Video uploaded successfully! Duration: ${durationMinutes} minutes`
+                const successMessage = videoDurationSeconds > 0
+                    ? `Video uploaded successfully! Duration: ${videoDurationSeconds} seconds`
                     : 'Video uploaded successfully! Please set duration manually.';
 
                 toast.success(successMessage);
             } else {
                 // Upload failed - clear states
-                const updatedLecture = {
-                    ...lecture,
+                onUpdateLecture(prev => ({
+                    ...prev,
                     isUploading: false,
                     uploadProgress: 0,
-                };
-                onUpdateLecture(updatedLecture);
+                }));
             }
 
         } catch (error: any) {
             console.error('Video upload error:', error);
             toast.error('Video upload failed');
 
-            const updatedLecture = {
-                ...lecture,
+            onUpdateLecture(prev => ({
+                ...prev,
                 isUploading: false,
                 uploadProgress: 0,
-            };
-            onUpdateLecture(updatedLecture);
+            }));
         }
     };
 
     const handleCancelUpload = () => {
         cancelCurrentUpload();
 
-        // Clear upload states
-        const updatedLecture = {
-            ...lecture,
+        onUpdateLecture(prev => ({
+            ...prev,
             isUploading: false,
             uploadProgress: 0,
-        };
-        onUpdateLecture(updatedLecture);
+        }));
     };
 
     const handleRemoveVideo = () => {
-        const updatedLecture = {
-            ...lecture,
+        onUpdateLecture(prev => ({
+            ...prev,
             video: { public_id: "", url: "" },
             autoDetectedDuration: undefined // Clear auto-detected duration khi remove video
-        };
-        onUpdateLecture(updatedLecture);
+        }));
         toast.success('Video removed');
+    };
+
+    const handleConvertDuration = (seconds: number) => {
+        onUpdateLecture(prev => ({
+            ...prev,
+            videoLength: seconds,
+            // Nếu user dùng convert khác với auto-detected, đánh dấu là manually edited
+            ...(prev.autoDetectedDuration && seconds !== prev.autoDetectedDuration ? {
+                isManuallyEdited: true
+            } : {})
+        }));
+        toast.success(`Duration set to ${seconds} seconds`);
     };
 
     // Handle video length change - clear auto-detected state when user manually inputs
     const handleVideoLengthChange = (value: number) => {
-        const updatedLecture = {
-            ...lecture,
+        onUpdateLecture(prev => ({
+            ...prev,
             videoLength: value,
             // Nếu user tự nhập khác với auto-detected, thì clear auto-detected state
-            ...(lecture.autoDetectedDuration && value !== lecture.autoDetectedDuration ? {
+            ...(prev.autoDetectedDuration && value !== prev.autoDetectedDuration ? {
                 isManuallyEdited: true
             } : {})
-        };
-        onUpdateLecture(updatedLecture);
+        }));
     };
 
     const validateCurrentLinks = (): boolean => {
@@ -253,35 +248,38 @@ const LectureItem = ({
             return;
         }
 
-        // Nếu chưa có videoLinks, tạo mảng mới với 1 link
-        const currentLinks = lecture.videoLinks ?? [];
-        const updatedLinks = [...currentLinks, { title: "", url: "" }];
-        const updatedLecture = { ...lecture, videoLinks: updatedLinks };
-        onUpdateLecture(updatedLecture);
+        onUpdateLecture(prev => {
+            const currentLinks = prev.videoLinks ?? [];
+            return {
+                ...prev,
+                videoLinks: [...currentLinks, { title: "", url: "" }]
+            };
+        });
     };
 
     const handleRemoveLink = (linkIndex: number) => {
-        const currentLinks = lecture.videoLinks ?? [];
-        if (currentLinks.length <= 1) {
-            // Nếu chỉ còn 1 link, xóa luôn videoLinks array
-            const updatedLecture = { ...lecture, videoLinks: undefined };
-            onUpdateLecture(updatedLecture);
-            toast.success("Resource links removed");
-            return;
-        }
-
-        const updatedLinks = currentLinks.filter((_, index) => index !== linkIndex);
-        const updatedLecture = { ...lecture, videoLinks: updatedLinks };
-        onUpdateLecture(updatedLecture);
+        onUpdateLecture(prev => {
+            const currentLinks = prev.videoLinks ?? [];
+            if (currentLinks.length <= 1) {
+                toast.success("Resource links removed");
+                const { videoLinks, ...rest } = prev;
+                return rest;
+            }
+            return {
+                ...prev,
+                videoLinks: currentLinks.filter((_, index) => index !== linkIndex)
+            };
+        });
     };
 
     const handleLinkChange = (linkIndex: number, field: keyof IBaseLink, value: string) => {
-        const currentLinks = lecture.videoLinks ?? [];
-        const updatedLinks = currentLinks.map((link, index) =>
-            index === linkIndex ? { ...link, [field]: value } : link
-        );
-        const updatedLecture = { ...lecture, videoLinks: updatedLinks };
-        onUpdateLecture(updatedLecture);
+        onUpdateLecture(prev => {
+            const currentLinks = prev.videoLinks ?? [];
+            const updatedLinks = currentLinks.map((link, index) =>
+                index === linkIndex ? { ...link, [field]: value } : link
+            );
+            return { ...prev, videoLinks: updatedLinks };
+        });
     };
 
     const hasVideoLinks = lecture.videoLinks && lecture.videoLinks.length > 0;
@@ -380,7 +378,7 @@ const LectureItem = ({
                     <div className='flex flex-col gap-2'>
                         <div className="flex items-center justify-between">
                             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Video Length (in minutes)
+                                Video Length (in seconds)
                                 <span className='text-red-600'> *</span>
                             </Label>
                             {isAutoDetected && (
@@ -390,30 +388,41 @@ const LectureItem = ({
                             )}
                         </div>
 
-                        <div className="relative">
-                            <Input
-                                type="number"
-                                value={lecture.videoLength || ""}
-                                onChange={(e) => handleVideoLengthChange(Number(e.target.value))}
-                                placeholder="Duration will be auto-detected when you upload video"
-                                className={`border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 ${isAutoDetected
-                                    ? 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-600'
-                                    : ''
-                                    }`}
-                                min="0"
-                                step="0.1"
-                            />
-
-                            {isAutoDetected && (
-                                <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
-                                    <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                </div>
-                            )}
+                        <div className="flex gap-2">
+                            <div className="flex-1 relative">
+                                <Input
+                                    type="number"
+                                    value={lecture.videoLength || ""}
+                                    onChange={(e) => handleVideoLengthChange(Number(e.target.value))}
+                                    placeholder="Duration will be auto-detected when you upload video"
+                                    className={`border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 ${isAutoDetected
+                                        ? 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-600'
+                                        : ''
+                                        }`}
+                                    min="0"
+                                    step="1"
+                                />
+                                {isAutoDetected && (
+                                    <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                                        <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsConvertModalOpen(true)}
+                                className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                                title="Convert from mm:ss or hh:mm:ss format"
+                            >
+                                <Clock size={18} className="mr-2" />
+                                Convert
+                            </Button>
                         </div>
 
                         {!lecture.video?.url && (
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Upload a video to automatically detect duration
+                                Upload a video to automatically detect duration, or enter manually / use Convert button
                             </p>
                         )}
 
@@ -422,7 +431,7 @@ const LectureItem = ({
                             lecture.videoLength !== lecture.autoDetectedDuration &&
                             lecture.isManuallyEdited && (
                                 <p className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
-                                    💡 Auto-detected duration was: {lecture.autoDetectedDuration} {lecture.autoDetectedDuration === 1 ? 'minute' : 'minutes'}
+                                    💡 Auto-detected duration was: {lecture.autoDetectedDuration} seconds
                                 </p>
                             )}
                     </div>
@@ -433,7 +442,6 @@ const LectureItem = ({
                             Additional Resources & Links
                         </Label>
 
-                        {/* Nếu chưa có videoLinks hoặc rỗng, chỉ hiện button */}
                         {!hasVideoLinks ? (
                             <Button
                                 type="button"
@@ -446,7 +454,6 @@ const LectureItem = ({
                                 Add Resource Link
                             </Button>
                         ) : (
-                            // Nếu đã có videoLinks, hiển thị như bình thường
                             <>
                                 <div className="space-y-3">
                                     {lecture.videoLinks!.map((link: IBaseLink, linkIndex: number) => (
@@ -492,6 +499,13 @@ const LectureItem = ({
                     </div>
                 </div>
             )}
+
+            {/* Convert Duration Modal */}
+            <ConvertDurationModal
+                isOpen={isConvertModalOpen}
+                onClose={() => setIsConvertModalOpen(false)}
+                onConvert={handleConvertDuration}
+            />
         </div>
     );
 };
