@@ -10,19 +10,17 @@ const getTotalSpentByStudent = async (
   const result = await orderModel.aggregate([
     {
       $match: {
-        userId: studentId,
-        status: "succeeded", // Chỉ tính đơn hàng thành công
+        userId: studentId.toString(), // Chỉ lọc các đơn hàng theo userId
       },
     },
     {
       $group: {
-        _id: null,
-        total: { $sum: "$totalAmount" }, // Tên trường tổng tiền
+        _id: null, // Nhóm tất cả đơn hàng của user này lại
+        total: { $sum: "$total" }, // Tính tổng dựa trên trường 'total'
       },
     },
-  ]);
+  ]); // Nếu không có kết quả (chưa mua gì), trả về 0
 
-  // Nếu không có kết quả (chưa mua gì), trả về 0
   return result.length > 0 ? result[0].total : 0;
 };
 
