@@ -26,7 +26,7 @@ export interface IOrder extends Document {
     courseId?: string;
     items?: IOrderItem[];
     total?: number;
-    userId: string;
+    userId: mongoose.Types.ObjectId | string;
     payment_info: IPaymentInfo;
     payment_method: string;
     emailSent?: boolean;
@@ -46,7 +46,8 @@ const orderSchema = new Schema<IOrder>(
         ],
         total: { type: Number },
         userId: {
-            type: String,
+            type: Schema.Types.ObjectId,
+            ref: 'User',
             required: true,
         },
         payment_info: {

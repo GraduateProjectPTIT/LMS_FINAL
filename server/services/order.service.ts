@@ -6,6 +6,7 @@ import { normalizeOrders, normalizeOrder } from "../utils/order.helpers";
 import ErrorHandler from "../utils/ErrorHandler";
 import mongoose from "mongoose";
 import { getInclusiveDateRange } from "../utils/date.helpers";
+import userModel from "../models/user.model";
 
 // create new order
 export const newOrder = CatchAsyncError(async (data: any, res: Response, next: NextFunction) => {
@@ -49,7 +50,12 @@ export const getAllOrdersService = async (query: any, res: Response) => {
         const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escaped, "i");
         or.push({ "payment_info.payer_email": { $regex: regex } });
+        // legacy string match (in case of old data)
         or.push({ userId: keyword });
+        // if keyword is a valid ObjectId, also match ref equality
+        if (mongoose.Types.ObjectId.isValid(keyword)) {
+            or.push({ userId: new mongoose.Types.ObjectId(keyword) });
+        }
         or.push({ courseId: keyword });
         or.push({ "items.courseId": keyword });
         filter.$or = or;
@@ -67,6 +73,7 @@ export const getAllOrdersService = async (query: any, res: Response) => {
 
     const [orders, total] = await Promise.all([
         OrderModel.find(filter)
+            .populate('userId', 'name email avatar')
             .sort(sort)
             .skip(skip)
             .limit(limit)
@@ -100,7 +107,7 @@ export const getPaidOrdersService = async (res: Response) => {
             { "payment_info.status": "paid" },
             { "payment_info.status": "succeeded" }
         ]
-    }).sort({ createdAt: -1 }).lean();
+    }).populate('userId', 'name email avatar').sort({ createdAt: -1 }).lean();
     const normalized = normalizeOrders(orders);
 
     res.status(200).json({
@@ -118,7 +125,7 @@ export const getOrderDetailService = async (
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return next(new ErrorHandler("Invalid order id", 400));
     }
-    const order = await OrderModel.findById(orderId);
+    const order = await OrderModel.findById(orderId).populate('userId', 'name email avatar');
     if (!order) {
       return next(new ErrorHandler("Order not found", 404));
     }
@@ -133,7 +140,59 @@ export const getOrderDetailService = async (
         .populate("creatorId", "name email avatar");
     }
 
-    return res.status(200).json({ success: true, order: normalized, course });
+    return res
+      .status(200)
+      .json({ success: true, order: normalized, course });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const getTutorOrderDetailService = async (
+  user: any,
+  orderId: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (String(user?.role) !== "tutor") {
+      return next(new ErrorHandler("Forbidden", 403));
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return next(new ErrorHandler("Invalid order id", 400));
+    }
+
+    const order = await OrderModel.findById(orderId).populate('userId', 'name email avatar');
+    if (!order) {
+      return next(new ErrorHandler("Order not found", 404));
+    }
+
+    const normalized = normalizeOrder(order);
+
+    const courseId = normalized?.courseId || normalized?.items?.[0]?.courseId;
+    if (!courseId) {
+      return next(new ErrorHandler("Order does not reference a course", 400));
+    }
+
+    const course = await CourseModel.findById(String(courseId))
+      .select("_id name price thumbnail creatorId")
+      .populate("creatorId", "name email avatar");
+
+    if (!course) {
+      return next(new ErrorHandler("Course not found", 404));
+    }
+
+    if (
+      String((course as any).creatorId?._id || (course as any).creatorId) !==
+      String(user._id)
+    ) {
+      return next(new ErrorHandler("You do not have access to this order", 403));
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, order: normalized, course });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -197,7 +256,12 @@ export const getTutorOrdersService = async (
     const sort: any = { [sortBy]: sortOrder };
 
     const [orders, total] = await Promise.all([
-      OrderModel.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      OrderModel.find(filter)
+        .populate('userId', 'name email avatar')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       OrderModel.countDocuments(filter),
     ]);
 

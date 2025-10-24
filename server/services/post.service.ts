@@ -3,6 +3,7 @@ import ErrorHandler from "../utils/ErrorHandler";
 import PostModel from "../models/post.model";
 import CategoryModel from "../models/category.model";
 import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
 
 export const createPostService = async (
   user: any,
@@ -123,6 +124,28 @@ export const getPublicPostsService = async (
         },
       },
     });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const getPublicPostByIdService = async (
+  id: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!id) return next(new ErrorHandler("Post id is required", 400));
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new ErrorHandler("Invalid post id", 400));
+    }
+    const post = await PostModel.findOneAndUpdate(
+      { _id: id, status: "published" },
+      { $inc: { views: 1 } },
+      { new: true }
+    ).populate("authorId", "name avatar");
+    if (!post) return next(new ErrorHandler("Post not found", 404));
+    return res.status(200).json({ success: true, post });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }

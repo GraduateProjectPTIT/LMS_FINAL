@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
-import { createPost, uploadTinyImage, getPosts, getPublicPosts, getPublicPostBySlug, updatePost, deletePost } from "../controllers/post.controller";
+import { createPost, uploadTinyImage, getPosts, getPublicPosts, getPublicPostBySlug, updatePost, deletePost, getAdminPostById } from "../controllers/post.controller";
 
 const postRouter = express.Router();
 
@@ -23,6 +23,7 @@ postRouter.post(
 
 postRouter.get("/public/posts", getPublicPosts);
 postRouter.get("/public/posts/:slug", getPublicPostBySlug);
+postRouter.get("/post/:id", isAuthenticated, authorizeRoles("admin"), getAdminPostById);
 
 postRouter.put("/post/:id", isAuthenticated, updatePost);
 postRouter.delete("/post/:id", isAuthenticated, deletePost);

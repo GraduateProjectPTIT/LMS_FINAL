@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { createPostService, uploadTinyImageService, getPostsService, getPublicPostsService, getPublicPostBySlugService, updatePostService, deletePostService } from "../services/post.service";
+import { createPostService, uploadTinyImageService, getPostsService, getPublicPostsService, getPublicPostBySlugService, updatePostService, deletePostService, getPublicPostByIdService } from "../services/post.service";
 
 export const createPost = async (
   req: Request,
@@ -40,6 +40,24 @@ export const getPublicPostBySlug = async (
 ) => {
   const { slug } = req.params as { slug: string };
   await getPublicPostBySlugService(slug, res, next);
+};
+
+export const getPublicPostById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id } = req.params as { id: string };
+  await getPublicPostByIdService(id, res, next);
+};
+
+export const getAdminPostById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id } = req.params as { id: string };
+  await getPublicPostByIdService(id, res, next);
 };
 
 export const updatePost = async (

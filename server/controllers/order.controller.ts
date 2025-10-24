@@ -10,6 +10,7 @@ import {
   newOrder,
   getOrderDetailService,
   getTutorOrdersService,
+  getTutorOrderDetailService,
 } from "../services/order.service";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -599,9 +600,10 @@ export const getUserOrders = CatchAsyncError(
     try {
       const userId = req.user?._id;
 
-      const userOrders = await OrderModel.find({ userId }).sort({
-        createdAt: -1,
-      });
+      const userOrders = await OrderModel.find({ userId })
+        .populate('userId', 'name email avatar')
+        .sort({ createdAt: -1 })
+        .lean();
 
       if (userOrders.length === 0) {
         return res.status(200).json({ success: true, orders: [] });
@@ -644,6 +646,17 @@ export const getTutorOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await getTutorOrdersService(req.user, req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const getTutorOrderDetail = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orderId = req.params.id;
+      await getTutorOrderDetailService(req.user, orderId, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
