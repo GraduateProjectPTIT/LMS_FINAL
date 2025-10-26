@@ -17,48 +17,38 @@ const getRecommendationsForUser = async (
   const currentUserId = new mongoose.Types.ObjectId(userId.toString());
 
   try {
-    // 1. Kiểm tra lịch sử mua hàng (sử dụng userRepository đã import)
-    // Giả định userRepository đã được cập nhật để dùng orderModel
     const userPurchases = await userRepository.findUserPurchases(currentUserId);
-    console.log(userPurchases);
-    // 2. Quyết định logic nghiệp vụ
-    // Kiểm tra nếu không có lịch sử mua hàng hoặc mảng rỗng
+
     if (
       !userPurchases ||
       !userPurchases.purchasedCourses ||
       userPurchases.purchasedCourses.length === 0
     ) {
-      // Kịch bản 1: Cold-Start
-      console.log(
-        `User ${currentUserId} has no purchases, falling back to cold-start...`
-      );
-
-      // Sử dụng courseRepository đã import
-      // Giả định courseRepository đã được cập nhật để dùng studentModel
+      // Kịch bản 1: Cold-Start (Giữ nguyên)
       return courseRepository.getColdStartRecommendations(currentUserId, limit);
     }
 
-    // Kịch bản 2: Collaborative Filtering
+    // Kịch bản 2: Collaborative Filtering (ĐÃ THAY ĐỔI)
     console.log(
-      `User ${currentUserId} has purchases, using collaborative filtering...`
+      `User ${currentUserId} has purchases, using PRECOMPUTED filtering...`
     );
     const userPurchasedCourses = userPurchases.purchasedCourses;
 
-    // Sử dụng userRepository đã import
-    return userRepository.getCollaborativeFilteringAggregation(
-      currentUserId,
+    // --- THAY ĐỔI DUY NHẤT LÀ Ở ĐÂY ---
+    // Gọi hàm mới, nhanh hơn
+    return courseRepository.getPrecomputedRecommendations(
       userPurchasedCourses,
       limit
     );
+    // --- HẾT THAY ĐỔI ---
   } catch (error) {
     console.error("Error in getRecommendationsForUser service:", error);
-    // Xử lý lỗi một cách rõ ràng
     throw new Error("Could not retrieve recommendations.");
   }
 };
-
 // Export thành một đối tượng chứa tất cả các hàm service của bạn
 export const recommendationService = {
   getRecommendationsForUser,
+
   // Thêm các hàm recommendation khác vào đây nếu có
 };
