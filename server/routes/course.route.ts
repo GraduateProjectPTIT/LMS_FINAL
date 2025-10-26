@@ -5,8 +5,8 @@ import {
   isAuthenticated,
 } from "../middleware/auth";
 import {
-  addAnswer,
-  addQuestion,
+  addReply,
+  addComment,
   addReplyToReview,
   addReview,
   deleteCourse,
@@ -83,14 +83,14 @@ courseRouter.get(
   checkUserPurchasedCourse
 );
 courseRouter.put(
-  "/course/add_question_to_lecture",
+  "/course/add_comment_to_lecture",
   isAuthenticated,
-  addQuestion
+  addComment
 );
 courseRouter.put(
-  "/course/add_answer_to_lecture_question",
+  "/course/add_reply_to_comment",
   isAuthenticated,
-  addAnswer
+  addReply
 );
 courseRouter.put(
   "/course/complete_lecture",

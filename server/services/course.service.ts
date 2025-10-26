@@ -1000,11 +1000,7 @@ export const enrollCourseService = async (
 
     const course = await CourseModel.findById(courseId)
       .populate(
-        "courseData.sectionContents.lectureQuestions.userId",
-        "name avatar"
-      )
-      .populate(
-        "courseData.sectionContents.lectureQuestions.replies.userId",
+        "courseData.sectionContents.lectureComments.userId",
         "name avatar"
       )
       .populate("reviews.userId", "name avatar")
@@ -1197,14 +1193,14 @@ export const searchCoursesService = async (
  * @param next Express NextFunction
  * @returns 200 { success, message }
  */
-export const addQuestionService = async (
-  questionData: any,
+export const addCommentService = async (
+  commentData: any,
   userId: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { question, courseId, contentId } = questionData;
+    const { comment, courseId, contentId } = commentData;
     const course = await CourseModel.findById(courseId);
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
@@ -1236,25 +1232,25 @@ export const addQuestionService = async (
 
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
-    const newQuestion: any = {
+    const newComment: any = {
       userId: userId?._id,
-      question,
-      replies: [],
+      content: comment,
+      parentId: null,
     };
 
-    content.lectureQuestions.push(newQuestion);
+    content.lectureComments.push(newComment);
 
     await NotificationModel.create({
       userId: userId?._id,
-      title: "New Question",
-      message: `You have a new question in section: ${section?.sectionTitle}`,
+      title: "New Comment",
+      message: `You have a new comment in section: ${section?.sectionTitle}`,
     });
 
     await course?.save();
 
     res.status(200).json({
       success: true,
-      message: "Ask question successfully",
+      message: "Add comment successfully",
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1270,14 +1266,14 @@ export const addQuestionService = async (
  * @param next Express NextFunction
  * @returns 200 { success, message }
  */
-export const addAnswerService = async (
-  answerData: any,
+export const addReplyService = async (
+  replyData: any,
   userId: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { answer, courseId, contentId, questionId } = answerData;
+    const { reply, courseId, contentId, commentId } = replyData;
     const course = await CourseModel.findById(courseId);
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
@@ -1309,24 +1305,25 @@ export const addAnswerService = async (
 
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
-    const question = content?.lectureQuestions.find((q: any) =>
-      q._id.equals(questionId)
+    const comment = content?.lectureComments.find((c: any) =>
+      c._id.equals(commentId)
     );
 
-    if (!question) return next(new ErrorHandler("Question not found", 404));
+    if (!comment) return next(new ErrorHandler("Comment not found", 404));
 
-    const askedUser = await userModel.findById(question.userId);
+    const askedUser = await userModel.findById(comment.userId);
 
     if (!askedUser || !askedUser.email) {
       return next(new ErrorHandler("User email not found", 404));
     }
 
-    const reply: any = {
+    const replyComment: any = {
       userId: userId?._id,
-      answer,
+      content: reply,
+      parentId: comment._id,
     };
 
-    question.replies?.push(reply);
+    content.lectureComments.push(replyComment);
 
     await course?.save();
 
@@ -1353,7 +1350,7 @@ export const addAnswerService = async (
 
     res.status(200).json({
       success: true,
-      message: "Reply question successfully",
+      message: "Reply successfully",
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

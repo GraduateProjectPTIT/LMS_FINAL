@@ -52,7 +52,7 @@ interface ICourseLecture extends Document {
   };
   videoLength: number;
   videoLinks: ILink[];
-  lectureQuestions: ILectureQuestion[];
+  lectureComments: ILectureComment[];
 }
 
 interface ILink extends Document {
@@ -60,32 +60,19 @@ interface ILink extends Document {
   url: string;
 }
 
-interface ILectureQuestion extends Document {
+interface ILectureComment extends Document {
   userId: mongoose.Types.ObjectId;
-  question: string;
-  replies: IQuestionReply[];
-}
-
-interface IQuestionReply extends Document {
-  userId: mongoose.Types.ObjectId;
-  answer: string;
+  content: string;
+  parentId?: mongoose.Types.ObjectId | null;
 }
 
 // SCHEMAS
 
-const questionReplySchema = new Schema<IQuestionReply>(
+const lectureCommentSchema = new Schema<ILectureComment>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    answer: { type: String, required: true },
-  },
-  { timestamps: true }
-);
-
-const lectureQuestionSchema = new Schema<ILectureQuestion>(
-  {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    question: { type: String, required: true },
-    replies: [questionReplySchema], // this is only for lecture questions
+    content: { type: String, required: true },
+    parentId: { type: Schema.Types.ObjectId, default: null },
   },
   { timestamps: true }
 );
@@ -126,7 +113,7 @@ const courseLectureSchema = new Schema<ICourseLecture>({
   },
   videoLength: { type: Number, required: true },
   videoLinks: [linkSchema],
-  lectureQuestions: [lectureQuestionSchema],
+  lectureComments: [lectureCommentSchema],
 });
 
 const courseSectionSchema = new Schema<ICourseSection>({

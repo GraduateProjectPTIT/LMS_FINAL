@@ -7,8 +7,8 @@ import {
   getCourseOverviewService,
   enrollCourseService,
   searchCoursesService,
-  addQuestionService,
-  addAnswerService,
+  addCommentService,
+  addReplyService,
   addReviewService,
   addReplyToReviewService,
   deleteCourseService,
@@ -28,8 +28,8 @@ import {
   getStudentDetailsInCourseService,
 } from "../services/course.service";
 import {
-  IAddQuestionData,
-  IAddAnswerData,
+  IAddCommentData,
+  IAddReplyData,
   IAddReviewData,
   IAddReviewReplyData,
 } from "../interfaces/course.interface";
@@ -181,24 +181,24 @@ export const searchCourses = CatchAsyncError(
   }
 );
 
-// add question in each lecture
-export const addQuestion = CatchAsyncError(
+// add comment in each lecture
+export const addComment = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const questionData: IAddQuestionData = req.body;
-      addQuestionService(questionData, req.user, res, next);
+      const commentData: IAddCommentData = req.body;
+      addCommentService(commentData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
-// add answer in each lecture
-export const addAnswer = CatchAsyncError(
+// add reply to a comment in each lecture
+export const addReply = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const answerData: IAddAnswerData = req.body;
-      addAnswerService(answerData, req.user, res, next);
+      const replyData: IAddReplyData = req.body;
+      addReplyService(replyData, req.user, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

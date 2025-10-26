@@ -1,14 +1,14 @@
-export interface IAddQuestionData {
-  question: string;
+export interface IAddCommentData {
+  comment: string;
   courseId: string;
   contentId: string;
 }
 
-export interface IAddAnswerData {
-  answer: string;
+export interface IAddReplyData {
+  reply: string;
   courseId: string;
   contentId: string;
-  questionId: string;
+  commentId: string;
 }
 
 export interface IAddReviewData {
