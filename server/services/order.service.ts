@@ -140,9 +140,15 @@ export const getOrderDetailService = async (
         .populate("creatorId", "name email avatar");
     }
 
-    return res
-      .status(200)
-      .json({ success: true, order: normalized, course });
+    const itemsWithCourse = Array.isArray(normalized?.items)
+      ? normalized.items.map((it: any) =>
+          String(it?.courseId) === String(course?._id)
+            ? { ...it, course }
+            : it
+        )
+      : normalized?.items;
+
+    return res.status(200).json({ success: true, order: { ...normalized, items: itemsWithCourse } });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -190,9 +196,17 @@ export const getTutorOrderDetailService = async (
       return next(new ErrorHandler("You do not have access to this order", 403));
     }
 
+    const itemsWithCourse = Array.isArray(normalized?.items)
+      ? normalized.items.map((it: any) =>
+          String(it?.courseId) === String((course as any)?._id)
+            ? { ...it, course }
+            : it
+        )
+      : normalized?.items;
+
     return res
       .status(200)
-      .json({ success: true, order: normalized, course });
+      .json({ success: true, order: { ...normalized, items: itemsWithCourse } });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }

@@ -139,11 +139,8 @@ export const getPublicPostByIdService = async (
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return next(new ErrorHandler("Invalid post id", 400));
     }
-    const post = await PostModel.findOneAndUpdate(
-      { _id: id, status: "published" },
-      { $inc: { views: 1 } },
-      { new: true }
-    ).populate("authorId", "name avatar");
+    const post = await PostModel.findOne({ _id: id })
+      .populate("authorId", "name avatar");
     if (!post) return next(new ErrorHandler("Post not found", 404));
     return res.status(200).json({ success: true, post });
   } catch (error: any) {
