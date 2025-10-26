@@ -3,6 +3,7 @@ import mongoose, { Types } from "mongoose";
 import courseModel, { ICourse } from "../models/course.model";
 import userModel from "../models/user.model";
 import { studentModel } from "../models/student.model";
+import CourseSimilarityModel from "../scripts/models/courseSimilarity.model";
 // Import studentModel để lấy interests
 
 // Định nghĩa một interface cho kết quả trả về
@@ -103,10 +104,72 @@ const getColdStartRecommendations = async (
     .select("name description thumbnail price ratings purchased")
     .lean();
 };
-// --- KẾT THÚC HÀM SỬA ---
+
+const getPrecomputedRecommendations = async (
+  userPurchasedCourses: mongoose.Types.ObjectId[],
+  limit: number
+): Promise<any[]> => {
+  // Đây là truy vấn aggregate MỚI,
+  // chạy trên collection "course_similarities" (Rất nhỏ, Rất nhanh)
+  return CourseSimilarityModel.aggregate([
+    // 1. Chỉ tìm các khóa học mà user ĐÃ MUA
+    {
+      $match: {
+        _id: { $in: userPurchasedCourses },
+      },
+    },
+    // 2. "Xé" mảng gợi ý của chúng ra
+    {
+      $unwind: "$recommendations",
+    },
+    // 3. Lọc ra các khóa học user ĐÃ CÓ
+    {
+      $match: {
+        "recommendations.courseId": { $nin: userPurchasedCourses },
+      },
+    },
+    // 4. Gom nhóm lại và CỘNG ĐIỂM
+    // (Nếu A -> C (0.5đ) và B -> C (0.4đ) => C = 0.9đ)
+    {
+      $group: {
+        _id: "$recommendations.courseId",
+        totalScore: { $sum: "$recommendations.score" },
+      },
+    },
+    // 5. Sắp xếp theo điểm cao nhất
+    {
+      $sort: { totalScore: -1 },
+    },
+    // 6. Giới hạn
+    {
+      $limit: limit,
+    },
+    // 7. Lấy thông tin chi tiết khóa học (y như cũ)
+    {
+      $lookup: {
+        from: "courses",
+        localField: "_id",
+        foreignField: "_id",
+        as: "courseDetails",
+      },
+    },
+    {
+      $unwind: "$courseDetails",
+    },
+    {
+      $project: {
+        _id: "$courseDetails._id",
+        name: "$courseDetails.name",
+        price: "$courseDetails.price",
+        score: "$totalScore",
+      },
+    },
+  ]);
+};
 
 export const courseRepository = {
   getTutorStatistics,
   findSimpleById,
   getColdStartRecommendations, // Giữ nguyên tên export
+  getPrecomputedRecommendations, // <--- Thêm hàm mới vào export
 };

@@ -12,3 +12,8 @@ recommendationRouter.get(
 );
 
 export default recommendationRouter;
+
+recommendationRouter.get(
+  "/recommendations/:userId",
+  recommendationController.getTestRecommendations
+);

@@ -43,7 +43,39 @@ const getRecommendations = CatchAsyncError(
   }
 );
 
+const getTestRecommendations = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // 1. Lấy userId từ URL (req.params)
+    const { userId } = req.params;
+
+    if (!userId) {
+      return next(new ErrorHandler("Please provide a userId in the URL", 400));
+    }
+
+    // 2. Lấy 'limit' từ query (tương tự)
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string, 10)
+      : 10;
+    if (isNaN(limit) || limit <= 0) {
+      return next(new ErrorHandler("Invalid 'limit' parameter", 400));
+    }
+
+    // 3. Gọi CÙNG MỘT service
+    // Service của bạn không quan tâm ID đến từ đâu (token hay URL)
+    const recommendations =
+      await recommendationService.getRecommendationsForUser(userId, limit);
+
+    // 4. Trả về kết quả
+    res.status(200).json({
+      success: true,
+      testingUserId: userId, // Thêm dòng này để biết bạn đang test user nào
+      recommendations,
+    });
+  }
+);
+
 // Export theo cấu trúc của bạn
 export const recommendationController = {
   getRecommendations,
+  getTestRecommendations, // <--- Thêm hàm mới
 };
