@@ -28,7 +28,9 @@ import {
   getTopPurchasedCourses,
   getTopRatedCourses,
   checkUserPurchasedCourse,
+  getCourseReviews,
   getStudentDetailsInCourse,
+  getLectureComments,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -81,6 +83,12 @@ courseRouter.get(
   "/course/:id/has-purchased",
   isAuthenticated,
   checkUserPurchasedCourse
+);
+courseRouter.get("/course/:id/reviews", getCourseReviews);
+courseRouter.get(
+  "/course/:courseId/lectures/:contentId/comments",
+  isAuthenticated,
+  getLectureComments
 );
 courseRouter.put(
   "/course/add_comment_to_lecture",

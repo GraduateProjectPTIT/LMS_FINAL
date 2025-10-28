@@ -4,6 +4,7 @@ import CourseModel from "../models/course.model";
 import CategoryModel from "../models/category.model";
 import cloudinary from "cloudinary";
 import mongoose from "mongoose";
+import type { PipelineStage } from "mongoose";
 import path from "path";
 import ejs from "ejs";
 import sendMail from "../utils/sendMail";
@@ -244,6 +245,137 @@ export const createCourse = async (
     });
   } catch (error: any) {
     console.error("Create course error:", error);
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+/**
+ * Lấy danh sách review của một khóa học (có phân trang), kèm user của review và replies.
+ * - Không yêu cầu đăng nhập
+ * @param courseId Id khóa học
+ * @param query { page, limit, sortOrder }
+ */
+export const getCourseReviewsService = async (
+  courseId: string,
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return next(new ErrorHandler("Invalid course id", 400));
+    }
+
+    let page = parseInt(String(query?.page ?? "1"), 10);
+    let limit = parseInt(String(query?.limit ?? "10"), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const skip = (page - 1) * limit;
+    const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+
+    const agg: PipelineStage[] = [
+      { $match: { _id: new mongoose.Types.ObjectId(courseId) } },
+      { $project: { reviews: 1 } },
+      { $unwind: "$reviews" },
+      { $sort: { "reviews.createdAt": sortOrder } },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            // lookup review user
+            {
+              $lookup: {
+                from: "users",
+                localField: "reviews.userId",
+                foreignField: "_id",
+                as: "reviewUser",
+              },
+            },
+            { $addFields: { reviewUser: { $arrayElemAt: ["$reviewUser", 0] } } },
+            // lookup all reply users by ids array
+            {
+              $lookup: {
+                from: "users",
+                localField: "reviews.replies.userId",
+                foreignField: "_id",
+                as: "replyUsers",
+              },
+            },
+            // materialize replies with user object
+            {
+              $addFields: {
+                review: {
+                  _id: "$reviews._id",
+                  rating: "$reviews.rating",
+                  comment: "$reviews.comment",
+                  createdAt: "$reviews.createdAt",
+                  updatedAt: "$reviews.updatedAt",
+                  userId: {
+                    _id: "$reviewUser._id",
+                    name: "$reviewUser.name",
+                    avatar: "$reviewUser.avatar",
+                  },
+                  replies: {
+                    $map: {
+                      input: { $ifNull: ["$reviews.replies", []] },
+                      as: "r",
+                      in: {
+                        _id: "$$r._id",
+                        answer: "$$r.answer",
+                        createdAt: "$$r.createdAt",
+                        updatedAt: "$$r.updatedAt",
+                        userId: {
+                          $let: {
+                            vars: {
+                              u: {
+                                $arrayElemAt: [
+                                  {
+                                    $filter: {
+                                      input: "$replyUsers",
+                                      as: "u",
+                                      cond: { $eq: ["$$u._id", "$$r.userId"] },
+                                    },
+                                  },
+                                  0,
+                                ],
+                              },
+                            },
+                            in: { _id: "$$u._id", name: "$$u.name", avatar: "$$u.avatar" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            { $replaceRoot: { newRoot: "$review" } },
+          ],
+          total: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const result = await CourseModel.aggregate(agg);
+    const bucket = Array.isArray(result) && result.length > 0 ? result[0] : { data: [], total: [] };
+    const data = bucket.data ?? [];
+    const totalItems = (bucket.total && bucket.total[0] && bucket.total[0].count) || 0;
+
+    res.status(200).json({
+      success: true,
+      paginatedResult: {
+        data,
+        meta: {
+          totalItems,
+          totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / limit),
+          currentPage: page,
+          pageSize: limit,
+        },
+      },
+    });
+  } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };
@@ -1039,6 +1171,174 @@ export const enrollCourseService = async (
       success: true,
       course: payloadCourse,
       completedLectures: userEnrollment?.completedLectures || [],
+    });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+/**
+ * Lấy danh sách comment của một lecture trong khóa học, có phân trang.
+ * - Điều kiện: đã mua/ghi danh, là creator hoặc admin
+ * - Trả về comment theo dạng cây: comment gốc + replies
+ */
+export const getLectureCommentsService = async (
+  courseId: string,
+  contentId: string,
+  query: any,
+  userId: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return next(new ErrorHandler("Invalid course id", 400));
+    }
+    if (!mongoose.Types.ObjectId.isValid(contentId)) {
+      return next(new ErrorHandler("Invalid content id", 400));
+    }
+
+    const [enrollment, courseDoc] = await Promise.all([
+      EnrolledCourseModel.findOne({ userId: userId?._id, courseId }),
+      CourseModel.findById(courseId).select("creatorId"),
+    ]);
+
+    const isEnrolled = Boolean(enrollment);
+    const isCreator =
+      courseDoc &&
+      (courseDoc as any).creatorId &&
+      String((courseDoc as any).creatorId) === String(userId?._id);
+
+    if (!isEnrolled && !isCreator && userId?.role !== "admin") {
+      return next(
+        new ErrorHandler("You are not eligible to access this course", 403)
+      );
+    }
+
+    let page = parseInt(String(query?.page ?? "1"), 10);
+    let limit = parseInt(String(query?.limit ?? "10"), 10);
+    if (Number.isNaN(page) || page < 1) page = 1;
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+
+    const agg: PipelineStage[] = [
+      { $match: { _id: new mongoose.Types.ObjectId(courseId) } },
+      { $project: { courseData: 1 } },
+      { $unwind: "$courseData" },
+      { $unwind: "$courseData.sectionContents" },
+      {
+        $match: {
+          "courseData.sectionContents._id": new mongoose.Types.ObjectId(
+            contentId
+          ),
+        },
+      },
+      { $project: { content: "$courseData.sectionContents" } },
+      {
+        $addFields: {
+          allUserIds: {
+            $setUnion: [
+              {
+                $map: {
+                  input: { $ifNull: ["$content.lectureComments", []] },
+                  as: "c",
+                  in: "$$c.userId",
+                },
+              },
+              [],
+            ],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "allUserIds",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $addFields: {
+          comments: {
+            $map: {
+              input: { $ifNull: ["$content.lectureComments", []] },
+              as: "c",
+              in: {
+                _id: "$$c._id",
+                content: "$$c.content",
+                parentId: "$$c.parentId",
+                createdAt: "$$c.createdAt",
+                updatedAt: "$$c.updatedAt",
+                userId: {
+                  $let: {
+                    vars: {
+                      u: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$users",
+                              as: "u",
+                              cond: { $eq: ["$$u._id", "$$c.userId"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: { _id: "$$u._id", name: "$$u.name", avatar: "$$u.avatar" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      { $project: { comments: 1, _id: 0 } },
+    ];
+
+    const result = await CourseModel.aggregate(agg);
+    if (!Array.isArray(result) || result.length === 0) {
+      return next(new ErrorHandler("Lecture not found", 404));
+    }
+
+    const allComments: any[] = result[0]?.comments ?? [];
+    const topLevel = allComments
+      .filter((c: any) => !c.parentId)
+      .sort((a: any, b: any) =>
+        sortOrder === 1
+          ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+    const totalItems = topLevel.length;
+    const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / limit);
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    const pagedTop = topLevel.slice(start, end);
+
+    const data = pagedTop.map((t) => {
+      const replies = allComments
+        .filter((c: any) => String(c.parentId) === String(t._id))
+        .sort(
+          (a: any, b: any) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      return { ...t, replies };
+    });
+
+    res.status(200).json({
+      success: true,
+      paginatedResult: {
+        data,
+        meta: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          pageSize: limit,
+        },
+      },
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

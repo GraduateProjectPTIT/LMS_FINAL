@@ -26,6 +26,8 @@ import {
   getTopRatedCoursesService,
   checkUserPurchasedCourseService,
   getStudentDetailsInCourseService,
+  getCourseReviewsService,
+  getLectureCommentsService,
 } from "../services/course.service";
 import {
   IAddCommentData,
@@ -51,6 +53,35 @@ export const createCourseController = CatchAsyncError(
       createCourse(data, res, next);
     } catch (error: any) {
       console.error("Course upload error:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getCourseReviews = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await getCourseReviewsService(courseId, req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getLectureComments = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId, contentId } = req.params as any;
+      await getLectureCommentsService(
+        courseId,
+        contentId,
+        req.query,
+        req.user,
+        res,
+        next
+      );
+    } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
