@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShoppingCart, Tag, CreditCard, Trash2 } from 'lucide-react'
+import { CreditCard, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CartItem } from "@/type"
 import ClearCartModal from './ClearCartModal'

@@ -6,10 +6,9 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy, CheckCircle, XCircle } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Copy } from "lucide-react";
 import toast from 'react-hot-toast';
 import Link from "next/link";
 
@@ -17,7 +16,6 @@ interface PostActionProps {
     postId: string;
     postStatus: "draft" | "published";
     postSlug: string;
-    onToggleStatus: () => void;
     onDelete: () => void;
 }
 
@@ -25,15 +23,12 @@ const PostAction = ({
     postId,
     postStatus,
     postSlug,
-    onToggleStatus,
     onDelete
 }: PostActionProps) => {
     const handleCopyId = () => {
         navigator.clipboard.writeText(postId);
         toast.success("Post ID copied to clipboard");
     };
-
-    const isPublished = postStatus === "published";
 
     return (
         <DropdownMenu>
@@ -63,33 +58,9 @@ const PostAction = ({
                     </DropdownMenuItem>
                 </Link>
 
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                    onClick={onToggleStatus}
-                    className={`cursor-pointer ${isPublished
-                        ? "text-orange-600 focus:text-orange-600 focus:bg-orange-50 dark:focus:bg-orange-900/20"
-                        : "text-green-600 focus:text-green-600 focus:bg-green-50 dark:focus:bg-green-900/20"
-                        }`}
-                >
-                    {isPublished ? (
-                        <>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Unpublish Post
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Publish Post
-                        </>
-                    )}
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
                 <DropdownMenuItem
                     onClick={onDelete}
-                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+                    className="cursor-pointer text-red-600 focus:text-red-600 "
                 >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete Post

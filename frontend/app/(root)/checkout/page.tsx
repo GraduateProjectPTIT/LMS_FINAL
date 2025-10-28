@@ -1,6 +1,5 @@
 import React from 'react'
 import Protected from '@/hooks/useProtected'
-import Layout from '@/components/Layout'
 import Checkout from '@/components/checkout/Checkout'
 
 const CheckoutPage = () => {

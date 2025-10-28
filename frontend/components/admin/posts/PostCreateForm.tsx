@@ -183,6 +183,7 @@ export default function PostCreateForm() {
             <div className="flex items-center gap-4">
               <Link href="/admin/posts">
                 <Button type="button" variant="outline" size="sm" className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>
               </Link>

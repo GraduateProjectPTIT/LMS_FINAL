@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/redux/store'
 import { getCartStart, getCartSuccess, getCartFailure } from '@/redux/cart/cartSlice'
@@ -31,7 +31,7 @@ const CheckoutContent = () => {
 
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'paypal' | 'stripe' | 'zalopay'>('paypal');
 
-    const handleGetUserCart = async () => {
+    const handleGetUserCart = useCallback(async () => {
         try {
             dispatch(getCartStart());
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/cart`, {
@@ -55,13 +55,13 @@ const CheckoutContent = () => {
             dispatch(getCartFailure(error.message || "Cannot get user cart"));
             toast.error(error.message || "Cannot get user cart");
         }
-    };
+    }, [dispatch]);
 
     useEffect(() => {
         if (currentUser) {
             handleGetUserCart();
         }
-    }, [currentUser]);
+    }, [currentUser, handleGetUserCart]);
 
     if (loading) {
         return (

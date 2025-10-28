@@ -6,7 +6,6 @@ import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import StepContent from '@mui/material/StepContent';
-import Typography from '@mui/material/Typography';
 import { StepButton, useMediaQuery } from '@mui/material';
 import { Button } from '@/components/ui/button';
 

@@ -8,9 +8,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy } from "lucide-react";
+import { MoreHorizontal, Eye, Copy } from "lucide-react";
 import toast from 'react-hot-toast';
-import Link from "next/link";
 
 interface IPaymentInfo {
     id: string;
@@ -44,14 +43,21 @@ interface IOrderResponse {
 
 interface OrderActionsProps {
     order: IOrderResponse;
+    setSelectedOrderId: React.Dispatch<React.SetStateAction<string | null>>;
+    setOpenOrderDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const OrderActions = ({ order }: OrderActionsProps) => {
+const OrderActions = ({ order, setSelectedOrderId, setOpenOrderDetailModal }: OrderActionsProps) => {
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(order._id);
         toast.success("Order ID copied to clipboard");
     };
+
+    const handleViewOrderDetail = (orderId: string) => {
+        setSelectedOrderId(orderId);
+        setOpenOrderDetailModal(true);
+    }
 
     return (
         <DropdownMenu>
@@ -66,7 +72,7 @@ const OrderActions = ({ order }: OrderActionsProps) => {
                     <Copy className="mr-2 h-4 w-4" />
                     Copy Order ID
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem onClick={() => handleViewOrderDetail(order._id)} className="cursor-pointer">
                     <Eye className="mr-2 h-4 w-4" />
                     View Order
                 </DropdownMenuItem>

@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Input } from '@/components/ui/input'
-import { Search, Clock, X, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { Search, Clock, X, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MobileSearchProps {
     isOpen: boolean
@@ -34,14 +34,13 @@ const MobileSearch: React.FC<MobileSearchProps> = ({
     const mobileSearchRef = useRef<HTMLDivElement>(null);
     const [showAllHistory, setShowAllHistory] = useState(false);
 
-
-    const INITIAL_DISPLAY_COUNT = 5
+    const INITIAL_DISPLAY_COUNT = 5;
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
             inputRef.current.focus()
         }
-    }, [isOpen])
+    }, [isOpen]);
 
     // Xử lý click bên ngoài để đóng search history
     useEffect(() => {
@@ -59,7 +58,7 @@ const MobileSearch: React.FC<MobileSearchProps> = ({
         return () => {
             document.removeEventListener("mousedown", handleClickOutside)
         }
-    }, [isSearchHistoryVisible])
+    }, [isSearchHistoryVisible, setIsOpen]);
 
     const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -79,34 +78,34 @@ const MobileSearch: React.FC<MobileSearchProps> = ({
         onClose();
         setIsSearchHistoryVisible(false);
         setIsOpen(false);
-    }
+    };
 
     const handleInputFocus = () => {
         setIsSearchHistoryVisible(true);
-    }
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onSearchTermChange(e.target.value);
         if (history.length > 0) {
             setIsSearchHistoryVisible(true);
         }
-    }
+    };
 
     const handleClose = () => {
         setIsSearchHistoryVisible(false);
         setIsOpen(false);
         setShowAllHistory(false);
         onClose();
-    }
+    };
 
     const toggleShowAll = () => {
-        setShowAllHistory(!showAllHistory)
-    }
+        setShowAllHistory(!showAllHistory);
+    };
 
-    const displayedHistory = showAllHistory ? history : history.slice(0, INITIAL_DISPLAY_COUNT)
-    const hasMoreItems = history.length > INITIAL_DISPLAY_COUNT
+    const displayedHistory = showAllHistory ? history : history.slice(0, INITIAL_DISPLAY_COUNT);
+    const hasMoreItems = history.length > INITIAL_DISPLAY_COUNT;
 
-    if (!isOpen) return null
+    if (!isOpen) return null;
 
     return (
         <>

@@ -1,8 +1,8 @@
 import React from 'react';
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
-import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
 import { MdNotificationsActive } from "react-icons/md";
 

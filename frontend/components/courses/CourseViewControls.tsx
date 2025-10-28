@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Grid, List, LayoutGrid } from 'lucide-react';
+import { List, LayoutGrid } from 'lucide-react';
 
 interface CourseViewControlsProps {
     viewMode: 'grid' | 'list';

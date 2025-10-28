@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { TrendingUp, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface IRevenueSeries {

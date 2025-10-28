@@ -335,7 +335,7 @@ const SearchCoursesPage = () => {
                             {filters.keyword && (
                                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
                                     <p className="text-blue-800 dark:text-blue-200">
-                                        Search results for: <strong>"{filters.keyword}"</strong>
+                                        Search results for: <strong>&quot;{filters.keyword}&quot;</strong>
                                         {totalResults > 0 && (
                                             <span className="ml-2 text-sm text-blue-600 dark:text-blue-300">
                                                 ({totalResults} courses found)

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 
 interface PreviewVideoModalProps {
@@ -8,11 +8,11 @@ interface PreviewVideoModalProps {
 }
 
 const PreviewVideoModal = ({ showPreviewModal, videoUrl, onClose }: PreviewVideoModalProps) => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleEscape = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             onClose();
         }
-    };
+    }, [onClose]);
 
     const handleModalClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {
@@ -33,7 +33,7 @@ const PreviewVideoModal = ({ showPreviewModal, videoUrl, onClose }: PreviewVideo
             document.removeEventListener('keydown', handleEscape);
             document.body.style.overflow = 'auto';
         };
-    }, [showPreviewModal]);
+    }, [showPreviewModal, handleEscape]);
 
     if (!showPreviewModal || !videoUrl) return null;
 

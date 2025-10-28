@@ -5,7 +5,6 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { splitComma, hasDuplicatesCI, tagRegex, escapeRegExp } from "@/utils/courseHelpers";
-import { IBaseCategory, ICreateCourseInformation } from '@/type';
 import { getFieldStatus, getFieldBorderClass, getFieldIcon, preprocessStringToNumber } from "@/utils/formFieldHelpers";
 import { useCategoryAutofill } from '@/hooks/useCategoryAutoFill';
 import EditVideoUploader from './EditVideoUploader';

@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { SectionLecture, IVideoLinkResponse } from "@/type";
-import { FaRegPlayCircle, FaLink, FaCheck } from "react-icons/fa";
+import { SectionLecture } from "@/type";
+import { FaRegPlayCircle, FaCheck } from "react-icons/fa";
 import LectureQuestions from './LectureQuestions';
 import LectureResources from './LectureResources';
 
@@ -93,9 +93,9 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
     const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80 || canBypass);
 
     return (
-        <div className="flex flex-col h-screen overflow-y-scroll">
+        <div className="flex flex-col h-screen overflow-y-scroll pb-20">
             {/* Video display */}
-            <div className="bg-black rounded-lg overflow-hidden aspect-video">
+            <div className="bg-black rounded-lg overflow-hidden w-full aspect-video flex-shrink-0">
                 <video
                     ref={videoRef}
                     src={lecture.video.url}
@@ -108,7 +108,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                 </video>
             </div>
 
-            <div className="mt-4">
+            <div className="flex-1 w-full max-w-full mt-4">
                 {/* Title and Mark as Completed button */}
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">
@@ -186,7 +186,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
                                 }`}
                         >
-                            Q&A {lecture.lectureQuestions.length > 0 && `(${lecture.lectureQuestions.length})`}
+                            Q&A {lecture.lectureComments.length > 0 && `(${lecture.lectureComments.length})`}
                         </button>
                     </nav>
                 </div>
@@ -216,8 +216,12 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
                     {activeTab === 'questions' && (
                         <div>
-                            {lecture.lectureQuestions && lecture.lectureQuestions.length > 0 ? (
-                                <LectureQuestions />
+                            {lecture.lectureComments && lecture.lectureComments.length > 0 ? (
+                                <LectureQuestions
+                                    courseId={course._id}
+                                    contentId={lecture._id}
+
+                                />
                             ) : (
                                 <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
                                     <p className="text-gray-500 dark:text-gray-400">No questions available for this video</p>

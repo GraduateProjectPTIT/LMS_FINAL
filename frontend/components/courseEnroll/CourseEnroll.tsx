@@ -1,5 +1,6 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+
+import React, { useCallback, useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { RootState } from '@/redux/store';
@@ -28,7 +29,18 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
-    const handleEnrollCourse = async () => {
+    // Helper function to get all lectures from course data
+    const getAllLecturesFromCourse = useCallback((courseData: CourseEnrollResponse) => {
+        const allLectures: SectionLecture[] = [];
+        courseData.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push(lecture);
+            });
+        });
+        return allLectures;
+    }, []);
+
+    const handleEnrollCourse = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/enroll/${courseId}`, {
@@ -81,7 +93,43 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [courseId, getAllLecturesFromCourse]);
+
+    // Tạo một flat array tất cả các lecture với thứ tự
+    const getAllLecturesInOrder = useCallback(() => {
+        if (!course) return [];
+
+        const allLectures: (SectionLecture & { order: number })[] = [];
+        let order = 0;
+
+        course.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push({ ...lecture, order });
+                order++;
+            });
+        });
+
+        return allLectures;
+    }, [course]);
+
+    // Kiểm tra xem một lecture có thể truy cập được không
+    const isLectureAccessible = useCallback((lecture: SectionLecture) => {
+        if (canBypass) return true;
+
+        const allLectures = getAllLecturesInOrder();
+        const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
+
+        if (currentLectureIndex === 0) return true; // First lecture is always accessible
+
+        // Check if all previous lectures are completed
+        for (let i = 0; i < currentLectureIndex; i++) {
+            if (!completedLectures.includes(allLectures[i]._id)) {
+                return false;
+            }
+        }
+
+        return true;
+    }, [canBypass, completedLectures, getAllLecturesInOrder]);
 
     useEffect(() => {
         const checkAndFetch = async () => {
@@ -107,54 +155,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         };
 
         checkAndFetch();
-    }, [courseId]);
-
-    // Helper function to get all lectures from course data
-    const getAllLecturesFromCourse = (courseData: CourseEnrollResponse) => {
-        const allLectures: SectionLecture[] = [];
-        courseData.courseData.forEach(section => {
-            section.sectionContents.forEach(lecture => {
-                allLectures.push(lecture);
-            });
-        });
-        return allLectures;
-    };
-
-    // Tạo một flat array tất cả các lecture với thứ tự
-    const getAllLecturesInOrder = () => {
-        if (!course) return [];
-
-        const allLectures: (SectionLecture & { order: number })[] = [];
-        let order = 0;
-
-        course.courseData.forEach(section => {
-            section.sectionContents.forEach(lecture => {
-                allLectures.push({ ...lecture, order });
-                order++;
-            });
-        });
-
-        return allLectures;
-    };
-
-    // Kiểm tra xem một lecture có thể truy cập được không
-    const isLectureAccessible = (lecture: SectionLecture) => {
-        if (canBypass) return true;
-
-        const allLectures = getAllLecturesInOrder();
-        const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
-
-        if (currentLectureIndex === 0) return true; // First lecture is always accessible
-
-        // Check if all previous lectures are completed
-        for (let i = 0; i < currentLectureIndex; i++) {
-            if (!completedLectures.includes(allLectures[i]._id)) {
-                return false;
-            }
-        }
-
-        return true;
-    };
+    }, [courseId, handleEnrollCourse, router]);
 
     const setSelectedVideo = (lecture: SectionLecture) => {
         // Only allow selection of accessible lectures
@@ -194,7 +195,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                 }
             }
         }
-    }, [completedLectures, selectedLecture]);
+    }, [completedLectures, selectedLecture, getAllLecturesInOrder, isLectureAccessible]);
 
     const courseCategories = course?.categories.map(cat => cat.title).join(', ') || '';
 
@@ -213,7 +214,13 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                     />
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Main content area */}
-                        <div className="flex-grow p-4 overflow-auto">
+                        <div
+                            className={`transition-all duration-300 p-4 ${isSidebarOpen
+                                ? 'w-full md:w-[calc(100%-24rem)]' // 24rem = 384px = w-96
+                                : 'w-full'
+                                }`}
+                            style={{ maxWidth: isSidebarOpen ? '100%' : '100%' }}
+                        >
                             <VideoPlayer
                                 lecture={selectedLecture}
                                 course={course}

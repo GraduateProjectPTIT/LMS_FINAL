@@ -17,11 +17,15 @@ interface SearchUsersProps {
     onSearchChange: (value: string) => void;
     onSearchSubmit: () => void;
     onClearSearch: () => void;
-    currentSearch?: string;
+    currentSearch: string;
     roles: string[];
-    filters: FilterState;
+    filters: FilterState; // Draft filters
+    appliedFilters: FilterState; // Applied filters
     onFilterChange: (filters: Partial<FilterState>) => void;
+    onApplyFilters: () => void;
     onClearFilters: () => void;
+    onRemoveFilter: (filterKey: keyof FilterState) => void;
+    onRemoveSortFilter: () => void;
 }
 
 const SearchUsers = ({
@@ -29,11 +33,15 @@ const SearchUsers = ({
     onSearchChange,
     onSearchSubmit,
     onClearSearch,
-    currentSearch = "",
+    currentSearch,
     roles,
     filters,
+    appliedFilters,
     onFilterChange,
+    onApplyFilters,
     onClearFilters,
+    onRemoveFilter,
+    onRemoveSortFilter
 }: SearchUsersProps) => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -70,10 +78,7 @@ const SearchUsers = ({
     const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
 
-        // Parse the combined sort value (e.g., "name-asc" -> sortBy: "name", sortOrder: "asc")
-        if (value === 'default') {
-            onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
-        } else if (value === 'date-newest') {
+        if (value === 'default' || value === 'date-newest') {
             onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
         } else if (value === 'date-oldest') {
             onFilterChange({ sortBy: 'createdAt', sortOrder: 'asc' });
@@ -84,18 +89,30 @@ const SearchUsers = ({
         }
     };
 
-    const hasActiveFilters = filters.selectedRole ||
-        (filters.verificationStatus && filters.verificationStatus !== 'all') ||
-        (filters.surveyStatus && filters.surveyStatus !== 'all') ||
-        (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc');
+    const handleApplyClick = () => {
+        onApplyFilters();
+        setIsFilterOpen(false);
+    };
+
+    // Kiểm tra active filters dựa trên appliedFilters
+    const hasActiveFilters =
+        appliedFilters.selectedRole ||
+        (appliedFilters.verificationStatus && appliedFilters.verificationStatus !== 'all') ||
+        (appliedFilters.surveyStatus && appliedFilters.surveyStatus !== 'all') ||
+        (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc');
 
     const getActiveFiltersCount = () => {
         let count = 0;
-        if (filters.selectedRole) count++;
-        if (filters.verificationStatus && filters.verificationStatus !== 'all') count++;
-        if (filters.surveyStatus && filters.surveyStatus !== 'all') count++;
-        if (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') count++;
+        if (appliedFilters.selectedRole) count++;
+        if (appliedFilters.verificationStatus && appliedFilters.verificationStatus !== 'all') count++;
+        if (appliedFilters.surveyStatus && appliedFilters.surveyStatus !== 'all') count++;
+        if (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc') count++;
         return count;
+    };
+
+    // Kiểm tra xem có thay đổi giữa draft và applied filters không
+    const hasUnappliedChanges = () => {
+        return JSON.stringify(filters) !== JSON.stringify(appliedFilters);
     };
 
     const toggleFilter = () => {
@@ -125,12 +142,12 @@ const SearchUsers = ({
         if (filters.sortBy === 'createdAt' && filters.sortOrder === 'asc') return 'date-oldest';
         if (filters.sortBy === 'name' && filters.sortOrder === 'asc') return 'name-asc';
         if (filters.sortBy === 'name' && filters.sortOrder === 'desc') return 'name-desc';
-        return 'default';
+        return 'date-newest';
     };
 
     const getSortLabel = (value: string) => {
         const sortLabels: Record<string, string> = {
-            'default': 'Default',
+            'default': 'Default (Newest)',
             'name-asc': 'Name: A to Z',
             'name-desc': 'Name: Z to A',
             'date-newest': 'Newest',
@@ -161,7 +178,7 @@ const SearchUsers = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={onClearSearch}
-                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700 hover:cursor-pointer"
                                 >
                                     <X className="h-3 w-3" />
                                 </Button>
@@ -225,11 +242,18 @@ const SearchUsers = ({
                                 <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                                 <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">User Filters</h3>
                             </div>
-                            {hasActiveFilters && (
-                                <span className="text-sm text-slate-600 dark:text-slate-400">
-                                    {getActiveFiltersCount()} active filter{getActiveFiltersCount() !== 1 ? 's' : ''}
-                                </span>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {hasActiveFilters && (
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                                        {getActiveFiltersCount()} active filter{getActiveFiltersCount() !== 1 ? 's' : ''}
+                                    </span>
+                                )}
+                                {hasUnappliedChanges() && (
+                                    <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-full font-medium">
+                                        Unsaved changes
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -304,11 +328,10 @@ const SearchUsers = ({
                                         onChange={handleSortChange}
                                         className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
                                     >
-                                        <option value="default">Default (Newest)</option>
-                                        <option value="name-asc">Name: A to Z</option>
-                                        <option value="name-desc">Name: Z to A</option>
                                         <option value="date-newest">Newest</option>
                                         <option value="date-oldest">Oldest</option>
+                                        <option value="name-asc">Name: A to Z</option>
+                                        <option value="name-desc">Name: Z to A</option>
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                 </div>
@@ -322,7 +345,7 @@ const SearchUsers = ({
                                 variant="ghost"
                                 onClick={onClearFilters}
                                 disabled={!hasActiveFilters}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Reset All Filters
                             </Button>
@@ -337,8 +360,9 @@ const SearchUsers = ({
                                 </Button>
                                 <Button
                                     type="button"
-                                    onClick={toggleFilter}
+                                    onClick={handleApplyClick}
                                     className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
+                                    disabled={!hasUnappliedChanges()}
                                 >
                                     Apply Filters
                                 </Button>
@@ -348,16 +372,16 @@ const SearchUsers = ({
                 </div>
             )}
 
-            {/* Active Filters Display */}
+            {/* Active Filters Display - dựa trên appliedFilters */}
             {hasActiveFilters && (
                 <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Active filters:</span>
 
-                    {filters.selectedRole && (
+                    {appliedFilters.selectedRole && (
                         <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Role: {filters.selectedRole.charAt(0).toUpperCase() + filters.selectedRole.slice(1)}</span>
+                            <span>Role: {appliedFilters.selectedRole.charAt(0).toUpperCase() + appliedFilters.selectedRole.slice(1)}</span>
                             <button
-                                onClick={() => onFilterChange({ selectedRole: "" })}
+                                onClick={() => onRemoveFilter('selectedRole')}
                                 className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
                             >
                                 <X className="h-3 w-3 hover:cursor-pointer" />
@@ -365,11 +389,11 @@ const SearchUsers = ({
                         </div>
                     )}
 
-                    {filters.verificationStatus && filters.verificationStatus !== 'all' && (
+                    {appliedFilters.verificationStatus && appliedFilters.verificationStatus !== 'all' && (
                         <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Verification: {getVerificationLabel(filters.verificationStatus)}</span>
+                            <span>Verification: {getVerificationLabel(appliedFilters.verificationStatus)}</span>
                             <button
-                                onClick={() => onFilterChange({ verificationStatus: 'all' })}
+                                onClick={() => onRemoveFilter('verificationStatus')}
                                 className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
                             >
                                 <X className="h-3 w-3 hover:cursor-pointer" />
@@ -377,11 +401,11 @@ const SearchUsers = ({
                         </div>
                     )}
 
-                    {filters.surveyStatus && filters.surveyStatus !== 'all' && (
+                    {appliedFilters.surveyStatus && appliedFilters.surveyStatus !== 'all' && (
                         <div className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1.5 rounded-full text-sm font-medium">
-                            <span>Survey: {getSurveyLabel(filters.surveyStatus)}</span>
+                            <span>Survey: {getSurveyLabel(appliedFilters.surveyStatus)}</span>
                             <button
-                                onClick={() => onFilterChange({ surveyStatus: 'all' })}
+                                onClick={() => onRemoveFilter('surveyStatus')}
                                 className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
                             >
                                 <X className="h-3 w-3 hover:cursor-pointer" />
@@ -389,11 +413,11 @@ const SearchUsers = ({
                         </div>
                     )}
 
-                    {(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') && (
+                    {(appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc') && (
                         <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">
                             <span>Sort: {getSortLabel(getSortValue())}</span>
                             <button
-                                onClick={() => onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' })}
+                                onClick={onRemoveSortFilter}
                                 className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
                             >
                                 <X className="h-3 w-3 hover:cursor-pointer" />

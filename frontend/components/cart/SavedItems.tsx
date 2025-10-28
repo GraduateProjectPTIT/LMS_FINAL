@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import MissingImage from "@/public/missing_image.jpg"
 import { CartItem } from "@/type"
 import { useRouter } from 'next/navigation'
+import { formatDuration } from '@/utils/convertToMinutes'
 
 interface SavedItemsProps {
     items: CartItem[];
@@ -124,7 +125,7 @@ const SavedItems = ({ items, refreshCart }: SavedItemsProps) => {
                                     {item.totalTime && (
                                         <div className="flex items-center gap-1">
                                             <Clock size={14} />
-                                            <span>{item.totalTime}</span>
+                                            <span>{formatDuration(item.totalTime)}</span>
                                         </div>
                                     )}
 

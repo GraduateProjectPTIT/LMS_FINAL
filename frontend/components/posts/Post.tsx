@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import PostItem from "./PostItem";
 import PostPagination from "./PostPagination";
@@ -105,8 +106,8 @@ const Post = () => {
                 ) : (
                     <>
                         <div className="flex flex-col gap-8">
-                            {allPosts.map((post) => (
-                                <PostItem key={post._id} post={post} />
+                            {allPosts.map((post, index) => (
+                                <PostItem key={index} post={post} />
                             ))}
                         </div>
 

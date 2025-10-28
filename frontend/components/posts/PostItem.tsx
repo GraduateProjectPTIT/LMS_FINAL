@@ -3,9 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import { BookmarkIcon, User } from 'lucide-react';
-import { BsThreeDots } from 'react-icons/bs';
 import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
 
 interface PostAuthor {
@@ -79,8 +77,7 @@ const PostItem = ({ post }: PostItemProps) => {
                     <p className='font-semibold text-[16px]'>{post?.authorId?.name || "Author"}</p>
                 </div>
                 <div className='flex items-center gap-2'>
-                    <BookmarkIcon className='w-5 h-5 text-gray-700 dark:text-slate-300' />
-                    <BsThreeDots className='w-5 h-5 text-gray-700 dark:text-slate-300' />
+                    <BookmarkIcon onClick={(e) => e.stopPropagation()} className='w-5 h-5 text-gray-700 dark:text-slate-300' />
                 </div>
             </div>
 
@@ -88,7 +85,7 @@ const PostItem = ({ post }: PostItemProps) => {
             <div className='flex w-full justify-between items-center gap-10'>
                 <div className='w-full md:w-3/4 flex flex-col items-start gap-3'>
                     <h3 className='font-semibold text-lg'>{post?.title}</h3>
-                    <p className='text-gray-600'>{post?.shortDescription}</p>
+                    <p className='text-gray-600 dark:text-slate-500'>{post?.shortDescription}</p>
                     <div className='flex items-center gap-2 text-sm'>
                         <span className='bg-gray-100 dark:bg-slate-500 py-2 px-4 rounded-xl'>{post?.tags.join(", ")}</span>
                         <span className='text-gray-400 dark:text-slate-500'>|</span>

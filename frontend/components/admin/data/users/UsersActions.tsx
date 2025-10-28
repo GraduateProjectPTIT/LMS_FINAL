@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Eye, Copy, Trash2, Mail } from "lucide-react";
 import toast from 'react-hot-toast';
-import Link from "next/link";
 
 interface IMedia {
     public_id?: string;
@@ -39,11 +38,15 @@ interface IUserResponse {
 interface UsersActionsProps {
     user: IUserResponse;
     onDelete: (user: IUserResponse) => void;
+    setOpenUserDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
+    setSelectedUserId: (id: string | null) => void;
 }
 
 const UsersActions = ({
     user,
-    onDelete
+    onDelete,
+    setOpenUserDetailModal,
+    setSelectedUserId
 }: UsersActionsProps) => {
     const handleCopyId = () => {
         navigator.clipboard.writeText(user._id);
@@ -57,6 +60,11 @@ const UsersActions = ({
 
     const handleDelete = () => {
         onDelete(user);
+    };
+
+    const handleViewUserDetail = (userId: string) => {
+        setSelectedUserId(userId);
+        setOpenUserDetailModal(true);
     };
 
     return (
@@ -78,7 +86,7 @@ const UsersActions = ({
                     Copy Email
                 </DropdownMenuItem>
 
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem onClick={() => handleViewUserDetail(user._id)} className="cursor-pointer">
                     <Eye className="mr-2 h-4 w-4" />
                     View Profile
                 </DropdownMenuItem>

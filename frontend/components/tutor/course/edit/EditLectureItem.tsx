@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Trash2, Plus, Clock } from 'lucide-react';
 import EditVideoUploader from './EditVideoUploader';
 import EditConvertDurationModal from './EditConvertDurationModal';
-import { ICreateLecture, IBaseLink, IVideoUpload } from '@/type';
+import { IBaseLink } from '@/type';
 import { useVideoUpload } from '@/hooks/useVideoUpload';
 import toast from 'react-hot-toast';
 import { useSortable } from "@dnd-kit/sortable";

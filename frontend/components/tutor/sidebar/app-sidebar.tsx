@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
 import { useSelector } from "react-redux"
 import { RootState } from "@/redux/store"
-import { Grip, LayoutDashboard, FileText, TvMinimalPlay, SlidersHorizontal, ChartNoAxesCombined } from "lucide-react"
+import { Grip, FileText, TvMinimalPlay } from "lucide-react"
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
@@ -14,30 +14,6 @@ import { Separator } from "../../ui/separator"
 
 const sectionData = {
     sections: [
-        // Statistics for tutor (course, student, revenue)
-        {
-            title: "Statistics",
-            url: "/tutor/statistics",
-            icon: ChartNoAxesCombined,
-            isOpen: false,
-            items: [
-                {
-                    title: "Courses Analytics",
-                    url: "/tutor/statistics/courses",
-                    value: "courses_analytic",
-                },
-                {
-                    title: "Students Analytics",
-                    url: "/tutor/statistics/students",
-                    value: "students_analytic",
-                },
-                {
-                    title: "Revenue Analytics",
-                    url: "/tutor/statistics/revenues",
-                    value: "revenues_analytic",
-                },
-            ],
-        },
         // Data for tutor (course, student, order)
         {
             title: "Data",

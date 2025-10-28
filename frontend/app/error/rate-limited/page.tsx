@@ -1,6 +1,6 @@
 "use client"
 import { useRouter } from 'next/navigation';
-import { ShieldAlert, ArrowLeft, Home, Clock, Zap, Timer } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Home, Timer } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 const RateLimitedErrorPage = () => {

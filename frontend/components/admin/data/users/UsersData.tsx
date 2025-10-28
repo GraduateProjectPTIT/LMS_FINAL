@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import SearchUsers from "./SearchUsers";
 import UsersTable from "./UsersTable";
@@ -56,11 +56,13 @@ const UsersData = () => {
         pageSize: 10
     });
     const [loading, setLoading] = useState(false);
-    const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
 
-    // Filter states
-    const [filters, setFilters] = useState<FilterState>({
+    // Search states
+    const [searchInput, setSearchInput] = useState("");
+    const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+
+    // Draft filters - được cập nhật khi user thay đổi trong UI
+    const [draftFilters, setDraftFilters] = useState<FilterState>({
         selectedRole: "",
         verificationStatus: "all",
         surveyStatus: "all",
@@ -68,53 +70,57 @@ const UsersData = () => {
         sortOrder: "desc"
     });
 
+    // Applied filters - chỉ được cập nhật khi user ấn "Apply Filters"
+    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+        selectedRole: "",
+        verificationStatus: "all",
+        surveyStatus: "all",
+        sortBy: "createdAt",
+        sortOrder: "desc"
+    });
+
+    const [openUserDetailModal, setOpenUserDetailModal] = useState(false);
+
     // Modal states
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<IUserResponse | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [userToView, setUserToView] = useState<IUserResponse | null>(null);
-    const [isViewing, setIsViewing] = useState(false);
-
-    // Build query parameters
+    // Build query parameters dựa trên appliedFilters
     const buildQueryParams = useCallback(() => {
         const params = new URLSearchParams();
 
-        // Always include page and limit
         params.set('page', pagination.currentPage.toString());
         params.set('limit', pagination.pageSize.toString());
 
         // Add search keyword if present
-        if (searchQuery.trim()) {
-            params.set('keyword', searchQuery.trim());
+        if (appliedSearchQuery.trim()) {
+            params.set('keyword', appliedSearchQuery.trim());
         }
 
         // Add role filter if selected
-        if (filters.selectedRole) {
-            params.set('role', filters.selectedRole);
+        if (appliedFilters.selectedRole) {
+            params.set('role', appliedFilters.selectedRole);
         }
 
         // Add verification status (only if not 'all')
-        if (filters.verificationStatus !== 'all') {
-            params.set('isVerified', filters.verificationStatus);
+        if (appliedFilters.verificationStatus !== 'all') {
+            params.set('isVerified', appliedFilters.verificationStatus);
         }
 
         // Add survey status (only if not 'all')
-        if (filters.surveyStatus !== 'all') {
-            params.set('isSurveyCompleted', filters.surveyStatus);
+        if (appliedFilters.surveyStatus !== 'all') {
+            params.set('isSurveyCompleted', appliedFilters.surveyStatus);
         }
 
         // Add sort parameters
-        if (filters.sortBy && filters.sortBy !== 'default') {
-            params.set('sortBy', filters.sortBy);
-            params.set('sortOrder', filters.sortOrder);
-        }
+        params.set('sortBy', appliedFilters.sortBy);
+        params.set('sortOrder', appliedFilters.sortOrder);
 
         return params.toString();
-    }, [pagination.currentPage, pagination.pageSize, searchQuery, filters]);
+    }, [pagination.currentPage, pagination.pageSize, appliedSearchQuery, appliedFilters]);
 
-    // gọi hàm fetchUsers mỗi khi buildQueryParams thay đổi
+    // Fetch users
     const handleFetchUsers = useCallback(async () => {
         setLoading(true);
         try {
@@ -153,43 +159,76 @@ const UsersData = () => {
         }
     }, [buildQueryParams]);
 
-    // Fetch data when component mounts or when dependencies change
+    // Fetch data khi component mount hoặc khi appliedFilters/pagination thay đổi
     useEffect(() => {
         handleFetchUsers();
     }, [handleFetchUsers]);
 
-    // Reset về trang 1 khi search hoặc filter thay đổi
-    useEffect(() => {
-        if (pagination.currentPage !== 1) {
-            setPagination(prev => ({ ...prev, currentPage: 1 }));
-        }
-    }, [searchQuery, filters]);
-
+    // Search handlers
     const handleSearchChange = (value: string) => {
         setSearchInput(value);
     };
 
     const handleSearchSubmit = () => {
-        setSearchQuery(searchInput.trim());
+        setAppliedSearchQuery(searchInput.trim());
+        // Reset về trang 1 khi search mới
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleClearSearch = () => {
         setSearchInput("");
-        setSearchQuery("");
+        setAppliedSearchQuery("");
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
-    const handleFilterChange = (newFilters: Partial<FilterState>) => {
-        setFilters(prev => ({ ...prev, ...newFilters }));
+    // Cập nhật draft filters khi user thay đổi trong UI
+    const handleDraftFiltersChange = (newFilters: Partial<FilterState>) => {
+        setDraftFilters(prev => ({ ...prev, ...newFilters }));
     };
 
+    // Apply filters - được gọi khi user ấn nút "Apply Filters"
+    const handleApplyFilters = () => {
+        setAppliedFilters(draftFilters);
+        // Reset về trang 1 khi apply filters mới
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    // Clear filters - reset cả draft và applied filters
     const handleClearFilters = () => {
-        setFilters({
+        const defaultFilters: FilterState = {
             selectedRole: "",
             verificationStatus: "all",
             surveyStatus: "all",
             sortBy: "createdAt",
             sortOrder: "desc"
-        });
+        };
+        setDraftFilters(defaultFilters);
+        setAppliedFilters(defaultFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    const handleRemoveFilter = (filterKey: keyof FilterState) => {
+        const defaultValue = filterKey === 'selectedRole' ? '' :
+            filterKey === 'sortBy' ? 'createdAt' :
+                filterKey === 'sortOrder' ? 'desc' : 'all';
+
+        setDraftFilters(prev => ({ ...prev, [filterKey]: defaultValue }));
+        setAppliedFilters(prev => ({ ...prev, [filterKey]: defaultValue }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    const handleRemoveSortFilter = () => {
+        setDraftFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setAppliedFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     // Pagination handlers
@@ -265,6 +304,8 @@ const UsersData = () => {
         hasPrevPage: pagination.currentPage > 1,
     };
 
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
     return (
         <div className="w-full">
             <div className="mb-6">
@@ -278,18 +319,23 @@ const UsersData = () => {
                 onSearchChange={handleSearchChange}
                 onSearchSubmit={handleSearchSubmit}
                 onClearSearch={handleClearSearch}
-                currentSearch={searchQuery}
-                // Filter props
+                currentSearch={appliedSearchQuery}
                 roles={roles}
-                filters={filters}
-                onFilterChange={handleFilterChange}
+                filters={draftFilters}
+                appliedFilters={appliedFilters}
+                onFilterChange={handleDraftFiltersChange}
+                onApplyFilters={handleApplyFilters}
                 onClearFilters={handleClearFilters}
+                onRemoveFilter={handleRemoveFilter}
+                onRemoveSortFilter={handleRemoveSortFilter}
             />
 
             <UsersTable
                 users={allUsers}
                 onDelete={handleDeleteClick}
                 isLoading={loading}
+                setOpenUserDetailModal={setOpenUserDetailModal}
+                setSelectedUserId={setSelectedUserId}
             />
 
             {!loading && allUsers.length > 0 && (
@@ -302,6 +348,12 @@ const UsersData = () => {
             )}
 
             <UserDetailModal
+                isOpen={openUserDetailModal}
+                onClose={() => {
+                    setOpenUserDetailModal(false);
+                    setSelectedUserId(null);
+                }}
+                userId={selectedUserId}
             />
 
             <DeleteUsersModal

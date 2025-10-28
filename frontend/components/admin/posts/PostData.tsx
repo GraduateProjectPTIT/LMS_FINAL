@@ -16,6 +16,7 @@ import { HiOutlineDocument } from "react-icons/hi";
 import { IImageAsset } from "@/type";
 import PostAction from "./PostAction";
 import toast from "react-hot-toast";
+import DeletePostModal from "./DeletePostModal";
 
 interface Author {
     _id: string;
@@ -143,32 +144,42 @@ const PostsData = () => {
     const hasPrevPage = pagination.currentPage > 1;
     const hasNextPage = pagination.currentPage < pagination.totalPages;
 
-    const handleToggleStatus = (post: Post) => {
-        const newStatus = post.status === "published" ? "draft" : "published";
-        toast.success(`Post ${newStatus === "published" ? "published" : "unpublished"} successfully (API pending)`);
-
-        // TODO: Gọi API khi BE hoàn thành
-        // Tạm thời cập nhật local state
-        setPosts(prevPosts =>
-            prevPosts.map(p =>
-                p._id === post._id ? { ...p, status: newStatus } : p
-            )
-        );
-    };
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        post: Post | null;
+    }>({
+        isOpen: false,
+        post: null,
+    });
 
     const handleDeletePost = (post: Post) => {
-        // TODO: Thêm confirmation dialog trước khi xóa
-        toast.success("Post deleted successfully (API pending)");
+        setDeleteModal({ isOpen: true, post });
+    };
 
-        // TODO: Gọi API khi BE hoàn thành
-        // Tạm thời xóa khỏi local state
-        setPosts(prevPosts => prevPosts.filter(p => p._id !== post._id));
+    const confirmDelete = async () => {
+        if (!deleteModal.post) return;
 
-        // Cập nhật lại pagination
-        setPagination(prev => ({
-            ...prev,
-            totalItems: prev.totalItems - 1
-        }));
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/post/${deleteModal.post._id}`,
+                {
+                    method: "DELETE",
+                    credentials: "include",
+                }
+            );
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data?.message || "Failed to delete post");
+            }
+
+            toast.success("Post deleted successfully");
+
+            // Refresh data
+            await fetchData(pagination.currentPage, pagination.pageSize);
+        } catch (error: any) {
+            throw error; // Modal sẽ xử lý
+        }
     };
 
     return (
@@ -304,7 +315,6 @@ const PostsData = () => {
                                                 postId={post._id}
                                                 postStatus={post.status}
                                                 postSlug={post.slug}
-                                                onToggleStatus={() => handleToggleStatus(post)}
                                                 onDelete={() => handleDeletePost(post)}
                                             />
                                         </TableCell>
@@ -398,6 +408,14 @@ const PostsData = () => {
                     </div>
                 </div>
             )}
+
+            <DeletePostModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, post: null })}
+                onConfirm={confirmDelete}
+                postTitle={deleteModal.post?.title || ""}
+                postId={deleteModal.post?._id || ""}
+            />
         </div>
     );
 }

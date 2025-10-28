@@ -246,7 +246,7 @@ export interface SectionLecture {
     videoLength: number;
     video: IVideoResponse;
     videoLinks: IVideoLinkResponse[];
-    lectureQuestions: any[]
+    lectureComments: any[]
 }
 
 export interface CourseSection {

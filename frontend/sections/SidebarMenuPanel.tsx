@@ -14,9 +14,8 @@ const SidebarMenuPanel = ({ closeMainMenu, isMobileMenuOpen }: SidebarMenuPanelP
     // Menu items for the mobile menu
     const menuItems = [
         { name: 'Home', url: '/' },
-        { name: 'Policy', url: '/policy' },
-        { name: 'About Us', url: '/about' },
         { name: 'Posts', url: '/posts' },
+        { name: 'My courses', url: '/my-courses' },
     ];
 
     return (
@@ -31,7 +30,7 @@ const SidebarMenuPanel = ({ closeMainMenu, isMobileMenuOpen }: SidebarMenuPanelP
                     <Link
                         key={item.name}
                         href={item.url}
-                        className='text-[16px] p-2 rounded hover:bg-blue-500 dark:hover:bg-[#161b22] hover:text-white hover:font-semibold transition-colors duration-200'
+                        className='text-[16px] p-2 rounded hover:bg-blue-400 dark:hover:bg-[#161b22] hover:text-white hover:font-semibold transition-colors duration-200'
                         onClick={closeMainMenu}
                     >
                         {item.name}

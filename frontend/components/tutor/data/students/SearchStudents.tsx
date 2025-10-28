@@ -15,8 +15,10 @@ interface SearchStudentsProps {
     onSearchSubmit: () => void;
     onClearSearch: () => void;
     currentSearch?: string;
-    filters: FilterState;
+    filters: FilterState; // Draft filters
+    appliedFilters: FilterState; // Applied filters
     onFilterChange: (filters: Partial<FilterState>) => void;
+    onApplyFilters: () => void;
     onClearFilters: () => void;
 }
 
@@ -27,7 +29,9 @@ const SearchStudents = ({
     onClearSearch,
     currentSearch = "",
     filters,
+    appliedFilters,
     onFilterChange,
+    onApplyFilters,
     onClearFilters,
 }: SearchStudentsProps) => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -67,13 +71,24 @@ const SearchStudents = ({
         }
     };
 
-    const hasActiveFilters = (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc');
+    const handleApplyClick = () => {
+        onApplyFilters();
+        setIsFilterOpen(false);
+    }
+
+    // Kiểm tra active filters dựa trên appliedFilters
+    const hasActiveFilters = (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc');
 
     const getActiveFiltersCount = () => {
         let count = 0;
-        if (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') count++;
+        if (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc') count++;
         return count;
     };
+
+    // Kiểm tra xem có thay đổi giữa draft và applied filters không
+    const hasUnappliedChanges = () => {
+        return JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+    }
 
     const toggleFilter = () => {
         setIsFilterOpen(!isFilterOpen);
@@ -184,11 +199,18 @@ const SearchStudents = ({
                                 <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                                 <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Student Filters</h3>
                             </div>
-                            {hasActiveFilters && (
-                                <span className="text-sm text-slate-600 dark:text-slate-400">
-                                    {getActiveFiltersCount()} active filter{getActiveFiltersCount() !== 1 ? 's' : ''}
-                                </span>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {hasActiveFilters && (
+                                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                                        {getActiveFiltersCount()} active filter{getActiveFiltersCount() !== 1 ? 's' : ''}
+                                    </span>
+                                )}
+                                {hasUnappliedChanges() && (
+                                    <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-full font-medium">
+                                        Unsaved changes
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -221,7 +243,7 @@ const SearchStudents = ({
                                 variant="ghost"
                                 onClick={onClearFilters}
                                 disabled={!hasActiveFilters}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Reset All Filters
                             </Button>
@@ -236,8 +258,9 @@ const SearchStudents = ({
                                 </Button>
                                 <Button
                                     type="button"
-                                    onClick={toggleFilter}
+                                    onClick={handleApplyClick}
                                     className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
+                                    disabled={!hasUnappliedChanges()}
                                 >
                                     Apply Filters
                                 </Button>
@@ -247,16 +270,19 @@ const SearchStudents = ({
                 </div>
             )}
 
-            {/* Active Filters Display */}
+            {/* Active Filters Display - dựa trên appliedFilters */}
             {hasActiveFilters && (
                 <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Active filters:</span>
 
-                    {(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc') && (
+                    {(appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc') && (
                         <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">
                             <span>Sort: {getSortLabel(getSortValue())}</span>
                             <button
-                                onClick={() => onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' })}
+                                onClick={() => {
+                                    onFilterChange({ sortBy: 'createdAt', sortOrder: 'desc' });
+                                    onApplyFilters();
+                                }}
                                 className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
                             >
                                 <X className="h-3 w-3 hover:cursor-pointer" />

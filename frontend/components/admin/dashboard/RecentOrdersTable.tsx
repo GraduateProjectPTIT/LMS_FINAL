@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, CreditCard, CheckCircle } from "lucide-react";
+import { Calendar, CheckCircle } from "lucide-react";
 
 interface IPaymentInfo {
     id: string;

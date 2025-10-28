@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image';
 import Loader from '../Loader';
 import { useDispatch, useSelector } from 'react-redux';
@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
 import { formatDuration } from '@/utils/convertToMinutes';
 
-import { Clock, Award, CheckCircle, BookOpen, Play, Users, BarChart2, Star, User, Globe, Share2, Download, MessageCircle } from 'lucide-react';
+import { Clock, Award, CheckCircle, BookOpen, Play, Users, Star, User, Globe, MessageCircle } from 'lucide-react';
 import { BiCategoryAlt } from "react-icons/bi";
 import { BsCameraVideo } from "react-icons/bs";
 
@@ -113,8 +113,10 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [loadingEnroll, setLoadingEnroll] = useState(false);
     const [isAllowed, setIsAllowed] = useState(false);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [isCreator, setIsCreator] = useState(false);
 
-    const handleFetchCourseOverview = async () => {
+    const handleFetchCourseOverview = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/overview/${courseId}`, {
@@ -128,7 +130,9 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
             }
 
             const course = data?.course;
+
             setCourseData(course);
+            setReviews(course.reviews || []);
 
             // Process sections data
             const processedSections: IProcessedSection[] = course?.courseData?.map((section: IOverviewCourseSection) => ({
@@ -149,9 +153,9 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [courseId]);
 
-    const handleCheckPurchasedCourses = async () => {
+    const handleCheckPurchasedCourses = useCallback(async () => {
         if (!currentUser) {
             setIsAllowed(false);
             return;
@@ -175,12 +179,18 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         } catch (error: any) {
             console.log(error.message);
         }
-    }
+    }, [currentUser, courseId]);
 
     useEffect(() => {
         handleFetchCourseOverview();
         handleCheckPurchasedCourses();
-    }, [courseId]);
+    }, [courseId, handleFetchCourseOverview, handleCheckPurchasedCourses]);
+
+    useEffect(() => {
+        if (currentUser && courseData) {
+            setIsCreator(currentUser._id === courseData.creatorId._id);
+        }
+    }, [currentUser, courseData]);
 
     const toggleSection = (index: number) => {
         setActiveSections(prevSections =>
@@ -238,8 +248,6 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         }
     }
 
-
-
     return (
         <div className='theme-mode min-h-screen'>
             {/* Hero Section */}
@@ -255,7 +263,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
 
                             {/* Course Category Badge - Moved below title */}
                             <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-600/30 text-blue-800 dark:text-blue-100 text-sm font-medium mb-4 self-start border border-blue-200 dark:border-blue-400/40">
-                                <BiCategoryAlt className="mr-2" />
+                                <BiCategoryAlt className="mr-2 w-6 md:w-4 h-6 md:h-4" />
                                 {getCategoriesString(courseData.categories)}
                             </div>
 
@@ -410,10 +418,12 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                     {activeSections.includes(sIndex) && (
                                         <div className="p-2 bg-white dark:bg-slate-600">
                                             {section.lectures.map((lecture, lIndex: number) => (
-                                                <div key={lIndex} className="flex justify-between items-center py-3 px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md transition-colors cursor-pointer">
+                                                <div key={lIndex} className="flex justify-between items-center gap-2 py-3 px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md transition-colors cursor-pointer">
                                                     <div className="flex items-center gap-3">
-                                                        <Play size={14} className="text-gray-400 dark:text-gray-500" />
-                                                        <div>
+                                                        <div className="flex items-center h-6">
+                                                            <Play size={14} className="text-gray-400 dark:text-gray-500" />
+                                                        </div>
+                                                        <div className='flex flex-col gap-2'>
                                                             <span className="text-gray-700 dark:text-gray-200">{lecture.title}</span>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">{lecture.description}</p>
                                                         </div>
@@ -568,7 +578,11 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
             </div>
 
             <div className='container'>
-                <CourseReview />
+                <CourseReview
+                    isCreator={isCreator}
+                    courseId={courseId}
+                    reviews={reviews}
+                />
             </div>
 
             <div className='container'>

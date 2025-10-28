@@ -1,5 +1,6 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+
+import React, { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image';
 import { Calendar, User, Tag } from 'lucide-react';
 import Loader from '../Loader';
@@ -33,7 +34,7 @@ const PostContent = ({ slug }: { slug: string }) => {
     const [post, setPost] = useState<Post | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchPost = async () => {
+    const fetchPost = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/public/posts/${slug}`, {
@@ -53,11 +54,11 @@ const PostContent = ({ slug }: { slug: string }) => {
         } finally {
             setLoading(false);
         }
-    }
+    }, [slug]);
 
     useEffect(() => {
         fetchPost();
-    }, [slug]);
+    }, [fetchPost]);
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);

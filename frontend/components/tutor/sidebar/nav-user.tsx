@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, ChevronsUpDown, CreditCard, LogOut, House } from "lucide-react"
+import { Bell, ChevronsUpDown, House } from "lucide-react"
 import { BiMoon, BiSun } from "react-icons/bi"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"

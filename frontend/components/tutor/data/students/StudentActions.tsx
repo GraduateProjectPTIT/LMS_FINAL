@@ -8,7 +8,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy, Users, ArrowRightToLine } from "lucide-react";
+import { MoreHorizontal, Trash2, Eye, Copy } from "lucide-react";
 import toast from 'react-hot-toast';
 import Link from "next/link";
 
@@ -34,14 +34,25 @@ interface IStudentData {
 
 interface StudentActionsProps {
     student: IStudentData;
+    setSelectedStudentId: React.Dispatch<React.SetStateAction<string | null>>;
+    setOpenUserDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const StudentActions = ({ student }: StudentActionsProps) => {
+const StudentActions = ({ student, setSelectedStudentId, setOpenUserDetailModal }: StudentActionsProps) => {
 
     const handleCopyId = () => {
-        navigator.clipboard.writeText(student._id);
+        navigator.clipboard.writeText(student.userId._id);
         toast.success("Student ID copied to clipboard");
     };
+
+    const handleRemoveStudent = () => {
+        toast("Function is not implemented yet");
+    }
+
+    const handleViewStudentDetail = () => {
+        setSelectedStudentId(student.userId._id);
+        setOpenUserDetailModal(true);
+    }
 
     return (
         <DropdownMenu>
@@ -54,14 +65,14 @@ const StudentActions = ({ student }: StudentActionsProps) => {
             <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={handleCopyId} className="cursor-pointer">
                     <Copy className="mr-2 h-4 w-4" />
-                    Copy Course ID
+                    Copy Student ID
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem onClick={handleViewStudentDetail} className="cursor-pointer">
                     <Eye className="mr-2 h-4 w-4" />
                     View Student Details
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer">
-                    <Trash2 className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" />
+                <DropdownMenuItem onClick={handleRemoveStudent} className="cursor-pointer">
+                    <Trash2 className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20 mr-2 h-4 w-4" />
                     Remove Student
                 </DropdownMenuItem>
 

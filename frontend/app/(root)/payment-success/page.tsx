@@ -2,31 +2,12 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, Clock, Users, BookOpen, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
-import Image from 'next/image'
+import { CheckCircle, BookOpen, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import confetti from 'canvas-confetti'
 
-interface CourseData {
-    id: string;
-    name: string;
-    price: number;
-    description: string;
-    thumbnail?: string;
-    instructor?: string;
-    duration?: string;
-    studentsEnrolled?: number;
-}
-
 interface PaymentData {
     id: string;
-    amount: number;
-    currency: string;
-}
-
-interface OrderData {
-    orderId: string;
-    courseId: string;
     amount: number;
     currency: string;
 }

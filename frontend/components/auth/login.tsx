@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,7 +16,6 @@ import { getFieldStatus, getFieldBorderClass, getFieldIcon } from "@/utils/formF
 
 import makeup2 from "@/assets/makeup2.webp"
 import toast from 'react-hot-toast';
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { TfiEmail } from "react-icons/tfi";
 import { RiLockPasswordLine } from "react-icons/ri";
@@ -25,7 +24,6 @@ import { FaRegEyeSlash } from "react-icons/fa6";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { IoAlertCircleOutline } from "react-icons/io5";
-import { IoCheckmarkCircleOutline } from "react-icons/io5";
 
 const loginSchema = z.object({
     email: z.string().email("Invalid email address"),
@@ -122,7 +120,7 @@ const Login = () => {
 
     const isCalled = useRef(false); // Sử dụng useRef để giữ trạng thái qua re-renders
 
-    const sendUserToServer = async () => {
+    const sendUserToServer = useCallback(async () => {
 
         if (!session?.user || isCalled.current) return; // Ngăn gọi API nếu đã được gọi trước đó
         setIsLoading(true);
@@ -149,7 +147,7 @@ const Login = () => {
         } catch (error: any) {
             console.log(error.message);
         }
-    }
+    }, [session, dispatch, router, callbackUrl]);
 
     // Only trigger social login effect if coming from OAuth (social=1)
     const isSocialLogin = searchParams?.get("social") === "1";
@@ -158,7 +156,7 @@ const Login = () => {
             sendUserToServer();
             isCalled.current = true;
         }
-    }, [session, isSocialLogin]);
+    }, [session, isSocialLogin, sendUserToServer]);
 
     const field = (name: keyof LoginFormValues) => {
         const status = getFieldStatus(name, touchedFields, errors, watchedFields);
@@ -167,7 +165,6 @@ const Login = () => {
             icon: getFieldIcon(status),
         };
     };
-
 
     return (
         <div className='w-[400px] md:w-[1000px] h-[600px] p-1 md:p-5 flex justify-center items-center gap-[10px] md:gap-[50px] border border-slate-300 dark:border-slate-500 rounded-[10px] shadow-lg '>

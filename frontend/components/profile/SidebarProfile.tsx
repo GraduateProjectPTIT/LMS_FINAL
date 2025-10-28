@@ -8,9 +8,7 @@ import { RootState } from '@/redux/store';
 import { FaUserAlt } from "react-icons/fa";
 import { GoPasskeyFill } from "react-icons/go";
 import { MdNotificationsActive } from "react-icons/md";
-import { SiGoogleclassroom } from "react-icons/si";
 import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiArrowDownSLine, RiArrowUpSLine } from "react-icons/ri";
 import { MdOutlineInterests } from "react-icons/md";
@@ -40,11 +38,6 @@ const sidebarLinks = [
         label: 'Notifications',
         icon: <MdNotificationsActive />,
         value: 'notifications'
-    },
-    {
-        label: 'Enrolled Courses',
-        icon: <SiGoogleclassroom />,
-        value: 'enrolled_courses'
     }
 ]
 

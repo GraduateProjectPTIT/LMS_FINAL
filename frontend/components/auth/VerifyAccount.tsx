@@ -1,22 +1,17 @@
 "use client"
 
-import { RootState } from '@/redux/store';
 import React, { useState, useRef, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSelector } from 'react-redux'
 import toast from 'react-hot-toast';
 
 interface VerifyAccountProps {
     email: string | null;
-    setRegistrationStep: (step: number) => void;
 }
 
-const VerifyAccount = ({ email, setRegistrationStep }: VerifyAccountProps) => {
+const VerifyAccount = ({ email }: VerifyAccountProps) => {
 
     const [code, setCode] = useState<string[]>(['', '', '', '']);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-
-    console.log(email)
 
     const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 

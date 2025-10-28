@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
-import { Trash2 } from 'lucide-react';
 import { FiPlusCircle } from "react-icons/fi";
 import { Separator } from '@/components/ui/separator';
 import { IoAlertCircleOutline } from "react-icons/io5";

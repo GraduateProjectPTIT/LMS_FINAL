@@ -348,7 +348,7 @@ const CustomizeCategories = () => {
                             type="button"
                             variant="outline"
                             onClick={addCategory}
-                            className="w-full cursor-pointer border-dashed"
+                            className="w-full cursor-pointer border-dashed border-gray-600"
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Add New Category

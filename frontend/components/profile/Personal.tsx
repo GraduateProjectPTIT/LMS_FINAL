@@ -14,7 +14,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { FaUserEdit, FaUserCheck } from 'react-icons/fa';
+import { FaUserEdit } from 'react-icons/fa';
 import { IoAlertCircleOutline } from "react-icons/io5";
 
 interface PersonalProps {

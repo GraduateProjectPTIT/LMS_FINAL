@@ -13,10 +13,9 @@ interface Category {
 
 interface SelectPreferencesProps {
     selectedRole: 'student' | 'tutor' | null;
-    setRegistrationStep: (step: number) => void;
 }
 
-const SelectPreferences = ({ selectedRole, setRegistrationStep }: SelectPreferencesProps) => {
+const SelectPreferences = ({ selectedRole }: SelectPreferencesProps) => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);

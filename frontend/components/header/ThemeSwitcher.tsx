@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { BiMoon, BiSun } from "react-icons/bi"
 import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from 'framer-motion'

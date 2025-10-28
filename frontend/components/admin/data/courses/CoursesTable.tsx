@@ -10,7 +10,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import CourseActions from './CourseActions';
-import Image from 'next/image';
 import { HiOutlineBookOpen } from "react-icons/hi";
 
 interface ICategory {
@@ -28,7 +27,7 @@ interface ICreator {
     name: string;
     email: string;
     avatar: {
-        public_id: string;
+        public_id?: string;
         url: string;
     };
     bio?: string;

@@ -37,11 +37,15 @@ interface IStudentData {
 interface StudentsTableProps {
     students: IStudentData[];
     isLoading?: boolean;
+    setSelectedStudentId: React.Dispatch<React.SetStateAction<string | null>>;
+    setOpenUserDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const StudentsTable = ({
     students,
-    isLoading = false
+    isLoading = false,
+    setSelectedStudentId,
+    setOpenUserDetailModal
 }: StudentsTableProps) => {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -160,8 +164,8 @@ const StudentsTable = ({
                             <TableHead className='border-r'>Email</TableHead>
                             <TableHead className='border-r'>Progress</TableHead>
                             <TableHead className='border-r'>Status</TableHead>
-                            <TableHead>Enrolled At</TableHead>
-                            <TableHead>Actions</TableHead>
+                            <TableHead className='border-r'>Enrolled At</TableHead>
+                            <TableHead className='text-center'>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -236,15 +240,20 @@ const StudentsTable = ({
                                 </TableCell>
 
                                 {/* Enrolled At */}
-                                <TableCell>
+                                <TableCell className='border-r'>
                                     <span className="text-sm text-gray-600 dark:text-gray-300">
                                         {formatDate(student.enrolledAt)}
                                     </span>
                                 </TableCell>
 
+                                {/* Actions button */}
                                 <TableCell>
                                     <div className='w-full h-full flex justify-center items-center'>
-                                        <StudentActions student={student} />
+                                        <StudentActions
+                                            student={student}
+                                            setSelectedStudentId={setSelectedStudentId}
+                                            setOpenUserDetailModal={setOpenUserDetailModal}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

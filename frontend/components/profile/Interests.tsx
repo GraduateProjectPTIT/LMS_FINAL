@@ -6,7 +6,7 @@ import { updateSuccess } from '@/redux/user/userSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { FaHeart, FaEdit, FaCheck, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaCheck } from 'react-icons/fa';
 import { IoAlertCircleOutline } from "react-icons/io5";
 import toast from 'react-hot-toast';
 

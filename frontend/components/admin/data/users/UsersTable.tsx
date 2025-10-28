@@ -10,7 +10,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import Image from 'next/image';
-import { Calendar, CheckCircle, XCircle, User, Ellipsis } from 'lucide-react';
+import { CheckCircle, XCircle, User } from 'lucide-react';
 import { HiOutlineUsers } from "react-icons/hi";
 import { isValidImageUrl } from '@/utils/handleImage';
 import UsersActions from './UsersActions';
@@ -43,12 +43,16 @@ interface UsersTableProps {
     users: IUserResponse[];
     onDelete: (user: IUserResponse) => void;
     isLoading?: boolean;
+    setOpenUserDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
+    setSelectedUserId: (id: string | null) => void;
 }
 
 const UsersTable = ({
     users,
     onDelete,
-    isLoading = false
+    isLoading = false,
+    setOpenUserDetailModal,
+    setSelectedUserId
 }: UsersTableProps) => {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -57,8 +61,6 @@ const UsersTable = ({
             day: 'numeric'
         });
     };
-
-
 
     // Display skeleton when isLoading is true
     if (isLoading) {
@@ -191,6 +193,7 @@ const UsersTable = ({
                                         </div>
                                     </div>
                                 </TableCell>
+
                                 {/* mail */}
                                 <TableCell className='border-r'>
                                     <div className="max-w-[200px]">
@@ -199,12 +202,14 @@ const UsersTable = ({
                                         </p>
                                     </div>
                                 </TableCell>
+
                                 {/* role */}
                                 <TableCell className='border-r text-center'>
                                     <span className='text-sm'>
                                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                                     </span>
                                 </TableCell>
+
                                 {/* verification status */}
                                 <TableCell className='border-r'>
                                     <div className="flex justify-center items-center">
@@ -215,6 +220,7 @@ const UsersTable = ({
                                         )}
                                     </div>
                                 </TableCell>
+
                                 {/* survey status */}
                                 <TableCell className='border-r'>
                                     <div className="flex justify-center items-center">
@@ -225,6 +231,7 @@ const UsersTable = ({
                                         )}
                                     </div>
                                 </TableCell>
+
                                 {/* createdAt */}
                                 <TableCell className='border-r'>
                                     <div className="flex items-center space-x-1">
@@ -233,10 +240,16 @@ const UsersTable = ({
                                         </span>
                                     </div>
                                 </TableCell>
+
                                 {/* actions */}
                                 <TableCell>
                                     <div className='w-full h-full flex justify-center items-center'>
-                                        <UsersActions user={user} onDelete={onDelete} />
+                                        <UsersActions
+                                            user={user}
+                                            onDelete={onDelete}
+                                            setOpenUserDetailModal={setOpenUserDetailModal}
+                                            setSelectedUserId={setSelectedUserId}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

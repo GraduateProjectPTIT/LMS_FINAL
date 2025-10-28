@@ -27,7 +27,7 @@ interface ICreator {
     name: string;
     email: string;
     avatar: {
-        public_id: string;
+        public_id?: string;
         url: string;
     };
     bio?: string;
@@ -86,13 +86,6 @@ const CourseActions = ({
                     <DropdownMenuItem className="cursor-pointer">
                         <Eye className="mr-2 h-4 w-4" />
                         View Course
-                    </DropdownMenuItem>
-                </Link>
-
-                <Link href={`/course-enroll/${course._id}`}>
-                    <DropdownMenuItem className="cursor-pointer">
-                        <ArrowRightToLine className="mr-2 h-4 w-4" />
-                        Enroll Course
                     </DropdownMenuItem>
                 </Link>
 

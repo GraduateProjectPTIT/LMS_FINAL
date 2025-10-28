@@ -1,13 +1,12 @@
 "use client"
 
 import { RootState } from '@/redux/store'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { getCartSuccess, getCartStart, getCartFailure } from '@/redux/cart/cartSlice'
 import SuggestedCourse from './SuggestedCourse'
 import CartSummary from './CartSummary'
 import CartContent from './CartContent'
-import Loader from '../Loader'
 import toast from 'react-hot-toast'
 import { CartItem } from "@/type"
 
@@ -20,7 +19,6 @@ interface CartData {
 
 const Cart = () => {
     const { currentUser } = useSelector((state: RootState) => state.user);
-    const { loading } = useSelector((state: RootState) => state.cart);
     const dispatch = useDispatch();
 
     const [cart, setCart] = useState<CartData>({
@@ -30,7 +28,7 @@ const Cart = () => {
         totalPrice: 0
     });
 
-    const handleGetUserCart = async () => {
+    const handleGetUserCart = useCallback(async () => {
         try {
             dispatch(getCartStart());
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/cart`, {
@@ -54,7 +52,7 @@ const Cart = () => {
             dispatch(getCartFailure(error.message || "Cannot get user cart"));
             toast.error(error.message || "Cannot get user cart");
         }
-    }
+    }, [dispatch]);
 
     const refreshCart = () => {
         handleGetUserCart();
@@ -64,7 +62,7 @@ const Cart = () => {
         if (currentUser) {
             handleGetUserCart();
         }
-    }, [currentUser]);
+    }, [currentUser, handleGetUserCart]);
 
     return (
         <div className="theme-mode min-h-screen">

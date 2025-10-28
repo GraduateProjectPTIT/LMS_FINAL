@@ -8,7 +8,6 @@ import CheckoutContent from './CheckoutContent'
 
 const Checkout = () => {
     const { currentUser } = useSelector((state: RootState) => state.user); // double-check mặc dù đã có Protected ở page rồi
-    const { loading } = useSelector((state: RootState) => state.cart);
 
     return (
         <div className="theme-mode min-h-screen bg-gray-50 dark:bg-gray-900">

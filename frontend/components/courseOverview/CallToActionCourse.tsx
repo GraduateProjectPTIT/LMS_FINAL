@@ -1,5 +1,5 @@
-import { Award, Clock, Shield } from 'lucide-react'
 import React from 'react'
+import { Award, Clock, Shield } from 'lucide-react'
 
 const CallToActionCourse = () => {
     return (

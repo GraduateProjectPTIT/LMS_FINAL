@@ -26,7 +26,8 @@ const Hero = () => {
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full border border-blue-200/50 dark:border-blue-700 mb-8 animate-fade-in">
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Welcome back, {currentUser.name}!
+                                    Welcome back,
+                                    <span className='font-semibold ml-1'>{currentUser.name} !</span>
                                 </span>
                             </div>
                         )}
@@ -43,7 +44,7 @@ const Hero = () => {
                         </h1>
 
                         {/* Subtitle */}
-                        <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+                        <p className="text-md md:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
                             Learn makeup from top experts or share your techniques with the community.
                             Discover the limitless world of beauty.
                         </p>

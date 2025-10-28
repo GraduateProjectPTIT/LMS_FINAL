@@ -3,7 +3,6 @@ import { Poppins, Josefin_Sans } from "next/font/google";
 import "../globals.css";
 
 import CombineProvider from "@/providers/CombineProviders";
-import Layout from "@/components/Layout";
 
 const poppins = Poppins({
     subsets: ["latin"],

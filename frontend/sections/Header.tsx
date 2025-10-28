@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { RootState } from "@/redux/store";
 import { useSelector, useDispatch } from "react-redux";
-import toast from 'react-hot-toast';
+import { RootState } from "@/redux/store";
 import { signOut } from "next-auth/react";
 import { signOutSuccess } from '@/redux/user/userSlice';
 import { clearAll } from "@/redux/cart/cartSlice";
 import Link from 'next/link';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 
@@ -84,13 +84,18 @@ const Header = () => {
   // Xử lý click ra ngoài để đóng search history trên desktop
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Nếu click không nằm trong vùng desktopSearchRef (ô tìm kiếm)
       if (desktopSearchRef.current && !desktopSearchRef.current.contains(event.target as Node)) {
         setIsDesktopSearchHistoryVisible(false);
       }
     }
+
+    // Khi dropdown lịch sử tìm kiếm đang mở, thêm listener để bắt sự kiện click ngoài
     if (isDesktopSearchHistoryVisible) {
       document.addEventListener("mousedown", handleClickOutside);
     }
+
+    // Cleanup: khi component unmount hoặc khi dropdown đóng
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     }
@@ -227,8 +232,11 @@ const Header = () => {
               {/* Desktop Links */}
               <div className='hidden md:flex items-center gap-5 border-r pr-5 mr-5 border-gray-300 dark:border-slate-700 '>
                 <Link href="/posts" className="hover:cursor-pointer hover:font-semibold">Posts</Link>
-                <Link href="/policy" className="hover:cursor-pointer hover:font-semibold">Policy</Link>
-                <Link href='/about' className="hover:cursor-pointer hover:font-semibold">About Us</Link>
+                {
+                  currentUser?.role === 'student' && (
+                    <Link href="/my-courses" className="hover:cursor-pointer hover:font-semibold">My Courses</Link>
+                  )
+                }
               </div>
 
               {/* Mobile and Desktop Icons */}

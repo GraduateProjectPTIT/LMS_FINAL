@@ -29,7 +29,7 @@ interface ICreator {
     name: string;
     email: string;
     avatar: {
-        public_id: string;
+        public_id?: string;
         url: string;
     };
     bio?: string;
@@ -66,11 +66,18 @@ const CoursesData = () => {
         pageSize: 10
     });
     const [loading, setLoading] = useState(false);
+
+    // Search states
     const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [appliedSearch, setAppliedSearch] = useState("");
 
     // Filter states
-    const [filters, setFilters] = useState<FilterState>({
+    const [draftFilters, setDraftFilters] = useState<FilterState>({
+        sortBy: "createdAt",
+        sortOrder: "desc"
+    });
+
+    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         sortBy: "createdAt",
         sortOrder: "desc"
     });
@@ -89,18 +96,18 @@ const CoursesData = () => {
         params.set('limit', pagination.pageSize.toString());
 
         // Add search keyword if present
-        if (searchQuery.trim()) {
-            params.set('keyword', searchQuery.trim());
+        if (appliedSearch.trim()) {
+            params.set('keyword', appliedSearch.trim());
         }
 
         // Add sort parameters
-        if (filters.sortBy && filters.sortBy !== 'default') {
-            params.set('sortBy', filters.sortBy);
-            params.set('sortOrder', filters.sortOrder);
+        if (appliedFilters.sortBy && appliedFilters.sortBy !== 'default') {
+            params.set('sortBy', appliedFilters.sortBy);
+            params.set('sortOrder', appliedFilters.sortOrder);
         }
 
         return params.toString();
-    }, [pagination.currentPage, pagination.pageSize, searchQuery, filters]);
+    }, [pagination.currentPage, pagination.pageSize, appliedSearch, appliedFilters]);
 
     // Fetch courses from API
     const handleFetchCourses = useCallback(async () => {
@@ -146,35 +153,55 @@ const CoursesData = () => {
         handleFetchCourses();
     }, [handleFetchCourses]);
 
-    // Reset to page 1 when search or filter changes
-    useEffect(() => {
-        if (pagination.currentPage !== 1) {
-            setPagination(prev => ({ ...prev, currentPage: 1 }));
-        }
-    }, [searchQuery, filters]);
+    const handleDraftFiltersChange = (newFilers: Partial<FilterState>) => {
+        setDraftFilters(prev => ({ ...prev, ...newFilers }));
+    }
+
+    const handleApplyFilters = () => {
+        setAppliedFilters(draftFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
 
     const handleSearchChange = (value: string) => {
         setSearchInput(value);
     };
 
     const handleSearchSubmit = () => {
-        setSearchQuery(searchInput.trim());
+        const trimmed = searchInput.trim();
+        setSearchInput(trimmed);
+        setAppliedSearch(trimmed); // Thêm dòng này để trigger fetch API
+        setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset về trang 1 khi search mới
     };
 
     const handleClearSearch = () => {
         setSearchInput("");
-        setSearchQuery("");
-    };
-
-    const handleFilterChange = (newFilters: Partial<FilterState>) => {
-        setFilters(prev => ({ ...prev, ...newFilters }));
+        setAppliedSearch("");
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleClearFilters = () => {
-        setFilters({
+        const defaultFilters: FilterState = {
             sortBy: "createdAt",
             sortOrder: "desc"
-        });
+        };
+
+        setDraftFilters(defaultFilters);
+        setAppliedFilters(defaultFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    const handleRemoveSortFilter = () => {
+        setDraftFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setAppliedFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     // Pagination handlers
@@ -260,11 +287,14 @@ const CoursesData = () => {
                 onSearchChange={handleSearchChange}
                 onSearchSubmit={handleSearchSubmit}
                 onClearSearch={handleClearSearch}
-                currentSearch={searchQuery}
+                currentSearch={appliedSearch}
                 // Filter props
-                filters={filters}
-                onFilterChange={handleFilterChange}
+                filters={draftFilters}
+                appliedFilters={appliedFilters}
+                onFilterChange={handleDraftFiltersChange}
+                onApplyFilters={handleApplyFilters}
                 onClearFilters={handleClearFilters}
+                onRemoveSortFilter={handleRemoveSortFilter}
             />
 
             <CoursesTable

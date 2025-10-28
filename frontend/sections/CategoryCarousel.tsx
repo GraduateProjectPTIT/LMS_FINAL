@@ -151,7 +151,7 @@ const CategoryCarousel = () => {
                                                         <div
                                                             onClick={() => handleSelectCategory(category._id)}
                                                             key={startIndex + index}
-                                                            className="flex-shrink-0 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 p-6 cursor-pointer"
+                                                            className="flex-shrink-0 w-64 bg-white dark:bg-slate-800 rounded-xl hover:shadow-md transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 p-6 cursor-pointer"
                                                         >
                                                             <h3 className="font-semibold text-gray-900 dark:text-white text-center">
                                                                 {category.title}
@@ -167,7 +167,7 @@ const CategoryCarousel = () => {
                                                             <div
                                                                 onClick={() => handleSelectCategory(category._id)}
                                                                 key={startIndex + 4 + index}
-                                                                className="flex-shrink-0 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 p-6 cursor-pointer"
+                                                                className="flex-shrink-0 w-64 bg-white dark:bg-slate-800 rounded-xl hover:shadow-md transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 p-6 cursor-pointer"
                                                             >
                                                                 <h3 className="font-semibold text-gray-900 dark:text-white text-center">
                                                                     {category.title}

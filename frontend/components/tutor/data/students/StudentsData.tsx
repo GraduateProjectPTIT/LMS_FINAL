@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import SearchStudents from "./SearchStudents";
 import StudentsTable from "./StudentsTable";
 import PaginationStudents from "./PaginationStudents";
+import StudentDetailModal from "./StudentDetailModal";
 
 interface PaginationInfo {
     totalItems: number;
@@ -43,7 +44,6 @@ interface StudentsDataProps {
 }
 
 const StudentsData = ({ courseId }: StudentsDataProps) => {
-
     const [allStudents, setAllStudents] = useState<IStudentData[]>([]);
     const [pagination, setPagination] = useState<PaginationInfo>({
         totalItems: 0,
@@ -52,11 +52,18 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
         pageSize: 10
     });
     const [loading, setLoading] = useState(false);
+
+    // Search states
     const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [appliedSearch, setAppliedSearch] = useState("");
 
     // Filter states
-    const [filters, setFilters] = useState<FilterState>({
+    const [draftFilters, setDraftFilters] = useState<FilterState>({
+        sortBy: "createdAt",
+        sortOrder: "desc"
+    });
+
+    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         sortBy: "createdAt",
         sortOrder: "desc"
     });
@@ -70,18 +77,18 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
         params.set('limit', pagination.pageSize.toString());
 
         // Add search keyword if present
-        if (searchQuery.trim()) {
-            params.set('keyword', searchQuery.trim());
+        if (appliedSearch.trim()) {
+            params.set('keyword', appliedSearch.trim());
         }
 
         // Add sort parameters
-        if (filters.sortBy && filters.sortBy !== 'default') {
-            params.set('sortBy', filters.sortBy);
-            params.set('sortOrder', filters.sortOrder);
+        if (appliedFilters.sortBy && appliedFilters.sortBy !== 'default') {
+            params.set('sortBy', appliedFilters.sortBy);
+            params.set('sortOrder', appliedFilters.sortOrder);
         }
 
         return params.toString();
-    }, [pagination.currentPage, pagination.pageSize, searchQuery, filters]);
+    }, [pagination.currentPage, pagination.pageSize, appliedSearch, appliedFilters]);
 
     // Fetch students from API
     const handleFetchStudents = useCallback(async () => {
@@ -132,35 +139,41 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
         handleFetchStudents();
     }, [handleFetchStudents]);
 
-    // Reset to page 1 when search or filter changes
-    useEffect(() => {
-        if (pagination.currentPage !== 1) {
-            setPagination(prev => ({ ...prev, currentPage: 1 }));
-        }
-    }, [searchQuery, filters]);
+    const handleDraftFiltersChange = (newFilters: Partial<FilterState>) => {
+        setDraftFilters(prev => ({ ...prev, ...newFilters }));
+    }
+
+    const handleApplyFilters = () => {
+        setAppliedFilters(draftFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
 
     const handleSearchChange = (value: string) => {
         setSearchInput(value);
     };
 
     const handleSearchSubmit = () => {
-        setSearchQuery(searchInput.trim());
+        const trimmed = searchInput.trim();
+        setSearchInput(trimmed);
+        setAppliedSearch(trimmed);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleClearSearch = () => {
         setSearchInput("");
-        setSearchQuery("");
-    };
-
-    const handleFilterChange = (newFilters: Partial<FilterState>) => {
-        setFilters(prev => ({ ...prev, ...newFilters }));
+        setAppliedSearch("");
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleClearFilters = () => {
-        setFilters({
+        const defaultFilters: FilterState = {
             sortBy: "createdAt",
             sortOrder: "desc"
-        });
+        };
+
+        setDraftFilters(defaultFilters);
+        setAppliedFilters(defaultFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     // Pagination handlers
@@ -186,6 +199,10 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
         hasPrevPage: pagination.currentPage > 1,
     };
 
+    const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+    const [openUserDetailModal, setOpenUserDetailModal] = useState(false);
+
+
     return (
         <div className="w-full">
             <div className="mb-6">
@@ -199,16 +216,20 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
                 onSearchChange={handleSearchChange}
                 onSearchSubmit={handleSearchSubmit}
                 onClearSearch={handleClearSearch}
-                currentSearch={searchQuery}
+                currentSearch={appliedSearch}
                 // Filter props
-                filters={filters}
-                onFilterChange={handleFilterChange}
+                filters={draftFilters}
+                appliedFilters={appliedFilters}
+                onFilterChange={handleDraftFiltersChange}
+                onApplyFilters={handleApplyFilters}
                 onClearFilters={handleClearFilters}
             />
 
             <StudentsTable
                 students={allStudents}
                 isLoading={loading}
+                setSelectedStudentId={setSelectedStudentId}
+                setOpenUserDetailModal={setOpenUserDetailModal}
             />
 
             {!loading && allStudents.length > 0 && (
@@ -219,6 +240,17 @@ const StudentsData = ({ courseId }: StudentsDataProps) => {
                     isLoading={loading}
                 />
             )}
+
+            <StudentDetailModal
+                isOpen={openUserDetailModal}
+                courseId={courseId}
+                selectedStudentId={selectedStudentId}
+                onClose={() => {
+                    setOpenUserDetailModal(false);
+                    setSelectedStudentId(null);
+                }}
+            />
+
         </div>
     );
 };

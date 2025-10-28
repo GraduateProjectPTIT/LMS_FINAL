@@ -52,7 +52,6 @@ const SignUpPage = () => {
         return (
           <VerifyAccount
             email={userRegisteredEmail}
-            setRegistrationStep={setRegistrationStep}
           />
         );
       default:

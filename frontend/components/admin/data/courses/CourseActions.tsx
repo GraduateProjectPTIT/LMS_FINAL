@@ -8,7 +8,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy } from "lucide-react";
+import { MoreHorizontal, Trash2, Eye, Copy } from "lucide-react";
 import toast from 'react-hot-toast';
 import Link from "next/link";
 
@@ -27,7 +27,7 @@ interface ICreator {
     name: string;
     email: string;
     avatar: {
-        public_id: string;
+        public_id?: string;
         url: string;
     };
     bio?: string;

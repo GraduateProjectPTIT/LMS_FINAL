@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -104,7 +103,7 @@ const RegisterForm = ({
         "[RegisterForm] Found existing session; signing out before new registration."
       );
     }
-  }, []); // chỉ chạy 1 lần
+  }, [session?.user, isSocialLogin]);
 
   // Xử lý logic khi người dùng submit form đăng ký thông thường.
   const onSubmit = async (data: RegisterFormValues) => {
@@ -221,7 +220,7 @@ const RegisterForm = ({
       sendUserToServer();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, status, isSocialLogin]);
+  }, [session, status, isSocialLogin, session?.user]);
 
   // Cập nhật sendUserToServer để clear status
   const sendUserToServer = async () => {
@@ -274,7 +273,6 @@ const RegisterForm = ({
         "[RegisterForm] sendUserToServer error:",
         err?.message || err
       );
-      toast.error(err?.message || "Something went wrong.");
     } finally {
       setIsLoading(false);
     }

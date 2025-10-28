@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import EditCourseInformation from './EditCourseInformation';
 import EditCourseOptions from './EditCourseOptions';
 import EditCourseContent from './EditCourseContent';
@@ -29,7 +29,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
 
     const { uploadVideo, cancelCurrentUpload } = useVideoUpload();
 
-    const handleFetchCourse = async () => {
+    const handleFetchCourse = useCallback(async () => {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/data/${courseId}`, {
                 method: "GET",
@@ -61,7 +61,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
         } catch (error: any) {
             console.log(error.message);
         }
-    }
+    }, [courseId]);
 
     const handleGetAllLevels = async () => {
         try {
@@ -103,7 +103,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
         handleGetAllLevels();
         handleGetAllCategories();
         handleFetchCourse();
-    }, [courseId]);
+    }, [courseId, handleFetchCourse]);
 
     const renderCreateCourseStep = () => {
         switch (active) {

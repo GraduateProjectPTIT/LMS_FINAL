@@ -12,9 +12,9 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
-import { FaLock, FaEye, FaEyeSlash, FaEdit } from 'react-icons/fa';
-import { IoAlertCircleOutline, IoCheckmarkCircleOutline } from "react-icons/io5";
-import toast, { Toaster } from 'react-hot-toast';
+import { FaEye, FaEyeSlash, FaEdit } from 'react-icons/fa';
+import { IoAlertCircleOutline } from "react-icons/io5";
+import toast from 'react-hot-toast';
 
 const passwordChangeSchema = z
     .object({

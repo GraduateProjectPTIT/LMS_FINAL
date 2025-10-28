@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { ShoppingCart, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import OrderActions from './OrderActions';
 
 interface IPaymentInfo {
@@ -19,8 +19,6 @@ interface IPaymentInfo {
     currency: string;
     payer_id?: string;
     order_token?: string;
-    payer_email?: string;
-    payer_name?: string;
 }
 
 interface IOrderItem {
@@ -45,11 +43,15 @@ interface IOrderResponse {
 interface OrdersTableProps {
     orders: IOrderResponse[];
     isLoading?: boolean;
+    setSelectedOrderId: React.Dispatch<React.SetStateAction<string | null>>;
+    setOpenOrderDetailModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const OrdersTable = ({
     orders,
-    isLoading = false
+    isLoading = false,
+    setSelectedOrderId,
+    setOpenOrderDetailModal
 }: OrdersTableProps) => {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -105,7 +107,6 @@ const OrdersTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Order ID</TableHead>
-                                <TableHead>Payer Email</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Amount</TableHead>
@@ -119,9 +120,6 @@ const OrdersTable = ({
                                 <TableRow key={index}>
                                     <TableCell>
                                         <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -158,7 +156,6 @@ const OrdersTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Order ID</TableHead>
-                                <TableHead>Payer Email</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Amount</TableHead>
@@ -169,7 +166,7 @@ const OrdersTable = ({
                         </TableHeader>
                         <TableBody>
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8">
+                                <TableCell colSpan={7} className="text-center py-8">
                                     <div className="flex flex-col items-center space-y-2">
                                         <div className="text-gray-400 dark:text-gray-600">
                                             <ShoppingCart className="h-12 w-12" />
@@ -193,7 +190,6 @@ const OrdersTable = ({
                     <TableHeader>
                         <TableRow>
                             <TableHead className='border-r'>Order ID</TableHead>
-                            <TableHead className='border-r'>Payer Email</TableHead>
                             <TableHead className='border-r text-center'>Payment Method</TableHead>
                             <TableHead className='border-r text-center'>Status</TableHead>
                             <TableHead className='border-r text-center'>Amount</TableHead>
@@ -207,24 +203,10 @@ const OrdersTable = ({
                             <TableRow key={order._id}>
                                 {/* Order ID */}
                                 <TableCell className='border-r'>
-                                    <div className="max-w-[150px]">
+                                    <div className="max-w-[200px]">
                                         <p className="text-sm font-mono text-gray-900 dark:text-white truncate" title={order._id}>
                                             {order._id}
                                         </p>
-                                    </div>
-                                </TableCell>
-
-                                {/* Payer Email */}
-                                <TableCell className='border-r'>
-                                    <div className="max-w-[200px]">
-                                        <p className="text-sm text-gray-600 dark:text-gray-300 truncate" title={order.payment_info.payer_email || 'N/A'}>
-                                            {order.payment_info.payer_email || 'N/A'}
-                                        </p>
-                                        {order.payment_info.payer_name && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={order.payment_info.payer_name}>
-                                                {order.payment_info.payer_name}
-                                            </p>
-                                        )}
                                     </div>
                                 </TableCell>
 
@@ -270,7 +252,11 @@ const OrdersTable = ({
                                 {/* Actions */}
                                 <TableCell>
                                     <div className='w-full h-full flex justify-center items-center'>
-                                        <OrderActions order={order} />
+                                        <OrderActions
+                                            order={order}
+                                            setSelectedOrderId={setSelectedOrderId}
+                                            setOpenOrderDetailModal={setOpenOrderDetailModal}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import SearchOrders from "./SearchOrders";
 import OrdersTable from "./OrdersTable";
 import PaginationOrders from "./PaginationOrders";
+import OrderDetailModal from "./OrderDetailModal";
 
 interface IPaymentInfo {
     id: string;
@@ -13,8 +14,6 @@ interface IPaymentInfo {
     currency: string;
     payer_id?: string;
     order_token?: string;
-    payer_email?: string;
-    payer_name?: string;
 }
 
 interface IOrderItem {
@@ -61,11 +60,11 @@ const OrdersData = () => {
         pageSize: 10
     });
     const [loading, setLoading] = useState(false);
-    const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [openOrderDetailModal, setOpenOrderDetailModal] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-    // Filter states
-    const [filters, setFilters] = useState<FilterState>({
+    // Draft filters - được cập nhật khi user thay đổi trong UI
+    const [draftFilters, setDraftFilters] = useState<FilterState>({
         status: "all",
         method: "all",
         dateFrom: "",
@@ -74,45 +73,44 @@ const OrdersData = () => {
         sortOrder: "desc"
     });
 
-    // Build query parameters
+    // Applied filters - chỉ được cập nhật khi user ấn "Apply Filters"
+    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+        status: "all",
+        method: "all",
+        dateFrom: "",
+        dateTo: "",
+        sortBy: "createdAt",
+        sortOrder: "desc"
+    });
+
+    // Build query parameters dựa trên appliedFilters
     const buildQueryParams = useCallback(() => {
         const params = new URLSearchParams();
 
-        // Always include page and limit
         params.set('page', pagination.currentPage.toString());
         params.set('limit', pagination.pageSize.toString());
 
-        // Add search keyword if present
-        if (searchQuery.trim()) {
-            params.set('keyword', searchQuery.trim());
+        if (appliedFilters.status && appliedFilters.status !== 'all') {
+            params.set('status', appliedFilters.status);
         }
 
-        // Add status filter if selected
-        if (filters.status && filters.status !== 'all') {
-            params.set('status', filters.status);
+        if (appliedFilters.method && appliedFilters.method !== 'all') {
+            params.set('method', appliedFilters.method);
         }
 
-        // Add payment method filter if selected
-        if (filters.method && filters.method !== 'all') {
-            params.set('method', filters.method);
+        if (appliedFilters.dateFrom) {
+            params.set('dateFrom', appliedFilters.dateFrom);
         }
 
-        // Add date range filters
-        if (filters.dateFrom) {
-            params.set('dateFrom', filters.dateFrom);
-        }
-        if (filters.dateTo) {
-            params.set('dateTo', filters.dateTo);
+        if (appliedFilters.dateTo) {
+            params.set('dateTo', appliedFilters.dateTo);
         }
 
-        // Add sort parameters
-        if (filters.sortBy && filters.sortBy !== 'default') {
-            params.set('sortBy', filters.sortBy);
-            params.set('sortOrder', filters.sortOrder);
-        }
+        params.set('sortBy', appliedFilters.sortBy);
+        params.set('sortOrder', appliedFilters.sortOrder);
 
         return params.toString();
-    }, [pagination.currentPage, pagination.pageSize, searchQuery, filters]);
+    }, [pagination.currentPage, pagination.pageSize, appliedFilters]);
 
     // Fetch orders
     const handleFetchOrders = useCallback(async () => {
@@ -153,44 +151,62 @@ const OrdersData = () => {
         }
     }, [buildQueryParams]);
 
-    // Fetch data when component mounts or when dependencies change
+    // Fetch data khi component mount hoặc khi appliedFilters/pagination thay đổi
     useEffect(() => {
         handleFetchOrders();
     }, [handleFetchOrders]);
 
-    // Reset về trang 1 khi search hoặc filter thay đổi
-    useEffect(() => {
-        if (pagination.currentPage !== 1) {
-            setPagination(prev => ({ ...prev, currentPage: 1 }));
-        }
-    }, [searchQuery, filters]);
-
-    const handleSearchChange = (value: string) => {
-        setSearchInput(value);
+    // Cập nhật draft filters khi user thay đổi trong UI
+    const handleDraftFiltersChange = (newFilters: Partial<FilterState>) => {
+        setDraftFilters(prev => ({ ...prev, ...newFilters }));
     };
 
-    const handleSearchSubmit = () => {
-        setSearchQuery(searchInput.trim());
+    // Apply filters - được gọi khi user ấn nút "Apply Filters"
+    const handleApplyFilters = () => {
+        setAppliedFilters(draftFilters);
+        // Reset về trang 1 khi apply filters mới
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
-    const handleClearSearch = () => {
-        setSearchInput("");
-        setSearchQuery("");
-    };
-
-    const handleFilterChange = (newFilters: Partial<FilterState>) => {
-        setFilters(prev => ({ ...prev, ...newFilters }));
-    };
-
+    // Clear filters - reset cả draft và applied filters
     const handleClearFilters = () => {
-        setFilters({
+        const defaultFilters: FilterState = {
             status: "all",
             method: "all",
             dateFrom: "",
             dateTo: "",
             sortBy: "createdAt",
             sortOrder: "desc"
-        });
+        };
+        setDraftFilters(defaultFilters);
+        setAppliedFilters(defaultFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    const handleRemoveFilter = (filterKey: keyof FilterState) => {
+        setDraftFilters(prev => ({
+            ...prev,
+            [filterKey]: filterKey === 'sortBy' ? 'createdAt' : filterKey === 'sortOrder' ? 'desc' : ''
+        }));
+        setAppliedFilters(prev => ({
+            ...prev,
+            [filterKey]: filterKey === 'sortBy' ? 'createdAt' : filterKey === 'sortOrder' ? 'desc' : ''
+        }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
+    const handleRemoveSortFilter = () => {
+        setDraftFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setAppliedFilters(prev => ({
+            ...prev,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     // Pagination handlers
@@ -229,21 +245,22 @@ const OrdersData = () => {
             </div>
 
             <SearchOrders
-                searchQuery={searchInput}
-                onSearchChange={handleSearchChange}
-                onSearchSubmit={handleSearchSubmit}
-                onClearSearch={handleClearSearch}
-                currentSearch={searchQuery}
                 paymentStatuses={paymentStatuses}
                 paymentMethods={paymentMethods}
-                filters={filters}
-                onFilterChange={handleFilterChange}
+                filters={draftFilters}
+                appliedFilters={appliedFilters}
+                onFilterChange={handleDraftFiltersChange}
+                onApplyFilters={handleApplyFilters}
                 onClearFilters={handleClearFilters}
+                onRemoveFilter={handleRemoveFilter}
+                onRemoveSortFilter={handleRemoveSortFilter}
             />
 
             <OrdersTable
                 orders={allOrders}
                 isLoading={loading}
+                setSelectedOrderId={setSelectedOrderId}
+                setOpenOrderDetailModal={setOpenOrderDetailModal}
             />
 
             {!loading && allOrders.length > 0 && (
@@ -254,6 +271,15 @@ const OrdersData = () => {
                     isLoading={loading}
                 />
             )}
+
+            <OrderDetailModal
+                isOpen={openOrderDetailModal}
+                onClose={() => {
+                    setOpenOrderDetailModal(false);
+                    setSelectedOrderId(null);
+                }}
+                orderId={selectedOrderId}
+            />
         </div>
     );
 };
