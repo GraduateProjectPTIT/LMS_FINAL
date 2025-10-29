@@ -11,6 +11,7 @@ import {
   forgotPasswordService,
   resetPasswordService,
   resendCodeService,
+  completeSocialRegisterService,
 } from "../services/auth.service";
 import { ILoginRequest, IUpdatePassword } from "../types/auth.types";
 import {
@@ -60,12 +61,35 @@ export const login = CatchAsyncError(
   }
 );
 // --- ĐĂNG NHẬP QUA MẠNG XÃ HỘI ---
-export const socialAuth = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = await socialAuthService(req.body);
-    sendToken(user, 200, res);
+export const socialLoginCheck = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Giả định body chỉ chứa { email, name, avatar }
+    const serviceResponse = await socialAuthService(req.body);
+
+    res.status(200).json(serviceResponse);
+  } catch (error) {
+    next(error);
   }
-);
+};
+
+export const socialRegister = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Giả định body chứa { email, name, avatar, role }
+    const serviceResponse = await completeSocialRegisterService(req.body);
+
+    res.status(201).json(serviceResponse);
+  } catch (error) {
+    next(error);
+  }
+};
 
 // --- ĐĂNG XUẤT ---
 export const logout = CatchAsyncError(

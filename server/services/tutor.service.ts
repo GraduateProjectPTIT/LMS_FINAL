@@ -31,6 +31,11 @@ import courseModel from "../models/course.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import OrderModel from "../models/order.model";
 import { createKeywordSearchFilter } from "../utils/query.helper";
+import {
+  courseTutorViewProjection,
+  ICourseTutorViewDto,
+  IPaginatedTutorCourseResult,
+} from "../interfaces/course-tutor-view.interface";
 
 // Cập nhật profile khi đăng ký
 export type ICombinedTutorUserResponse = ReturnType<ITutor["toObject"]> &
@@ -247,23 +252,26 @@ export const getTutorDetailsService = async (tutorId: string) => {
 export const findCoursesByTutorId = async (
   tutorId: string,
   queryParams: CourseQueryParams
-) => {
-  // 1. Kiểm tra tutorId
+): Promise<IPaginatedTutorCourseResult> => {
+  // <-- SỬ DỤNG KIỂU TRẢ VỀ MỚI
+
+  // 1. Kiểm tra tutorId (Giữ nguyên)
   if (!mongoose.Types.ObjectId.isValid(tutorId)) {
     throw new ErrorHandler("ID gia sư không hợp lệ.", 400);
   }
 
-  // 2. Destructure các tham số query
+  // 2. Destructure các tham số query (Giữ nguyên)
   const {
     page,
     limit,
     keyword,
     level,
-    sortBy = "createdAt", // Mặc định sắp xếp theo ngày tạo
-    sortOrder = "desc", // Mặc định mới nhất
+    sortBy = "createdAt",
+    sortOrder = "desc",
   } = queryParams;
 
-  // 3. Validation cho Sort
+  // 3. Validation cho Sort (Giữ nguyên)
+  // (Đảm bảo 'allowedSortFields' khớp với các trường trong 'courseTutorViewProjection')
   const allowedSortFields = [
     "createdAt",
     "name",
@@ -280,49 +288,90 @@ export const findCoursesByTutorId = async (
     );
   }
 
-  // --- 4. Xây dựng Filter ---
-
-  // Filter CỐ ĐỊNH: Luôn luôn lọc theo tutorId này
+  // 4. Xây dựng Filter ($match) (Giữ nguyên)
   const baseFilter: { [key: string]: any } = {
     creatorId: new mongoose.Types.ObjectId(tutorId),
   };
-
-  // Thêm các filter tùy chọn
   if (level) {
     baseFilter.level = level;
   }
-  // Bạn có thể thêm các filter khác ở đây...
-  // if (queryParams.categoryId) {
-  //   baseFilter.categories = { $in: [queryParams.categoryId] };
-  // }
-
-  // Filter theo keyword
   const keywordFilter = createKeywordSearchFilter(keyword, [
     "name",
     "description",
     "tags",
   ]);
-
-  // Kết hợp các filter
   const finalFilter = { ...baseFilter, ...keywordFilter };
 
-  // 5. Xây dựng đối tượng Sort
+  // 5. Xây dựng đối tượng Sort (Giữ nguyên)
   const sortOptions: SortOptions = {
     [sortBy]: sortOrder === "asc" ? 1 : -1,
   };
 
-  // 6. Gọi hàm paginate (giả định hàm này tồn tại)
-  // Hàm paginate sẽ xử lý logic .skip(), .limit(), và countDocuments
-  const paginatedResult = await paginate(
-    courseModel,
-    { page, limit },
-    finalFilter,
-    sortOptions
-    // Có thể truyền thêm .populate() nếu hàm paginate của bạn hỗ trợ
-    // { path: 'categories', select: 'name' }
-  );
+  // --- 6. Aggregation Pipeline (Đã được đơn giản hóa) ---
 
-  // 7. Trả về kết quả (để controller có thể "trải" ra)
-  // Giả định paginatedResult có dạng { data: [...], pagination: {...} }
-  return paginatedResult;
+  const pageNum = parseInt(page as string) || 1;
+  const limitNum = parseInt(limit as string) || 10;
+  const skip = (pageNum - 1) * limitNum;
+
+  // Xây dựng Pipeline
+  const pipeline: any[] = [
+    // Stage 1: Lọc
+    { $match: finalFilter },
+
+    {
+      $lookup: {
+        // Tên collection của Category model (thường là số nhiều)
+        from: "categories",
+        localField: "categories", // Trường trong 'course' model
+        foreignField: "_id", // Trường trong 'category' model
+        as: "categories", // Ghi đè (overwrite) lên trường 'categories'
+      },
+    },
+
+    // Stage 2: Chọn lọc và tính toán (SỬ DỤNG PROJECTION ĐÃ ĐỊNH NGHĨA)
+    { $project: courseTutorViewProjection }, // <-- THAY ĐỔI CHÍNH
+
+    // Stage 3: Sắp xếp
+    { $sort: sortOptions },
+
+    // Stage 4: Phân trang
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limitNum }],
+        metadata: [{ $count: "totalDocs" }],
+      },
+    },
+  ];
+
+  // Thực thi pipeline
+  const results = await courseModel.aggregate(pipeline);
+
+  // 7. Trả về kết quả (đã được định kiểu mạnh)
+
+  if (!results[0] || !results[0].data || results[0].data.length === 0) {
+    return {
+      data: [], // Kiểu trả về là ICourseTutorViewDto[]
+      pagination: {
+        totalDocs: 0,
+        limit: limitNum,
+        page: pageNum,
+        totalPages: 0,
+      },
+    };
+  }
+
+  // Ép kiểu 'data' về DTO của chúng ta
+  const data: ICourseTutorViewDto[] = results[0].data;
+  const totalDocs = results[0].metadata[0].totalDocs;
+  const totalPages = Math.ceil(totalDocs / limitNum);
+
+  const pagination = {
+    totalDocs,
+    limit: limitNum,
+    page: pageNum,
+    totalPages,
+  };
+
+  // Kiểu trả về bây giờ khớp với IPaginatedTutorCourseResult
+  return { data, pagination };
 };
