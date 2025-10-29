@@ -463,91 +463,14 @@ export const loginUserService = async (
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
 export const socialAuthService = async (body: ISocialAuthBody) => {
+  // Chỉ nhận 3 thông tin cơ bản từ Google
   const { email, name, avatar } = body;
 
   let user = await userModel.findOne({ email });
 
-  if (!user) {
-    // --- Kịch bản 1: Người dùng mới -> Áp dụng logic tạo profile ---
-    // 1. Lấy role TỪ BÊN TRONG KỊCH BẢN NÀY
-    const { role } = body;
-    // 2. Kiểm tra xem 'role' có được cung cấp không
-    if (!role) {
-      throw new ErrorHandler(
-        "Role is required for new registration",
-        400 // 400 Bad Request
-      );
-    }
-
-    // 3. Kiểm tra 'role' có hợp lệ không
-    const isValidRole = Object.values(UserRole).includes(role as UserRole);
-    if (!isValidRole) {
-      throw new ErrorHandler(
-        `Role: "${role}" is invalid`,
-        400 // 400 Bad Request
-      );
-    }
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      // Dữ liệu người dùng mới
-      const newUserPayload = {
-        email,
-        name,
-        avatar: {
-          public_id: "social_login", // Đánh dấu đây là avatar từ social
-          url: avatar,
-        },
-        role: role,
-        isVerified: true, // User từ social login luôn được xác thực
-      };
-
-      // Tạo user mới BÊN TRONG TRANSACTION
-      const newUserArray = await userModel.create([newUserPayload], {
-        session,
-      });
-      const newUser = newUserArray[0];
-
-      // Tạo profile tương ứng với vai trò
-      switch (role) {
-        case UserRole.Student: {
-          const newStudentDoc = new studentModel({ userId: newUser._id });
-          const savedProfile = await newStudentDoc.save({ session });
-          newUser.studentProfile = savedProfile._id as Types.ObjectId;
-          break;
-        }
-        case UserRole.Tutor: {
-          const newTutorDoc = new tutorModel({ userId: newUser._id });
-          const savedProfile = await newTutorDoc.save({ session });
-          newUser.tutorProfile = savedProfile._id as Types.ObjectId;
-          break;
-        }
-        default:
-          throw new ErrorHandler("Invalid role", 400);
-      }
-
-      // Lưu lại user với thông tin profile đã liên kết
-      await newUser.save({ session });
-
-      // Commit transaction khi mọi thứ thành công
-      await session.commitTransaction();
-
-      // Gán newUser cho biến user để sử dụng ở bước tạo token
-      user = newUser;
-    } catch (error: any) {
-      // Nếu có lỗi, hủy bỏ mọi thay đổi
-      await session.abortTransaction();
-      throw new ErrorHandler(
-        `There was an error when creating account, please retry`,
-        500
-      );
-    } finally {
-      // Luôn kết thúc session
-      session.endSession();
-    }
-  } else {
-    // --- Kịch bản 2: Người dùng đã tồn tại -> Chỉ cập nhật avatar nếu cần ---
+  if (user) {
+    // --- Kịch bản 1: Người dùng đã tồn tại (Login) ---
+    // Cập nhật avatar nếu cần
     if (user.avatar?.url !== avatar) {
       user.avatar = {
         public_id: user.avatar?.public_id || "social_login",
@@ -555,13 +478,113 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
       };
       await user.save();
     }
+
+    // Tạo và trả về tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    return {
+      status: "success", // Tín hiệu: Đăng nhập thành công
+      user: _toUserResponse(user),
+      accessToken,
+      refreshToken,
+    };
+  } else {
+    // --- Kịch bản 2: Người dùng mới (Cần đăng ký) ---
+
+    // KHÔNG tạo user ở đây
+    // KHÔNG kiểm tra role ở đây
+
+    // Chỉ trả về tín hiệu và thông tin pre-fill
+    return {
+      status: "ROLE_REQUIRED", // Tín hiệu: Báo Frontend navigate
+      prefill: { email, name, avatar },
+    };
+  }
+};
+// API MỚI: Dành cho trang đăng ký hoàn tất
+// (Ví dụ: POST /api/v1/auth/complete-register)
+export const completeSocialRegisterService = async (body: ISocialAuthBody) => {
+  // Nhận đầy đủ thông tin từ form đăng ký
+  const { email, name, avatar, role } = body;
+
+  // 1. Kiểm tra 'role' có được cung cấp không (copy từ code cũ của bạn)
+  if (!role) {
+    throw new ErrorHandler("Role is required for registration", 400);
+  }
+  // 2. Kiểm tra 'role' có hợp lệ không (copy từ code cũ của bạn)
+  const isValidRole = Object.values(UserRole).includes(role as UserRole);
+  if (!isValidRole) {
+    throw new ErrorHandler(`Role: "${role}" is invalid`, 400);
   }
 
-  // Tạo và trả về tokens (dùng cho cả 2 kịch bản)
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  // 3. (Rất quan trọng) Kiểm tra xem email này đã được tạo bởi người khác CHƯA
+  // (Đề phòng trường hợp người dùng mở 2 tab)
+  const existingUser = await userModel.findOne({ email });
+  if (existingUser) {
+    throw new ErrorHandler("This email is already registered", 409); // 409 Conflict
+  }
 
-  return { user: _toUserResponse(user), accessToken, refreshToken };
+  // 4. Bắt đầu Transaction và tạo user (BÊ TOÀN BỘ logic transaction của bạn vào đây)
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const newUserPayload = {
+      email,
+      name,
+      avatar: { public_id: "social_login", url: avatar },
+      role: role,
+      isVerified: true,
+    };
+
+    const newUserArray = await userModel.create([newUserPayload], { session });
+    const newUser = newUserArray[0];
+
+    // Tạo profile tương ứng
+    switch (role) {
+      case UserRole.Student: {
+        const newStudentDoc = new studentModel({ userId: newUser._id });
+
+        const savedProfile = await newStudentDoc.save({ session });
+
+        newUser.studentProfile = savedProfile._id as Types.ObjectId;
+
+        break;
+      }
+      case UserRole.Tutor: {
+        const newTutorDoc = new tutorModel({ userId: newUser._id });
+
+        const savedProfile = await newTutorDoc.save({ session });
+
+        newUser.tutorProfile = savedProfile._id as Types.ObjectId;
+
+        break;
+      }
+      default:
+        throw new ErrorHandler("Invalid role", 400);
+    }
+
+    await newUser.save({ session });
+    await session.commitTransaction();
+
+    // 5. Tạo token và trả về (Đăng nhập cho user luôn)
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
+
+    return {
+      user: _toUserResponse(newUser),
+      accessToken,
+      refreshToken,
+    };
+  } catch (error: any) {
+    await session.abortTransaction();
+    throw new ErrorHandler(
+      `There was an error when creating account, please retry`,
+      500
+    );
+  } finally {
+    session.endSession();
+  }
 };
 
 // --- NGHIỆP VỤ ĐĂNG XUẤT ---

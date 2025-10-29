@@ -6,7 +6,8 @@ import {
   login,
   logout,
   updateAccessToken,
-  socialAuth,
+  socialLoginCheck,
+  socialRegister,
   forgotPassword,
   resetPassword,
   resendCode,
@@ -18,7 +19,9 @@ const authRouter = express.Router();
 authRouter.post("/auth/register", register);
 authRouter.post("/auth/activate", activateUser);
 authRouter.post("/auth/login", login);
-authRouter.post("/auth/social_auth", socialAuth);
+authRouter.post("/auth/social_check", socialLoginCheck);
+authRouter.post("/auth/social_register", socialRegister);
+
 authRouter.post("/auth/forgot_password", forgotPassword);
 authRouter.put("/auth/reset_password", resetPassword);
 authRouter.post("/auth/resend_activation_code", resendCode);
