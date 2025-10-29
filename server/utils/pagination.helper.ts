@@ -33,6 +33,20 @@ export interface UserQueryParams extends PaginationParams {
   sortOrder?: "asc" | "desc";
 }
 
+export type CourseLevel =
+  | "Beginner"
+  | "Intermediate"
+  | "Advanced"
+  | "All Levels";
+
+export interface CourseQueryParams extends PaginationParams {
+  keyword?: string;
+  level?: CourseLevel;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  // Bạn có thể thêm các filter khác ở đây, ví dụ: categoryId?: string
+}
+
 /**
  * Hàm phân trang có thể tái sử dụng cho các Mongoose query.
  * @param model - Mongoose model để phân trang.

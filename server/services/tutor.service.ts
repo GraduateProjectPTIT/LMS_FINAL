@@ -11,7 +11,12 @@ import {
   IUpdateTutorExpertiseDto,
   IUpdateUserInfo,
 } from "../types/user.types";
-import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
+import {
+  CourseQueryParams,
+  paginate,
+  PaginationParams,
+  SortOptions,
+} from "../utils/pagination.helper"; // Import the helper
 import {
   IUpdatePassword,
   IUpdatePasswordParams,
@@ -25,6 +30,7 @@ import { _toUserResponse } from "./auth.service";
 import courseModel from "../models/course.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import OrderModel from "../models/order.model";
+import { createKeywordSearchFilter } from "../utils/query.helper";
 
 // Cập nhật profile khi đăng ký
 export type ICombinedTutorUserResponse = ReturnType<ITutor["toObject"]> &
@@ -92,10 +98,15 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
     .select("_id purchased ratings")
     .lean();
   const myCoursesCount = courses.length;
-  const myStudentsCount = courses.reduce((acc, c: any) => acc + (c.purchased || 0), 0);
+  const myStudentsCount = courses.reduce(
+    (acc, c: any) => acc + (c.purchased || 0),
+    0
+  );
 
   const courseIds = courses.map((c: any) => c._id);
-  const recentEnrollments = await EnrolledCourseModel.find({ courseId: { $in: courseIds } })
+  const recentEnrollments = await EnrolledCourseModel.find({
+    courseId: { $in: courseIds },
+  })
     .sort({ enrolledAt: -1 })
     .limit(5)
     .populate("userId", "name avatar email")
@@ -106,9 +117,16 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
     { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
     { $unwind: "$items" },
     { $match: { "items.courseId": { $in: courseIdStrings } } },
-    { $group: { _id: null, revenue: { $sum: "$items.price" }, count: { $sum: 1 } } },
+    {
+      $group: {
+        _id: null,
+        revenue: { $sum: "$items.price" },
+        count: { $sum: 1 },
+      },
+    },
   ]);
-  const myRevenue = Array.isArray(revenueAgg) && revenueAgg.length ? revenueAgg[0].revenue : 0;
+  const myRevenue =
+    Array.isArray(revenueAgg) && revenueAgg.length ? revenueAgg[0].revenue : 0;
 
   return {
     summary: {
@@ -120,20 +138,36 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
   };
 };
 
-export const getTutorEarningsChartService = async (userId: string, range: string = "30d") => {
+export const getTutorEarningsChartService = async (
+  userId: string,
+  range: string = "30d"
+) => {
   const isMonthly = range === "12m";
-  const courses = await courseModel.find({ creatorId: userId }).select("_id").lean();
+  const courses = await courseModel
+    .find({ creatorId: userId })
+    .select("_id")
+    .lean();
   const tutorCourseIds = courses.map((c: any) => String(c._id));
   const groupId = isMonthly
     ? { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }
-    : { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } };
+    : {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
 
   const series = await OrderModel.aggregate([
     { $match: { "payment_info.status": { $in: ["succeeded", "paid"] } } },
     { $unwind: "$items" },
     { $match: { "items.courseId": { $in: tutorCourseIds } } },
     { $group: { _id: groupId, revenue: { $sum: "$items.price" } } },
-    { $sort: { "_id.year": 1, "_id.month": 1, ...(isMonthly ? {} : { "_id.day": 1 }) } },
+    {
+      $sort: {
+        "_id.year": 1,
+        "_id.month": 1,
+        ...(isMonthly ? {} : { "_id.day": 1 }),
+      },
+    },
   ]);
 
   return { range, series };
@@ -142,72 +176,153 @@ export const getTutorEarningsChartService = async (userId: string, range: string
 export const getTutorDetailsService = async (tutorId: string) => {
   const id = new mongoose.Types.ObjectId(tutorId);
 
-  const tutorDetails = await courseModel.aggregate([
+  // --- BƯỚC 2: Kiểm tra User có tồn tại VÀ có phải là 'tutor' không ---
+  // (Giả sử userModel của bạn có trường `role: 'tutor'`)
+  const user = await userModel
+    .findOne({ _id: id, role: "tutor" }) // *** Đây là phần kiểm tra ***
+    .select("name avatar.url bio social socials") // Chỉ lấy các trường cần thiết
+    .lean(); // Sử dụng .lean() để đọc nhanh hơn (trả về POJO)
+
+  // Nếu không tìm thấy user, hoặc user đó không phải 'tutor'
+  if (!user) {
+    // Bạn có thể throw error hoặc return null
+    // throw new Error("Tutor not found");
+    return null;
+  }
+
+  // --- BƯỚC 3: Chạy aggregation CHỈ để lấy các chỉ số thống kê ---
+  // Chúng ta đã loại bỏ $lookup, $unwind vì đã có thông tin user
+  const statsAggregation = await courseModel.aggregate([
     // Giai đoạn 1: Lọc tất cả các khóa học của giảng viên này
     {
       $match: {
         creatorId: id,
       },
     },
-    // Giai đoạn 2: Nhóm các khóa học lại và tính toán các chỉ số
+    // Giai đoạn 2: Nhóm và tính toán
     {
       $group: {
-        _id: "$creatorId", // Nhóm theo ID của người tạo
-        totalStudents: { $sum: "$purchased" }, // Tính tổng số lượt mua
-        totalCourses: { $sum: 1 }, // Mỗi khóa học đếm là 1
-        totalReviews: { $sum: { $size: "$reviews" } }, // Tính tổng số review từ các mảng review
-        averageRating: { $avg: "$ratings" }, // Tính rating trung bình
+        _id: "$creatorId",
+        totalStudents: { $sum: "$purchased" },
+        totalCourses: { $sum: 1 },
+        totalReviews: { $sum: { $size: "$reviews" } },
+        averageRating: { $avg: "$ratings" },
       },
     },
-    // Giai đoạn 3: Kết nối (JOIN) với collection 'users' để lấy thông tin cá nhân
-    {
-      $lookup: {
-        from: "users", // Tên collection của User trong MongoDB (thường là số nhiều)
-        localField: "_id",
-        foreignField: "_id",
-        as: "creatorInfo",
-      },
-    },
-    // Giai đoạn 4: 'creatorInfo' là một mảng, ta chỉ cần phần tử đầu tiên
-    {
-      $unwind: "$creatorInfo",
-    },
-    // Giai đoạn 5: Chọn và định dạng lại các trường cần thiết cho kết quả cuối cùng
+    // Giai đoạn 3: Định dạng lại (loại bỏ _id, làm tròn rating)
     {
       $project: {
-        _id: 0, // Bỏ trường _id mặc định
-        name: "$creatorInfo.name",
-        avatar: {
-          url: "$creatorInfo.avatar.url",
-        },
-        bio: "$creatorInfo.bio", // Giả sử bạn có trường bio trong user model
-        totalStudents: 1, // Giữ lại trường đã tính toán
+        _id: 0,
+        totalStudents: 1,
         totalCourses: 1,
         totalReviews: 1,
-        averageRating: { $round: ["$averageRating", 1] }, // Làm tròn rating đến 1 chữ số thập phân
+        averageRating: { $round: ["$averageRating", 1] },
       },
     },
   ]);
 
-  // Aggregation trả về một mảng, ta chỉ cần phần tử đầu tiên
-  // Nếu giảng viên chưa có khóa học nào, mảng sẽ rỗng
-  if (tutorDetails.length === 0) {
-    // Nếu không có khóa học, ta vẫn trả về thông tin cơ bản của user
-    const user = await userModel
-      .findById(tutorId)
-      .select("name avatar.url bio");
-    return {
-      name: user?.name,
-      avatar: {
-        url: user?.avatar?.url || "",
-      },
-      bio: user?.bio,
-      totalStudents: 0,
-      totalCourses: 0,
-      totalReviews: 0,
-      averageRating: 0,
-    };
+  // --- BƯỚC 4: Kết hợp thông tin User và kết quả thống kê ---
+
+  // statsAggregation sẽ là mảng:
+  // - [ { totalStudents: ..., ... } ] nếu có khóa học
+  // - [] nếu chưa có khóa học nào
+  const courseStats = statsAggregation[0];
+
+  // Trả về kết quả cuối cùng, kết hợp thông tin user và các chỉ số
+  return {
+    name: user.name,
+    avatar: {
+      url: user.avatar?.url || "", // Xử lý trường hợp avatar/url có thể null
+    },
+    bio: user.bio,
+    socials: user.socials,
+    // Dùng toán tử `?.` hoặc `||` để gán giá trị 0 nếu chưa có khóa học
+    totalStudents: courseStats?.totalStudents || 0,
+    totalCourses: courseStats?.totalCourses || 0,
+    totalReviews: courseStats?.totalReviews || 0,
+    averageRating: courseStats?.averageRating || 0,
+  };
+};
+
+export const findCoursesByTutorId = async (
+  tutorId: string,
+  queryParams: CourseQueryParams
+) => {
+  // 1. Kiểm tra tutorId
+  if (!mongoose.Types.ObjectId.isValid(tutorId)) {
+    throw new ErrorHandler("ID gia sư không hợp lệ.", 400);
   }
 
-  return tutorDetails[0];
+  // 2. Destructure các tham số query
+  const {
+    page,
+    limit,
+    keyword,
+    level,
+    sortBy = "createdAt", // Mặc định sắp xếp theo ngày tạo
+    sortOrder = "desc", // Mặc định mới nhất
+  } = queryParams;
+
+  // 3. Validation cho Sort
+  const allowedSortFields = [
+    "createdAt",
+    "name",
+    "price",
+    "ratings",
+    "purchased",
+  ];
+  if (!allowedSortFields.includes(sortBy)) {
+    throw new ErrorHandler(
+      `Giá trị của sortBy không hợp lệ. Chỉ chấp nhận: ${allowedSortFields.join(
+        ", "
+      )}.`,
+      400
+    );
+  }
+
+  // --- 4. Xây dựng Filter ---
+
+  // Filter CỐ ĐỊNH: Luôn luôn lọc theo tutorId này
+  const baseFilter: { [key: string]: any } = {
+    creatorId: new mongoose.Types.ObjectId(tutorId),
+  };
+
+  // Thêm các filter tùy chọn
+  if (level) {
+    baseFilter.level = level;
+  }
+  // Bạn có thể thêm các filter khác ở đây...
+  // if (queryParams.categoryId) {
+  //   baseFilter.categories = { $in: [queryParams.categoryId] };
+  // }
+
+  // Filter theo keyword
+  const keywordFilter = createKeywordSearchFilter(keyword, [
+    "name",
+    "description",
+    "tags",
+  ]);
+
+  // Kết hợp các filter
+  const finalFilter = { ...baseFilter, ...keywordFilter };
+
+  // 5. Xây dựng đối tượng Sort
+  const sortOptions: SortOptions = {
+    [sortBy]: sortOrder === "asc" ? 1 : -1,
+  };
+
+  // 6. Gọi hàm paginate (giả định hàm này tồn tại)
+  // Hàm paginate sẽ xử lý logic .skip(), .limit(), và countDocuments
+  const paginatedResult = await paginate(
+    courseModel,
+    { page, limit },
+    finalFilter,
+    sortOptions
+    // Có thể truyền thêm .populate() nếu hàm paginate của bạn hỗ trợ
+    // { path: 'categories', select: 'name' }
+  );
+
+  // 7. Trả về kết quả (để controller có thể "trải" ra)
+  // Giả định paginatedResult có dạng { data: [...], pagination: {...} }
+  return paginatedResult;
 };
