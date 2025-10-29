@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronRight, Clock, BookOpen, Users } from 'lucide-react'
+import { ChevronRight, Clock, BookOpen, Users, ChevronLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getValidThumbnail } from '@/utils/handleImage'
@@ -142,6 +142,12 @@ const TopPurchasedCourses = () => {
                     <div className="relative">
                         {shouldShowNavigation && (
                             <>
+                                {/* <button
+                                    onClick={prevSlide}
+                                    className="hidden md:block md:absolute -left-10 top-1/2 -translate-y-1/2 md:translate-x-4 z-10 bg-white dark:bg-slate-800 shadow-lg rounded-full p-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    <ChevronLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                                </button> */}
                                 <button
                                     onClick={nextSlide}
                                     className="hidden md:block md:absolute right-0 top-1/2 -translate-y-1/2 md:translate-x-4 z-10 bg-white dark:bg-slate-800 shadow-lg rounded-full p-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"

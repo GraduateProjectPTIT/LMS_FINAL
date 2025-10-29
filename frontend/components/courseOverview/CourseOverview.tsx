@@ -581,7 +581,6 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                 <CourseReview
                     isCreator={isCreator}
                     courseId={courseId}
-                    reviews={reviews}
                 />
             </div>
 

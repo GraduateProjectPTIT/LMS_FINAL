@@ -93,7 +93,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
     const showMarkAsCompletedButton = !isLectureCompleted && (watchedPercentage >= 80 || canBypass);
 
     return (
-        <div className="flex flex-col h-screen overflow-y-scroll pb-20">
+        <div className="flex flex-col h-screen overflow-y-scroll pb-20 hide-scrollbar">
             {/* Video display */}
             <div className="bg-black rounded-lg overflow-hidden w-full aspect-video flex-shrink-0">
                 <video
@@ -216,17 +216,10 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
 
                     {activeTab === 'questions' && (
                         <div>
-                            {lecture.lectureComments && lecture.lectureComments.length > 0 ? (
-                                <LectureQuestions
-                                    courseId={course._id}
-                                    contentId={lecture._id}
-
-                                />
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                                    <p className="text-gray-500 dark:text-gray-400">No questions available for this video</p>
-                                </div>
-                            )}
+                            <LectureQuestions
+                                courseId={course._id}
+                                contentId={lecture._id}
+                            />
                         </div>
                     )}
                 </div>

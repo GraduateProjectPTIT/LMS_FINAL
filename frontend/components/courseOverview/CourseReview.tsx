@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronDown, User, Send } from 'lucide-react';
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { Star } from 'lucide-react';
@@ -42,14 +42,47 @@ interface IReplyReview {
 interface ICourseReviewProps {
     isCreator: boolean;
     courseId: string;
-    reviews: IReview[];
 }
 
-const CourseReview = ({ isCreator, courseId, reviews }: ICourseReviewProps) => {
+const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
+    const [reviews, setReviews] = useState<IReview[]>([]);
+    const [loading, setLoading] = useState(true);
     const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
     const [replyTexts, setReplyTexts] = useState<{ [key: string]: string }>({});
     const [loadingReply, setLoadingReply] = useState<string | null>(null);
     const [visibleReviews, setVisibleReviews] = useState(3);
+
+    // Fetch reviews from API
+    const fetchReviews = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/${courseId}/reviews?page=1&limit=50`,
+                {
+                    method: 'GET',
+                    credentials: 'include',
+                }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.log("Fetching reviews failed: ", data.message);
+                return;
+            }
+
+            setReviews(data.paginatedResult?.data || []);
+        } catch (error: any) {
+            console.log("Error fetching reviews:", error.message);
+            toast.error("Failed to load reviews");
+        } finally {
+            setLoading(false);
+        }
+    }, [courseId]);
+
+    useEffect(() => {
+        fetchReviews();
+    }, [fetchReviews]);
 
     // Calculate rating statistics
     const calculateRatingStats = () => {
@@ -132,8 +165,8 @@ const CourseReview = ({ isCreator, courseId, reviews }: ICourseReviewProps) => {
             setReplyTexts(prev => ({ ...prev, [reviewId]: '' }));
             setActiveReplyId(null);
 
-            // Reload page to show new reply -> sau này gọi hàm fetch lại reviews
-            window.location.reload();
+            // Fetch reviews again to show new reply
+            await fetchReviews();
 
         } catch (error: any) {
             console.error('Error submitting reply:', error);
@@ -148,6 +181,17 @@ const CourseReview = ({ isCreator, courseId, reviews }: ICourseReviewProps) => {
     };
 
     const displayedReviews = reviews.slice(0, visibleReviews);
+
+    if (loading) {
+        return (
+            <div className="border-gray-200 dark:border-gray-800 md:mt-12">
+                <h2 className="text-3xl font-bold mb-8 text-gray-800 dark:text-white">Student Reviews</h2>
+                <div className="flex justify-center items-center py-12">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="border-gray-200 dark:border-gray-800 md:mt-12">
