@@ -5,6 +5,7 @@ import {
   setupTutorProfile,
   getTutorDashboardSummary,
   getTutorEarnings,
+  getCoursesByTutor,
 } from "../controllers/tutor.controller";
 const tutorRouter = express.Router();
 
@@ -32,3 +33,5 @@ tutorRouter.get(
   authorizeRoles("tutor"),
   getTutorEarnings
 );
+
+tutorRouter.get("/tutor/:tutorId", getCoursesByTutor);

@@ -463,16 +463,31 @@ export const loginUserService = async (
 
 // --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
 export const socialAuthService = async (body: ISocialAuthBody) => {
-  const { email, name, avatar, role } = body;
-  const isValidRole = Object.values(UserRole).includes(role as UserRole);
-  if (!isValidRole) {
-    throw new Error(`Role: "${role}" is invalid`);
-  }
+  const { email, name, avatar } = body;
 
   let user = await userModel.findOne({ email });
 
   if (!user) {
     // --- Kịch bản 1: Người dùng mới -> Áp dụng logic tạo profile ---
+    // 1. Lấy role TỪ BÊN TRONG KỊCH BẢN NÀY
+    const { role } = body;
+    // 2. Kiểm tra xem 'role' có được cung cấp không
+    if (!role) {
+      throw new ErrorHandler(
+        "Role is required for new registration",
+        400 // 400 Bad Request
+      );
+    }
+
+    // 3. Kiểm tra 'role' có hợp lệ không
+    const isValidRole = Object.values(UserRole).includes(role as UserRole);
+    if (!isValidRole) {
+      throw new ErrorHandler(
+        `Role: "${role}" is invalid`,
+        400 // 400 Bad Request
+      );
+    }
+
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -524,7 +539,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
       // Nếu có lỗi, hủy bỏ mọi thay đổi
       await session.abortTransaction();
       throw new ErrorHandler(
-        `Error when creating account: ${error.message}`,
+        `There was an error when creating account, please retry`,
         500
       );
     } finally {
