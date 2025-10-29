@@ -6,7 +6,9 @@ import {
   updateTutorExpertiseService,
   getTutorDashboardSummaryService,
   getTutorEarningsChartService,
+  findCoursesByTutorId,
 } from "../services/tutor.service";
+import { PaginationParams } from "../utils/pagination.helper";
 
 // register setup profile cho tutor
 export const setupTutorProfile = CatchAsyncError(
@@ -54,9 +56,34 @@ export const getTutorOverview = CatchAsyncError(
     const tutorId = req.params.id;
     const tutorDetails = await getTutorDetailsService(tutorId);
 
+    if (!tutorDetails) {
+      // Trả về lỗi 404 Not Found
+      return next(
+        new ErrorHandler("Tutor not found or user is not a tutor", 404)
+      );
+    }
+
     res.status(200).json({
       success: true,
       tutorDetails,
+    });
+  }
+);
+
+export const getCoursesByTutor = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // 1. Lấy các tham số cần thiết từ request
+    const { tutorId } = req.params;
+    const query: PaginationParams = req.query;
+
+    // 2. Gọi service và truyền các tham số
+    // Service sẽ trả về một object (ví dụ: { message, data, pagination })
+    const serviceResult = await findCoursesByTutorId(tutorId, query);
+
+    // 3. Gửi response, "trải" kết quả từ service vào
+    res.status(200).json({
+      success: true,
+      ...serviceResult,
     });
   }
 );
