@@ -459,7 +459,7 @@ export const getTopPurchasedCoursesService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
-    const courses = await CourseModel.find({})
+    const courses = await CourseModel.find({ purchased: { $gt: 0 } })
       .select(
         "name price estimatedPrice thumbnail purchased courseData.sectionContents.videoLength"
       )

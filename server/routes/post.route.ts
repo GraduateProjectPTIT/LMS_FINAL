@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
-import { createPost, uploadTinyImage, getPosts, getPublicPosts, getPublicPostBySlug, updatePost, deletePost, getAdminPostById } from "../controllers/post.controller";
+import { createPost, uploadTinyImage, getPosts, getPublicPosts, getPublicPostBySlug, updatePost, deletePost, getAdminPostById, getAllTags } from "../controllers/post.controller";
 
 const postRouter = express.Router();
 
@@ -27,5 +27,6 @@ postRouter.get("/post/:id", isAuthenticated, authorizeRoles("admin"), getAdminPo
 
 postRouter.put("/post/:id", isAuthenticated, updatePost);
 postRouter.delete("/post/:id", isAuthenticated, deletePost);
+postRouter.get("/public/tags", getAllTags);
 
 export default postRouter;

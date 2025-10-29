@@ -35,6 +35,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_BASEURL: "http://localhost:8000"
     container_name: lms_frontend
     restart: unless-stopped
     depends_on:

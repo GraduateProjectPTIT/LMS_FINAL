@@ -6,7 +6,6 @@ import { normalizeOrders, normalizeOrder } from "../utils/order.helpers";
 import ErrorHandler from "../utils/ErrorHandler";
 import mongoose from "mongoose";
 import { getInclusiveDateRange } from "../utils/date.helpers";
-import userModel from "../models/user.model";
 
 // create new order
 export const newOrder = CatchAsyncError(async (data: any, res: Response, next: NextFunction) => {
@@ -140,15 +139,13 @@ export const getOrderDetailService = async (
         .populate("creatorId", "name email avatar");
     }
 
-    const itemsWithCourse = Array.isArray(normalized?.items)
+    const items = Array.isArray(normalized?.items)
       ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String(course?._id)
-            ? { ...it, course }
-            : it
+          String(it?.courseId) === String(course?._id) && course ? { course } : it
         )
       : normalized?.items;
 
-    return res.status(200).json({ success: true, order: { ...normalized, items: itemsWithCourse } });
+    return res.status(200).json({ success: true, order: { ...normalized, items } });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -196,17 +193,15 @@ export const getTutorOrderDetailService = async (
       return next(new ErrorHandler("You do not have access to this order", 403));
     }
 
-    const itemsWithCourse = Array.isArray(normalized?.items)
+    const items = Array.isArray(normalized?.items)
       ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String((course as any)?._id)
-            ? { ...it, course }
-            : it
+          String(it?.courseId) === String((course as any)?._id) && course ? { course } : it
         )
       : normalized?.items;
 
     return res
       .status(200)
-      .json({ success: true, order: { ...normalized, items: itemsWithCourse } });
+      .json({ success: true, order: { ...normalized, items } });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }

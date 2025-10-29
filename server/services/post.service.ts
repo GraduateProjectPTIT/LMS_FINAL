@@ -77,14 +77,30 @@ export const getPublicPostsService = async (
     if (limit > 100) limit = 100;
     const skip = (page - 1) * limit;
 
+    const singleTag = typeof query?.tag !== "undefined" ? String(query.tag).trim() : undefined;
+    const tagsParam = (query as any)?.tags;
+    let tagsFilter: string[] = [];
+    if (singleTag) tagsFilter.push(singleTag);
+    if (Array.isArray(tagsParam)) {
+      tagsFilter.push(...(tagsParam as any[]).map((t) => String(t).trim()));
+    } else if (typeof tagsParam === "string") {
+      tagsFilter.push(...String(tagsParam).split(",").map((s) => s.trim()).filter(Boolean));
+    }
+    tagsFilter = tagsFilter.filter(Boolean);
+
+    const filter: any = { status: "published" };
+    if (tagsFilter.length) {
+      filter.tags = { $in: Array.from(new Set(tagsFilter)) };
+    }
+
     const [rawItems, total] = await Promise.all([
-      PostModel.find({ status: "published" })
+      PostModel.find(filter)
         .select("title slug tags createdAt coverImage authorId shortDescription contentHtml views")
         .populate("authorId", "name avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      PostModel.countDocuments({ status: "published" }),
+      PostModel.countDocuments(filter),
     ]);
 
     const stripHtml = (html: string) => String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -407,6 +423,25 @@ export const deletePostService = async (
 
     await post.deleteOne();
     return res.status(200).json({ success: true });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+export const getAllTagsService = async (res: Response, next: NextFunction) => {
+  try {
+    // Lấy tất cả tag khác nhau (distinct)
+    const tags = await PostModel.distinct("tags", { status: "published" });
+
+    // Xóa tag trống, trim, loại trùng hoa/thường nếu cần
+    const normalized = Array.from(
+      new Set(tags.map((t: any) => String(t).trim()).filter(Boolean))
+    );
+
+    return res.status(200).json({
+      success: true,
+      tags: normalized.sort((a, b) => a.localeCompare(b)),
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
