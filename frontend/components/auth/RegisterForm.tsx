@@ -169,9 +169,6 @@ const RegisterForm = ({
       source = "cookie";
     }
 
-    console.log(
-      `[RegisterForm] Resolved role '${resolved}' from source: ${source}`
-    );
     return resolved;
   };
 
@@ -242,7 +239,7 @@ const RegisterForm = ({
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/auth/social_auth`,
+        `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/auth/social_register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

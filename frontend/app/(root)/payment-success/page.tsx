@@ -128,7 +128,7 @@ const PaymentSuccess = () => {
     };
 
     const handleGoToCourses = () => {
-        router.push('/profile?section=enrolled_courses');
+        router.push('/my-courses');
     };
 
     const handleBackToHome = () => {

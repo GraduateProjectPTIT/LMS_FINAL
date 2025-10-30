@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
-
 const AdminProtected = ({ children }: { children: React.ReactNode }) => {
 
     const router = useRouter();

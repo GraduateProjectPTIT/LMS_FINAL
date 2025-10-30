@@ -49,8 +49,6 @@ const Login = () => {
     // Check if there's a callbackUrl from middleware
     const callbackUrl = searchParams?.get("callbackUrl") || "/"; // Default to homepage
 
-    console.log("Callback URL:", callbackUrl);
-
     const { currentUser } = useSelector((state: any) => state.user);
 
     // Redirect logged-in users
@@ -123,9 +121,11 @@ const Login = () => {
     const sendUserToServer = useCallback(async () => {
 
         if (!session?.user || isCalled.current) return; // Ngăn gọi API nếu đã được gọi trước đó
+
         setIsLoading(true);
+
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/auth/social_auth`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/auth/social_check`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -137,13 +137,29 @@ const Login = () => {
                 }),
                 credentials: "include",
             });
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.message || "Failed to authenticate user");
+
+            const data = await res.json().catch(() => ({}));
+
+            // Nếu tài khoản chưa đăng ký, chuyển hướng đến trang đăng ký
+            if (data?.status === "ROLE_REQUIRED") {
+                toast("Account not registered yet. Please complete registration.");
+                setIsLoading(false);
+                router.replace(`/signup`);
+                return;
             }
+
+            // Nếu đăng nhập thành công
+            if (res.ok && data?.status === "success") {
+                dispatch(signInSuccess(data));
+                setIsLoading(false);
+                router.replace(callbackUrl || "/");
+                return;
+            }
+
+            // Xử lý lỗi khác
+            toast.error(data?.message || "Failed to authenticate user.");
             setIsLoading(false);
-            dispatch(signInSuccess(data));
-            router.replace(callbackUrl);
+
         } catch (error: any) {
             console.log(error.message);
         }

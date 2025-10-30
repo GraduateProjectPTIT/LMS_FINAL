@@ -485,7 +485,7 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
 
     return {
       status: "success", // Tín hiệu: Đăng nhập thành công
-      user: _toUserResponse(user),
+      userResponse: _toUserResponse(user),
       accessToken,
       refreshToken,
     };
@@ -572,7 +572,7 @@ export const completeSocialRegisterService = async (body: ISocialAuthBody) => {
     const refreshToken = generateRefreshToken(newUser);
 
     return {
-      user: _toUserResponse(newUser),
+      userResponse: _toUserResponse(newUser),
       accessToken,
       refreshToken,
     };
