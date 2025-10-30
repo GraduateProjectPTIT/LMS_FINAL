@@ -13,7 +13,11 @@ import {
   resendCodeService,
   completeSocialRegisterService,
 } from "../services/auth.service";
-import { ILoginRequest, IUpdatePassword } from "../types/auth.types";
+import {
+  ILoginRequest,
+  ISocialAuthBody,
+  IUpdatePassword,
+} from "../types/auth.types";
 import {
   accessTokenOptions,
   refreshTokenOptions,
@@ -60,44 +64,67 @@ export const login = CatchAsyncError(
     sendToken(user, 200, res);
   }
 );
-// --- ĐĂNG NHẬP QUA MẠNG XÃ HỘI ---
-export const socialLoginCheck = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    // Giả định body chỉ chứa { email, name, avatar }
+// --- ĐĂNG NHẬP QUA MẠNG XÃ HỘI (ĐÃ CẬP NHẬT) ---
+export const socialLoginCheck = CatchAsyncError(
+  // <-- Dùng CatchAsyncError cho an toàn
+  async (req: Request, res: Response, next: NextFunction) => {
+    // 1. Gọi service để xử lý nghiệp vụ
     const serviceResponse = await socialAuthService(req.body);
 
-    res.status(200).json(serviceResponse);
-  } catch (error) {
-    next(error);
+    // 2. Kiểm tra tín hiệu trả về từ service
+    if (serviceResponse.status === "success") {
+      // --- Kịch bản 1: Đăng nhập thành công ---
+
+      // Lấy userResponse đã được populate đầy đủ
+      const user = serviceResponse.userResponse;
+
+      console.log(user);
+
+      // Nếu không có user, trả về lỗi an toàn
+      if (!user) {
+        return next(new ErrorHandler("User data is invalid", 500));
+      }
+
+      // *** MỤC TIÊU CỦA BẠN ĐÂY ***
+      // Gọi sendToken, nó sẽ tự tạo token, set cookie và gửi response
+      sendToken(user, 200, res);
+    } else {
+      // --- Kịch bản 2: Cần yêu cầu chọn Role ---
+      // status là "ROLE_REQUIRED"
+      // Trả về thông tin prefill cho frontend
+      res.status(200).json(serviceResponse);
+    }
   }
-};
+);
 
-export const socialRegister = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    // Giả định body chứa { email, name, avatar, role }
-    const serviceResponse = await completeSocialRegisterService(req.body);
+export const socialRegister = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // 1. Gọi service, service sẽ trả về IUserResponse (đã populate)
+    // hoặc throw error (sẽ bị CatchAsyncError bắt lại)
+    const user = await completeSocialRegisterService(
+      req.body as ISocialAuthBody
+    );
 
-    res.status(201).json(serviceResponse);
-  } catch (error) {
-    next(error);
+    // 2. *** MỤC TIÊU CỦA BẠN ĐÂY ***
+    // Chuyển user và response cho sendToken
+    // Sử dụng status code 201 (Created) cho việc đăng ký thành công
+
+    if (!user) {
+      return next(new ErrorHandler("User data is invalid", 500));
+    }
+
+    sendToken(user, 201, res);
   }
-};
-
+);
 // --- ĐĂNG XUẤT ---
 export const logout = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user?._id) {
-      return next(new ErrorHandler("User not authenticated", 401));
+      return next(new ErrorHandler("User is not authenticated", 401));
     }
+
     const message = await logoutUserService(res, req.user._id.toString());
+    console.log(req.user._id);
 
     res.status(200).json({ success: true, message });
   }

@@ -32,6 +32,41 @@ import { createNotificationService } from "./notification.service";
 
 // --- HELPER: TẠO TOKEN KÍCH HOẠT ---
 
+const _createUserWithProfileInTransaction = async (
+  userPayload: any,
+  role: UserRole,
+  session: mongoose.ClientSession
+): Promise<IUser> => {
+  // 1. Tạo user document
+  const newUserArray = await userModel.create([userPayload], { session });
+  const newUser = newUserArray[0];
+
+  // 2. Tạo profile tương ứng
+  switch (role) {
+    case UserRole.Student: {
+      const newStudentDoc = new studentModel({ userId: newUser._id });
+      const savedProfile = await newStudentDoc.save({ session });
+      newUser.studentProfile = savedProfile._id as Types.ObjectId;
+      break;
+    }
+    case UserRole.Tutor: {
+      const newTutorDoc = new tutorModel({ userId: newUser._id });
+      const savedProfile = await newTutorDoc.save({ session });
+      newUser.tutorProfile = savedProfile._id as Types.ObjectId;
+      break;
+    }
+    default:
+      // Lỗi này không nên xảy ra nếu đã validate role ở service
+      throw new ErrorHandler("Invalid role during profile creation", 500);
+  }
+
+  // 3. Lưu lại user để cập nhật ID của profile
+  await newUser.save({ session });
+
+  // 4. Trả về user mới
+  return newUser;
+};
+
 export const _toUserResponse = (user: IUser): IUserResponse => {
   // 1. Chuyển Mongoose Document thành plain object
   const userObject = user.toObject();
@@ -58,6 +93,52 @@ export const _toUserResponse = (user: IUser): IUserResponse => {
       tiktok: "",
     },
   };
+};
+
+const getPopulatedUserResponse = async (
+  user: IUser // Nhận vào đối tượng user đầy đủ từ DB
+): Promise<IUserResponse> => {
+  // 1. Tạo response cơ bản
+  const baseResponse = _toUserResponse(user);
+
+  // 2. Populate cho Tutor
+  if (user.role === "tutor") {
+    const tutorProfile = await tutorModel
+      .findOne({ userId: user._id })
+      .populate<{ expertise: ICategory[] }>("expertise");
+
+    let expertiseTitles: string[] = [];
+    if (tutorProfile && tutorProfile.expertise) {
+      expertiseTitles = tutorProfile.expertise.map(
+        (category) => category.title
+      );
+    }
+    return {
+      ...baseResponse,
+      expertise: expertiseTitles,
+    };
+  }
+
+  // 3. Populate cho Student
+  if (user.role === "student") {
+    const studentProfile = await studentModel
+      .findOne({ userId: user._id })
+      .populate<{ interests: ICategory[] }>("interests");
+
+    let interestTitles: string[] = [];
+    if (studentProfile && studentProfile.interests) {
+      interestTitles = studentProfile.interests.map(
+        (category) => category.title
+      );
+    }
+    return {
+      ...baseResponse,
+      interests: interestTitles,
+    };
+  }
+
+  // 4. Trả về cơ bản nếu là role khác (admin,...)
+  return baseResponse;
 };
 
 const createActivationToken = (user: IRegistrationBody): IActivationToken => {
@@ -200,10 +281,9 @@ export const registerUserService = async (body: IRegistrationBody) => {
       role,
     });
 
-    // 4. Tạo user và profile tương ứng BÊN TRONG TRANSACTION
-
-    // Tạo user mới, chưa lưu
-    const user = {
+    // 4. Chuẩn bị payload cho user
+    // (Bao gồm cả activation data)
+    const userPayload = {
       name,
       email,
       password, // Mật khẩu sẽ được hash bởi pre-save hook
@@ -213,46 +293,17 @@ export const registerUserService = async (body: IRegistrationBody) => {
       isVerified: false,
     };
 
-    // Dùng create với session để đưa hành động này vào transaction
-    const newUserArray = await userModel.create([user], { session });
-    const newUser = newUserArray[0];
-
-    switch (role) {
-      case UserRole.Student: {
-        const newStudentDoc = new studentModel({ userId: newUser._id });
-        const savedProfile = await newStudentDoc.save({ session });
-
-        if (savedProfile && savedProfile._id) {
-          newUser.studentProfile = savedProfile._id as Types.ObjectId;
-        } else {
-          throw new ErrorHandler("Failed to create student profile.", 500);
-        }
-        break;
-      }
-
-      case UserRole.Tutor: {
-        const newTutorDoc = new tutorModel({ userId: newUser._id });
-        const savedProfile = await newTutorDoc.save({ session });
-
-        if (savedProfile && savedProfile._id) {
-          newUser.tutorProfile = savedProfile._id as Types.ObjectId;
-        } else {
-          throw new ErrorHandler("Failed to create tutor profile.", 500);
-        }
-        break;
-      }
-
-      default:
-        throw new ErrorHandler("Invalid role specified", 400);
-    }
-
-    // Lưu lại user với thông tin profile đã được liên kết
-    await newUser.save({ session });
+    // *** THAY ĐỔI: Gọi hàm helper để tạo user và profile ***
+    const newUser = await _createUserWithProfileInTransaction(
+      userPayload,
+      role,
+      session
+    );
 
     // 5. Nếu mọi thứ thành công, commit transaction
     await session.commitTransaction();
 
-    // 6. Gửi email (chỉ gửi khi transaction đã thành công)
+    // 6. Gửi email & Notification (chỉ gửi khi transaction đã thành công)
     const data = {
       user: { name: newUser.name },
       activationCode: activationTokenData.activationCode,
@@ -271,7 +322,6 @@ export const registerUserService = async (body: IRegistrationBody) => {
     }
 
     // Render email template (không cần chờ)
-
     ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data);
 
     try {
@@ -414,63 +464,18 @@ export const loginUserService = async (
     throw new ErrorHandler("Invalid email or password", 400);
   }
 
-  const baseResponse = _toUserResponse(userFromDB);
-
-  if (userFromDB.role === "tutor") {
-    const tutorProfile = await tutorModel
-      .findOne({ userId: userFromDB._id })
-      .populate<{ expertise: ICategory[] }>("expertise"); // <-- POPULATE Ở ĐÂY
-
-    let expertiseTitles: string[] = [];
-
-    if (tutorProfile && tutorProfile.expertise) {
-      // Dùng .map() để tạo một mảng mới chỉ chứa các 'title'
-      expertiseTitles = tutorProfile.expertise.map(
-        (category) => category.title
-      );
-    }
-
-    return {
-      ...baseResponse,
-      expertise: expertiseTitles,
-    };
-  }
-
-  if (userFromDB.role === "student") {
-    // 1. Tìm student profile và populate trường 'interests'
-    const studentProfile = await studentModel
-      .findOne({ userId: userFromDB._id })
-      .populate<{ interests: ICategory[] }>("interests"); // <-- Populate 'interests'
-    let interestTitles: string[] = [];
-
-    // 2. Kiểm tra và dùng .map() để lấy ra các title
-    if (studentProfile && studentProfile.interests) {
-      interestTitles = studentProfile.interests.map(
-        (category) => category.title
-      );
-    }
-
-    // 3. Trả về response với mảng 'interests' chứa các title
-    return {
-      ...baseResponse,
-      interests: interestTitles, // <-- Trả về trường 'interests'
-    };
-  }
-
-  // 3. Nếu không phải role đặc biệt, trả về response cơ bản
-  return baseResponse;
+  // Chỉ cần gọi hàm helper mới
+  return await getPopulatedUserResponse(userFromDB);
 };
 
-// --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI ---
+// --- NGHIỆP VỤ ĐĂNG NHẬP MẠNG XÃ HỘI (ĐÃ CẬP NHẬT) ---
 export const socialAuthService = async (body: ISocialAuthBody) => {
-  // Chỉ nhận 3 thông tin cơ bản từ Google
   const { email, name, avatar } = body;
 
   let user = await userModel.findOne({ email });
 
   if (user) {
     // --- Kịch bản 1: Người dùng đã tồn tại (Login) ---
-    // Cập nhật avatar nếu cần
     if (user.avatar?.url !== avatar) {
       user.avatar = {
         public_id: user.avatar?.public_id || "social_login",
@@ -479,108 +484,84 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
       await user.save();
     }
 
-    // Tạo và trả về tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    // *** THAY ĐỔI QUAN TRỌNG ***
+    // 1. Không tạo token ở đây
+    // 2. Gọi hàm helper để lấy đầy đủ thông tin (interests/expertise)
+    const populatedUser = await getPopulatedUserResponse(user);
 
     return {
       status: "success", // Tín hiệu: Đăng nhập thành công
-      userResponse: _toUserResponse(user),
-      accessToken,
-      refreshToken,
+      userResponse: populatedUser, // Trả về user đã populate đầy đủ
+      // KHÔNG CÓ TOKEN Ở ĐÂY
     };
   } else {
     // --- Kịch bản 2: Người dùng mới (Cần đăng ký) ---
-
-    // KHÔNG tạo user ở đây
-    // KHÔNG kiểm tra role ở đây
-
-    // Chỉ trả về tín hiệu và thông tin pre-fill
     return {
-      status: "ROLE_REQUIRED", // Tín hiệu: Báo Frontend navigate
+      status: "ROLE_REQUIRED",
       prefill: { email, name, avatar },
     };
   }
 };
+
 // API MỚI: Dành cho trang đăng ký hoàn tất
 // (Ví dụ: POST /api/v1/auth/complete-register)
-export const completeSocialRegisterService = async (body: ISocialAuthBody) => {
-  // Nhận đầy đủ thông tin từ form đăng ký
+// --- NGHIỆP VỤ HOÀN TẤT ĐĂNG KÝ MẠNG XÃ HỘI (ĐÃ CẬP NHẬT) ---
+
+// Giả định rằng hàm 'getPopulatedUserResponse' ta đã tạo ở lần trước
+// đã có sẵn trong file này hoặc đã được import
+// const getPopulatedUserResponse = async (user: IUser): Promise<IUserResponse> => { ... }
+
+export const completeSocialRegisterService = async (
+  body: ISocialAuthBody
+): Promise<IUserResponse> => {
   const { email, name, avatar, role } = body;
 
-  // 1. Kiểm tra 'role' có được cung cấp không (copy từ code cũ của bạn)
+  // 1. & 2. Validation (Giữ nguyên)
   if (!role) {
     throw new ErrorHandler("Role is required for registration", 400);
   }
-  // 2. Kiểm tra 'role' có hợp lệ không (copy từ code cũ của bạn)
   const isValidRole = Object.values(UserRole).includes(role as UserRole);
   if (!isValidRole) {
     throw new ErrorHandler(`Role: "${role}" is invalid`, 400);
   }
 
-  // 3. (Rất quan trọng) Kiểm tra xem email này đã được tạo bởi người khác CHƯA
-  // (Đề phòng trường hợp người dùng mở 2 tab)
+  // 3. Kiểm tra email (Giữ nguyên)
   const existingUser = await userModel.findOne({ email });
   if (existingUser) {
-    throw new ErrorHandler("This email is already registered", 409); // 409 Conflict
+    throw new ErrorHandler("This email is already registered", 409);
   }
 
-  // 4. Bắt đầu Transaction và tạo user (BÊ TOÀN BỘ logic transaction của bạn vào đây)
+  // 4. Transaction
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
+    // *** THAY ĐỔI: Chuẩn bị payload ***
     const newUserPayload = {
       email,
       name,
       avatar: { public_id: "social_login", url: avatar },
       role: role,
-      isVerified: true,
+      isVerified: true, // Social register tự động verify
     };
 
-    const newUserArray = await userModel.create([newUserPayload], { session });
-    const newUser = newUserArray[0];
+    // *** THAY ĐỔI: Gọi hàm helper ***
+    const newUser = await _createUserWithProfileInTransaction(
+      newUserPayload,
+      role as UserRole, // Đã validate ở trên
+      session
+    );
 
-    // Tạo profile tương ứng
-    switch (role) {
-      case UserRole.Student: {
-        const newStudentDoc = new studentModel({ userId: newUser._id });
-
-        const savedProfile = await newStudentDoc.save({ session });
-
-        newUser.studentProfile = savedProfile._id as Types.ObjectId;
-
-        break;
-      }
-      case UserRole.Tutor: {
-        const newTutorDoc = new tutorModel({ userId: newUser._id });
-
-        const savedProfile = await newTutorDoc.save({ session });
-
-        newUser.tutorProfile = savedProfile._id as Types.ObjectId;
-
-        break;
-      }
-      default:
-        throw new ErrorHandler("Invalid role", 400);
-    }
-
-    await newUser.save({ session });
+    // Commit transaction
     await session.commitTransaction();
 
-    // 5. Tạo token và trả về (Đăng nhập cho user luôn)
-    const accessToken = generateAccessToken(newUser);
-    const refreshToken = generateRefreshToken(newUser);
-
-    return {
-      userResponse: _toUserResponse(newUser),
-      accessToken,
-      refreshToken,
-    };
+    // 5. Trả về response (Giữ nguyên)
+    return await getPopulatedUserResponse(newUser);
   } catch (error: any) {
     await session.abortTransaction();
     throw new ErrorHandler(
-      `There was an error when creating account, please retry`,
-      500
+      error.message || `There was an error when creating account, please retry`,
+      error.statusCode || 500
     );
   } finally {
     session.endSession();
