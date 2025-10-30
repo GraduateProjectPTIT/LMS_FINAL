@@ -4,6 +4,7 @@ import React from 'react'
 import Image from 'next/image'
 import { PlayCircle, Clock, Users, Star, BookOpen } from 'lucide-react'
 import { CartItem } from "@/type"
+import { formatDuration } from '@/utils/convertToMinutes';
 
 interface OrderDetailsProps {
     cartItems: CartItem[];
@@ -60,7 +61,7 @@ const OrderDetails = ({ cartItems }: OrderDetailsProps) => {
                             {item.totalTime && (
                                 <div className="flex items-center gap-1">
                                     <Clock size={14} />
-                                    <span>{item.totalTime}</span>
+                                    <span>{formatDuration(item.totalTime)}</span>
                                 </div>
                             )}
 

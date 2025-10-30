@@ -1,7 +1,6 @@
 import React from 'react';
 import Personal from './Personal';
 import Authentication from './Authentication';
-import Notifications from './Notifications';
 import Interests from './Interests';
 import Expertise from './Expertise';
 
@@ -22,8 +21,6 @@ const Profile = ({ user, activeSection }: ProfileProps) => {
                 return <Interests user={user} />;
             case 'expertises':
                 return <Expertise user={user} />;
-            case 'notifications':
-                return <Notifications user={user} />;
             default:
                 return <Personal user={user} />;
         }

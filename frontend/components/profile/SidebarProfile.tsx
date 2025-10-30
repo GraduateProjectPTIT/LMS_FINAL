@@ -7,7 +7,6 @@ import { RootState } from '@/redux/store';
 
 import { FaUserAlt } from "react-icons/fa";
 import { GoPasskeyFill } from "react-icons/go";
-import { MdNotificationsActive } from "react-icons/md";
 import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiArrowDownSLine, RiArrowUpSLine } from "react-icons/ri";
@@ -33,11 +32,6 @@ const sidebarLinks = [
         label: 'Expertises',
         icon: <MdOutlineInterests />,
         value: 'expertises'
-    },
-    {
-        label: 'Notifications',
-        icon: <MdNotificationsActive />,
-        value: 'notifications'
     }
 ]
 
@@ -178,4 +172,4 @@ const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
     );
 }
 
-export default SidebarProfile
+export default SidebarProfile;

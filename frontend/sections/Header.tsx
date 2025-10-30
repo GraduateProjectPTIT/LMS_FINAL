@@ -16,6 +16,8 @@ import { useSearchHistory } from '@/hooks/useSearchHistory';
 import SidebarMenuPanel from '@/sections/SidebarMenuPanel';
 import ThemeSwitcher from '@/components/header/ThemeSwitcher'
 import MobileSearch from '@/components/header/MobileSearch'
+import Notifications from '@/components/header/Notifications';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from '@/components/ui/input';
-import { Search, Bell, Menu, Clock, X, Trash2, ShoppingCart } from 'lucide-react';
+import { Search, Menu, Clock, X, Trash2, ShoppingCart } from 'lucide-react';
 
 import AnonymousImage from "@/public/anonymous.png"
 import Logo from "@/assets/logo-lms.png"
@@ -257,8 +259,7 @@ const Header = () => {
                   )}
                 </div>
 
-
-                <Bell className='w-5 h-5 hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors' />
+                <Notifications />
 
                 <ThemeSwitcher />
 

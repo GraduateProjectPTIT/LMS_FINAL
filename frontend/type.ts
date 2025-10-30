@@ -295,4 +295,13 @@ export interface CartItem {
     ratings?: number;
 }
 
+// ------------------- NOTIFICATION -------------------
 
+export interface Notification {
+    _id: string;
+    userId: string;
+    title: string;
+    message?: string;
+    status: 'unread' | 'read';
+    createdAt: string;
+}
