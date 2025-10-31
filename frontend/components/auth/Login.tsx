@@ -150,7 +150,9 @@ const Login = () => {
 
       // Nếu tài khoản chưa đăng ký, chuyển hướng đến trang đăng ký
       if (data?.status === "ROLE_REQUIRED") {
-        toast("Account not registered yet. Please complete registration.");
+        toast.error("Account not registered yet. Please complete registration.", {
+          id: "account-not-registered",
+        });
         setIsLoading(false);
         router.replace(`/signup`);
         return;
@@ -211,9 +213,8 @@ const Login = () => {
                 {/* Email Field */}
                 <div className="w-full">
                   <div
-                    className={`w-full border ${
-                      field("email").border
-                    } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
+                    className={`w-full border ${field("email").border
+                      } rounded-[20px] flex items-center text-center gap-[10px] p-[5px]`}
                   >
                     <TfiEmail className="text-gray-400 mx-[10px]" />
                     <input
@@ -238,9 +239,8 @@ const Login = () => {
                 {/* Password Field */}
                 <div className="w-full">
                   <div
-                    className={`w-full border ${
-                      field("password").border
-                    } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
+                    className={`w-full border ${field("password").border
+                      } rounded-[20px] flex justify-between items-center text-center gap-[10px] p-[5px]`}
                   >
                     <div className="flex items-center w-[500px]">
                       <RiLockPasswordLine className="text-gray-400 mx-[10px] text-[20px]" />

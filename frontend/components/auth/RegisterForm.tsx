@@ -266,7 +266,7 @@ const RegisterForm = ({
       dispatch(signInSuccess(data));
       router.replace(callbackUrl);
     } catch (err: any) {
-      console.error(
+      console.log(
         "[RegisterForm] sendUserToServer error:",
         err?.message || err
       );

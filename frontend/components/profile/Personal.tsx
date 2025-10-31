@@ -201,9 +201,20 @@ const Personal = ({ user }: PersonalProps) => {
                 const latestUserData = results[results.length - 1]?.data?.user;
                 if (latestUserData) {
                     dispatch(updateSuccess(latestUserData));
+                    reset({
+                        name: latestUserData.name || "",
+                        email: latestUserData.email || "",
+                        socials: {
+                            facebook: latestUserData.socials?.facebook || "",
+                            instagram: latestUserData.socials?.instagram || "",
+                            tiktok: latestUserData.socials?.tiktok || "",
+                        },
+                        bio: latestUserData.bio || "",
+                    });
                 }
                 toast.success("Profile updated successfully!");
-                handleCancel(); // Reset lại form sau khi thành công
+                setAvatarPreview("");
+                setIsEditing(false);
             } else {
                 // Tìm lỗi đầu tiên và hiển thị cho người dùng
                 const failedResult = results.find(res => !res.ok);

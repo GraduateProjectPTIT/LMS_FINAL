@@ -8,22 +8,24 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Eye, Upload } from "lucide-react";
 import Link from "next/link";
 import PostPreview from "./PostPreview";
+import SelectPostCategoriesModal from "./SelectPostCategoriesModal";
 
 const Editor = dynamic(async () => (await import("@tinymce/tinymce-react")).Editor, {
   ssr: false,
 });
 
-export default function PostCreateForm() {
+const PostCreateForm = () => {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [contentHtml, setContentHtml] = useState("<p></p>");
   const [shortDescription, setShortDescription] = useState("");
-  const [tags, setTags] = useState<string>("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [submitting, setSubmitting] = useState(false);
   const [coverImage, setCoverImage] = useState<string>("");
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [showPreview, setShowPreview] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const tinymceApiKey = process.env.NEXT_PUBLIC_TINYMCE_API_KEY;
 
@@ -140,10 +142,7 @@ export default function PostCreateForm() {
         title: title.trim(),
         contentHtml,
         shortDescription: shortDescription.trim() || undefined,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        categoryIds, // Send category IDs to backend
         status,
         coverImage,
       };
@@ -387,20 +386,23 @@ export default function PostCreateForm() {
               </div>
             </div>
 
-            {/* Tags */}
+            {/* Categories */}
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tags
+                Categories
               </label>
-              <input
-                type="text"
-                className="w-full border border-gray-300 dark:border-slate-600 rounded-md px-4 py-2 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g. react, nodejs, tutorial"
-              />
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(true)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-left dark:bg-slate-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              >
+                {categoryIds.length > 0
+                  ? `${categoryIds.length} ${categoryIds.length === 1 ? 'category' : 'categories'} selected`
+                  : 'Select categories...'
+                }
+              </button>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Separate tags with commas
+                Select categories for your post
               </p>
             </div>
           </div>
@@ -413,10 +415,19 @@ export default function PostCreateForm() {
         title={title}
         contentHtml={contentHtml}
         shortDescription={shortDescription}
-        tags={tags}
+        tags="" // Can be removed if not needed
         coverImage={coverImage}
         status={status}
+      />
+
+      <SelectPostCategoriesModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategories={categoryIds}
+        onSave={(categories) => setCategoryIds(categories)}
       />
     </div>
   );
 }
+
+export default PostCreateForm;

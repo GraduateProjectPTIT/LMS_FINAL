@@ -178,19 +178,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -215,19 +215,19 @@ export const createCourse = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -698,8 +698,8 @@ export const getStudentEnrolledCoursesService = async (
       completedParam === "true"
         ? true
         : completedParam === "false"
-        ? false
-        : undefined;
+          ? false
+          : undefined;
 
     const minProgress =
       query?.minProgress !== undefined
@@ -914,7 +914,7 @@ export const editCourseService = async (
             await cloudinary.v2.uploader.destroy(existingDemo.public_id, {
               resource_type: "video",
             });
-          } catch {}
+          } catch { }
         }
       } else {
         return next(
@@ -961,19 +961,19 @@ export const editCourseService = async (
         sectionTitle: section?.sectionTitle,
         sectionContents: Array.isArray(section?.sectionContents)
           ? section.sectionContents.map((lecture: any) => ({
-              ...(lecture && lecture._id ? { _id: lecture._id } : {}),
-              videoTitle: lecture?.videoTitle,
-              videoDescription: lecture?.videoDescription,
-              video: lecture?.video,
-              videoLength: lecture?.videoLength,
-              videoLinks: Array.isArray(lecture?.videoLinks)
-                ? lecture.videoLinks.map((vl: any) => ({
-                    ...(vl && vl._id ? { _id: vl._id } : {}),
-                    title: vl?.title,
-                    url: vl?.url,
-                  }))
-                : [],
-            }))
+            ...(lecture && lecture._id ? { _id: lecture._id } : {}),
+            videoTitle: lecture?.videoTitle,
+            videoDescription: lecture?.videoDescription,
+            video: lecture?.video,
+            videoLength: lecture?.videoLength,
+            videoLinks: Array.isArray(lecture?.videoLinks)
+              ? lecture.videoLinks.map((vl: any) => ({
+                ...(vl && vl._id ? { _id: vl._id } : {}),
+                title: vl?.title,
+                url: vl?.url,
+              }))
+              : [],
+          }))
           : [],
       }));
     }
@@ -1017,7 +1017,7 @@ export const getCourseOverviewService = async (
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
       .populate("categories", "title")
-      .populate("creatorId", "name avatar email");
+      .populate("creatorId", "name avatar email bio");
 
     if (!course) {
       return next(new ErrorHandler("Course not found", 404));
@@ -1150,12 +1150,12 @@ export const enrollCourseService = async (
       levelRaw === ECourseLevel.Beginner.toLowerCase()
         ? ECourseLevel.Beginner
         : levelRaw === ECourseLevel.Intermediate.toLowerCase()
-        ? ECourseLevel.Intermediate
-        : levelRaw === ECourseLevel.Advanced.toLowerCase()
-        ? ECourseLevel.Advanced
-        : levelRaw === ECourseLevel.Professional.toLowerCase()
-        ? ECourseLevel.Professional
-        : null;
+          ? ECourseLevel.Intermediate
+          : levelRaw === ECourseLevel.Advanced.toLowerCase()
+            ? ECourseLevel.Advanced
+            : levelRaw === ECourseLevel.Professional.toLowerCase()
+              ? ECourseLevel.Professional
+              : null;
 
     if (course) {
       (course as any).level = levelEnumValue;
@@ -2138,7 +2138,7 @@ export const updateLectureVideoService = async (
         await cloudinary.v2.uploader.destroy(prevVid.public_id, {
           resource_type: "video",
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     targetLecture.video = { public_id: video.public_id, url: video.url };
