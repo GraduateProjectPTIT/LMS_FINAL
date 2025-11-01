@@ -11,26 +11,17 @@ export interface ICategoryInfo {
   title: string;
 }
 
-export interface ICourseTutorViewDto {
+export interface ICourseCardDto {
   _id: Schema.Types.ObjectId;
+  thumbnail: {
+    url: string;
+  };
   name: string;
-  thumbnail: { public_id?: string; url?: string };
-  overview: string;
-  categories: string[];
   price: number;
-  estimatedPrice?: number;
-  tags: string;
-  level: string;
-  ratings: number;
-  purchased: number;
-
-  // Các trường tính toán
-  reviewsCount: number;
-  courseDataCount: number;
-
-  // Trường dùng để SẮP XẾP
-  // Chúng ta cần đảm bảo các trường sort (như createdAt) có trong DTO
-  createdAt?: Date;
+  estimatedPrice: number;
+  enrolledCounts: number;
+  totalLectures: number;
+  totalDuration: number;
 }
 
 /**
@@ -38,36 +29,58 @@ export interface ICourseTutorViewDto {
  * Đối tượng $project tương ứng 1:1 với DTO
  * Được sử dụng trực tiếp trong Aggregation Pipeline.
  */
-export const courseTutorViewProjection: { [key: string]: any } = {
-  // Các trường lấy trực tiếp từ model
+export const courseListProjection = {
   _id: 1,
-  thumbnail: 1,
+  thumbnail: {
+    url: { $ifNull: ["$thumbnail.url", ""] },
+  },
   name: 1,
-  overview: 1,
-  categories: "$categories.title",
-
   price: 1,
   estimatedPrice: 1,
-  tags: 1,
-  level: 1,
-  ratings: 1,
-  purchased: 1,
+  enrolledCounts: "$purchased", // Đổi tên từ purchased
 
-  // Các trường tính toán mới (dùng $size)
-  reviewsCount: { $size: "$reviews" },
-  courseDataCount: { $size: "$courseData" },
+  // TÍNH TOÁN LẠI DỰA TRÊN MODEL MỚI
+  totalLectures: {
+    $reduce: {
+      // Input là mảng 'courseData' (mảng các sections)
+      input: { $ifNull: ["$courseData", []] },
+      initialValue: 0,
+      in: {
+        // '$$value' là tổng số lecture đã đếm
+        // '$$this' là section hiện tại
+        $add: [
+          "$$value",
+          // Đếm số lượng phần tử trong mảng 'sectionContents' (mảng các lectures)
+          { $size: { $ifNull: ["$$this.sectionContents", []] } },
+        ],
+      },
+    },
+  },
 
-  // Quan trọng: Phải bao gồm TẤT CẢ các trường được phép SẮP XẾP
-  // 'name', 'price', 'ratings', 'purchased' đã có ở trên.
-  // Thêm 'createdAt' để đảm bảo sort "mới nhất" hoạt động.
-  createdAt: 1,
+  // TÍNH TOÁN LẠI DỰA TRÊN MODEL MỚI
+  totalDuration: {
+    $reduce: {
+      // Input là mảng 'courseData' (mảng các sections)
+      input: { $ifNull: ["$courseData", []] },
+      initialValue: 0,
+      in: {
+        // '$$value' là tổng thời lượng đã tính
+        // '$$this' là section hiện tại
+        $add: [
+          "$$value",
+          // Tính tổng của tất cả 'videoLength' trong mảng 'sectionContents'
+          { $sum: { $ifNull: ["$$this.sectionContents.videoLength", []] } },
+        ],
+      },
+    },
+  },
 };
 
 /**
  * 3. Định nghĩa kiểu trả về phân trang
  */
 export interface IPaginatedTutorCourseResult {
-  data: ICourseTutorViewDto[];
+  data: ICourseCardDto[];
   pagination: {
     totalDocs: number;
     limit: number;

@@ -4,6 +4,10 @@ import courseModel, { ICourse } from "../models/course.model";
 import userModel from "../models/user.model";
 import { studentModel } from "../models/student.model";
 import CourseSimilarityModel from "../scripts/models/courseSimilarity.model";
+import {
+  courseListProjection,
+  ICourseCardDto,
+} from "../interfaces/course-tutor-view.interface";
 // Import studentModel để lấy interests
 
 // Định nghĩa một interface cho kết quả trả về
@@ -62,10 +66,12 @@ const findSimpleById = async (id: Types.ObjectId) =>
  * Lấy các khóa học cold-start dựa trên thể loại yêu thích (interests)
  * từ studentProfile của người dùng.
  */
-const getColdStartRecommendations = async (
+export const getColdStartRecommendations = async (
   userId: mongoose.Types.ObjectId,
   limit: number
-): Promise<ICourse[]> => {
+): Promise<ICourseCardDto[]> => {
+  // <<< THAY ĐỔI: Kiểu trả về
+
   // 1. Tìm User để lấy studentProfile ID
   const user = await userModel.findById(userId).select("studentProfile").lean();
 
@@ -85,24 +91,30 @@ const getColdStartRecommendations = async (
 
   // 3. Quyết định logic dựa trên việc có interests (favoriteCategories) hay không
   if (favoriteCategories.length === 0) {
+    // --- THAY ĐỔI: Dùng aggregate ---
     // Nếu không có thể loại, lấy các khóa học mua nhiều nhất
-    return courseModel
-      .find({})
-      .sort({ purchased: -1 })
-      .limit(limit)
-      .select("name description thumbnail price ratings purchased")
-      .lean();
+    return courseModel.aggregate([
+      // Sắp xếp trước
+      { $sort: { purchased: -1 } },
+      // Giới hạn số lượng
+      { $limit: limit },
+      // Định dạng lại đầu ra
+      { $project: courseListProjection },
+    ]);
   }
 
+  // --- THAY ĐỔI: Dùng aggregate ---
   // Lấy các khóa học phổ biến nhất trong thể loại yêu thích (interests)
-  return courseModel
-    .find({
-      categories: { $in: favoriteCategories },
-    })
-    .sort({ purchased: -1 })
-    .limit(limit)
-    .select("name description thumbnail price ratings purchased")
-    .lean();
+  return courseModel.aggregate([
+    // Lọc trước (nhanh hơn)
+    { $match: { categories: { $in: favoriteCategories } } },
+    // Sắp xếp
+    { $sort: { purchased: -1 } },
+    // Giới hạn
+    { $limit: limit },
+    // Định dạng lại đầu ra
+    { $project: courseListProjection },
+  ]);
 };
 
 const getPrecomputedRecommendations = async (
