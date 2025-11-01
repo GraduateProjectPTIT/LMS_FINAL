@@ -19,7 +19,7 @@ const notificationsSlice = createSlice({
     name: 'notifications',
     initialState,
     reducers: {
-        resetState: () => initialState,
+        clearNotificationsState: () => initialState,
 
         // fetch list
         fetchStart: (state) => {
@@ -84,7 +84,7 @@ const notificationsSlice = createSlice({
 })
 
 export const {
-    resetState,
+    clearNotificationsState,
     fetchStart,
     fetchSuccess,
     fetchFailure,

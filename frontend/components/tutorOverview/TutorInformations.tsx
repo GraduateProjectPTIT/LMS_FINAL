@@ -2,8 +2,10 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { User, Users, BookOpen, Star, Award, Facebook, Instagram, Video } from 'lucide-react';
+import { User, Users, BookOpen, Star, Award, Facebook, Instagram } from 'lucide-react';
+import { FaTiktok, FaFacebookF, FaInstagram } from "react-icons/fa";
 import { isValidImageUrl } from "@/utils/handleImage";
+import dayjs from 'dayjs';
 
 interface ITutorInformation {
     name: string;
@@ -20,6 +22,7 @@ interface ITutorInformation {
     totalCourses: number;
     totalReviews: number;
     averageRating: number;
+    createdAt: string;
 }
 
 interface ITutorInformationsProps {
@@ -28,6 +31,18 @@ interface ITutorInformationsProps {
 }
 
 const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
+
+    const calculateMemberSince = (createdAt: string) => {
+        const createdDate = dayjs(createdAt);
+        const now = dayjs();
+        const years = now.diff(createdDate, 'year');
+        if (years > 0) return `${years} year${years > 1 ? "s" : ""}`;
+        const months = now.diff(createdDate, "month");
+        if (months > 0) return `${months} month${months > 1 ? "s" : ""}`;
+        const days = now.diff(createdDate, "day");
+        return `${days} day${days > 1 ? "s" : ""}`;
+    }
+
     if (loading) {
         return (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
@@ -57,7 +72,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
         <div className="p-6">
             {/* Avatar */}
             <div className="flex flex-col items-center mb-6">
-                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-100 dark:border-blue-900 shadow-md mb-4">
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-blue-100 dark:border-blue-900 shadow-md mb-4">
                     {tutorData.avatar?.url && isValidImageUrl(tutorData.avatar.url) ? (
                         <Image
                             src={tutorData.avatar.url}
@@ -69,7 +84,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
                         />
                     ) : (
                         <div className="w-full h-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
-                            <User size={48} className="text-indigo-600 dark:text-indigo-300" />
+                            <User size={48} className="text-blue-600 dark:text-blue-300" />
                         </div>
                     )}
                 </div>
@@ -108,7 +123,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
             <div className="space-y-4 mb-6">
                 <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <Users className="text-indigo-600 dark:text-indigo-400" size={20} />
+                        <Users className="text-blue-600 dark:text-blue-400" size={20} />
                         <span className="text-gray-700 dark:text-gray-200">Students</span>
                     </div>
                     <span className="font-semibold text-gray-800 dark:text-white">
@@ -118,7 +133,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <BookOpen className="text-indigo-600 dark:text-indigo-400" size={20} />
+                        <BookOpen className="text-blue-600 dark:text-blue-400" size={20} />
                         <span className="text-gray-700 dark:text-gray-200">Courses</span>
                     </div>
                     <span className="font-semibold text-gray-800 dark:text-white">
@@ -128,7 +143,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <Star className="text-indigo-600 dark:text-indigo-400" size={20} />
+                        <Star className="text-blue-600 dark:text-blue-400" size={20} />
                         <span className="text-gray-700 dark:text-gray-200">Reviews</span>
                     </div>
                     <span className="font-semibold text-gray-800 dark:text-white">
@@ -138,11 +153,11 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
 
                 <div className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
-                        <Award className="text-indigo-600 dark:text-indigo-400" size={20} />
+                        <Award className="text-blue-600 dark:text-blue-400" size={20} />
                         <span className="text-gray-700 dark:text-gray-200">Member Since</span>
                     </div>
                     <span className="font-semibold text-gray-800 dark:text-white">
-                        6 years
+                        {calculateMemberSince(tutorData.createdAt)}
                     </span>
                 </div>
             </div>
@@ -161,7 +176,7 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
                                 rel="noopener noreferrer"
                                 className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                             >
-                                <Facebook size={20} />
+                                <FaFacebookF size={20} />
                             </a>
                         )}
                         {tutorData.socials?.instagram && (
@@ -169,9 +184,9 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
                                 href={tutorData.socials.instagram}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors"
+                                className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                             >
-                                <Instagram size={20} />
+                                <FaInstagram size={20} />
                             </a>
                         )}
                         {tutorData.socials?.tiktok && (
@@ -179,9 +194,9 @@ const TutorInformations = ({ tutorData, loading }: ITutorInformationsProps) => {
                                 href={tutorData.socials.tiktok}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                             >
-                                <Video size={20} />
+                                <FaTiktok size={20} />
                             </a>
                         )}
                     </div>

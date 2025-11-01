@@ -7,6 +7,7 @@ import { RootState } from "@/redux/store";
 import { signOut } from "next-auth/react";
 import { signOutSuccess } from '@/redux/user/userSlice';
 import { clearAll } from "@/redux/cart/cartSlice";
+import { clearNotificationsState } from '@/redux/notification/notificationSlice';
 import Link from 'next/link';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
@@ -147,6 +148,7 @@ const Header = () => {
 
       dispatch(signOutSuccess());
       dispatch(clearAll());
+      dispatch(clearNotificationsState());
       toast.success("Logout successfully");
       router.replace('/');
     } catch (error: any) {

@@ -23,6 +23,7 @@ interface ITutorInformation {
     totalCourses: number;
     totalReviews: number;
     averageRating: number;
+    createdAt: string;
 }
 
 interface ITutorCourse {
@@ -33,16 +34,10 @@ interface ITutorCourse {
     estimatedPrice: number;
     thumbnail: {
         url: string;
-        public_id?: string;
     };
-    tags: string;
-    level: string;
-    ratings: number;
-    purchased: number;
-    categories: string[];
-    reviewsCount: number;
-    courseDataCount: number;
-    createdAt: string;
+    enrolledCounts: number;
+    totalLectures: number;
+    totalDuration: number;
 }
 
 const TutorOverviewData = ({ tutorId }: ITutorOverviewDataProps) => {

@@ -3,8 +3,9 @@
 import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Star, Users, Clock } from 'lucide-react';
+import { BookOpen, Users, Clock } from 'lucide-react';
 import { getValidThumbnail } from "@/utils/handleImage";
+import { formatDuration } from '@/utils/convertToMinutes';
 
 interface ITutorCourse {
     _id: string;
@@ -14,16 +15,10 @@ interface ITutorCourse {
     estimatedPrice: number;
     thumbnail: {
         url: string;
-        public_id?: string;
     };
-    tags: string;
-    level: string;
-    ratings: number;
-    purchased: number;
-    categories: string[];
-    reviewsCount: number;
-    courseDataCount: number;
-    createdAt: string;
+    enrolledCounts: number;
+    totalLectures: number;
+    totalDuration: number;
 }
 
 interface ITutorCoursesProps {
@@ -47,6 +42,7 @@ const TutorCourses = ({ courses, loading }: ITutorCoursesProps) => {
                 <div className="flex gap-4">
                     <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-20 animate-pulse" />
                     <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-20 animate-pulse" />
+                    <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-20 animate-pulse" />
                 </div>
             </div>
         </div>
@@ -55,7 +51,7 @@ const TutorCourses = ({ courses, loading }: ITutorCoursesProps) => {
     if (loading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                     <CourseSkeleton key={i} />
                 ))}
             </div>
@@ -85,7 +81,7 @@ const TutorCourses = ({ courses, loading }: ITutorCoursesProps) => {
                     <div
                         key={course._id}
                         onClick={() => router.push(`/course-overview/${course._id}`)}
-                        className="bg-white dark:bg-slate-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 overflow-hidden cursor-pointer"
+                        className="bg-white dark:bg-slate-800 rounded-xl transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 overflow-hidden cursor-pointer"
                     >
                         {/* Thumbnail */}
                         <div className="relative h-48 w-full bg-gray-200 dark:bg-slate-700">
@@ -93,13 +89,9 @@ const TutorCourses = ({ courses, loading }: ITutorCoursesProps) => {
                                 src={getValidThumbnail(course.thumbnail?.url)}
                                 alt={course.name || "Course Image"}
                                 fill
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                                style={{ objectFit: "cover" }}
-                                quality={100}
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             />
-                            <div className="absolute bottom-2 left-2 bg-indigo-600 text-white text-xs font-medium px-2 py-1 rounded">
-                                {course.level}
-                            </div>
                         </div>
 
                         {/* Content */}
@@ -108,52 +100,31 @@ const TutorCourses = ({ courses, loading }: ITutorCoursesProps) => {
                                 {course.name}
                             </h3>
 
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2 h-10">
-                                {course.overview}
-                            </p>
-
-                            {/* Categories */}
-                            <div className="flex flex-wrap gap-1 mb-3 min-h-[24px]">
-                                {course.categories.slice(0, 2).map((category, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-600/30 text-indigo-800 dark:text-indigo-100 border border-indigo-200 dark:border-indigo-400/40"
-                                    >
-                                        {category}
-                                    </span>
-                                ))}
-                                {course.categories.length > 2 && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                                        +{course.categories.length - 2}
-                                    </span>
-                                )}
-                            </div>
-
                             {/* Price */}
-                            <div className="flex items-center gap-2 mb-3">
-                                {course.estimatedPrice > course.price && (
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-400 dark:text-gray-500 line-through">
                                         ${course.estimatedPrice}
                                     </span>
-                                )}
-                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                    ${course.price}
-                                </span>
+                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                        ${course.price}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Stats */}
-                            <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-slate-700">
+                            <div className="flex justify-between items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                                 <div className="flex items-center gap-1">
-                                    <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                                    <span className="font-medium">{course.ratings || 0}</span>
+                                    <Users className="w-4 h-4" />
+                                    <span>{course.enrolledCounts}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <Users size={14} />
-                                    <span>{course.purchased}</span>
+                                    <BookOpen className="w-4 h-4" />
+                                    <span>{course.totalLectures}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <BookOpen size={14} />
-                                    <span>{course.courseDataCount}</span>
+                                    <Clock className="w-4 h-4" />
+                                    <span>{formatDuration(course.totalDuration)}</span>
                                 </div>
                             </div>
                         </div>
