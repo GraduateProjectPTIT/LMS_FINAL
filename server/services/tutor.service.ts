@@ -32,8 +32,8 @@ import EnrolledCourseModel from "../models/enrolledCourse.model";
 import OrderModel from "../models/order.model";
 import { createKeywordSearchFilter } from "../utils/query.helper";
 import {
-  courseTutorViewProjection,
-  ICourseTutorViewDto,
+  courseListProjection,
+  ICourseCardDto,
   IPaginatedTutorCourseResult,
 } from "../interfaces/course-tutor-view.interface";
 
@@ -185,7 +185,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
   // (Giả sử userModel của bạn có trường `role: 'tutor'`)
   const user = await userModel
     .findOne({ _id: id, role: "tutor" }) // *** Đây là phần kiểm tra ***
-    .select("name avatar.url bio social socials") // Chỉ lấy các trường cần thiết
+    .select("name avatar.url bio social socials createdAt") // Chỉ lấy các trường cần thiết
     .lean(); // Sử dụng .lean() để đọc nhanh hơn (trả về POJO)
 
   // Nếu không tìm thấy user, hoặc user đó không phải 'tutor'
@@ -241,6 +241,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
     },
     bio: user.bio,
     socials: user.socials,
+    createdAt: user.createdAt, // <<< THÊM VÀO
     // Dùng toán tử `?.` hoặc `||` để gán giá trị 0 nếu chưa có khóa học
     totalStudents: courseStats?.totalStudents || 0,
     totalCourses: courseStats?.totalCourses || 0,
@@ -253,32 +254,31 @@ export const findCoursesByTutorId = async (
   tutorId: string,
   queryParams: CourseQueryParams
 ): Promise<IPaginatedTutorCourseResult> => {
-  // <-- SỬ DỤNG KIỂU TRẢ VỀ MỚI
+  // (Các bước 1, 2, 3, 4, 5 giữ nguyên như cũ)
 
-  // 1. Kiểm tra tutorId (Giữ nguyên)
+  // 1. Kiểm tra tutorId
   if (!mongoose.Types.ObjectId.isValid(tutorId)) {
     throw new ErrorHandler("ID gia sư không hợp lệ.", 400);
   }
 
-  // 2. Destructure các tham số query (Giữ nguyên)
-  const {
+  // 2. Destructure các tham số query
+  let {
     page,
     limit,
     keyword,
     level,
-    sortBy = "createdAt",
+    sortBy = "name", // Default là 'name'
     sortOrder = "desc",
   } = queryParams;
 
-  // 3. Validation cho Sort (Giữ nguyên)
-  // (Đảm bảo 'allowedSortFields' khớp với các trường trong 'courseTutorViewProjection')
-  const allowedSortFields = [
-    "createdAt",
-    "name",
-    "price",
-    "ratings",
-    "purchased",
-  ];
+  // Ánh xạ 'purchased' sang 'enrolledCounts'
+  if (sortBy === "purchased") {
+    sortBy = "enrolledCounts";
+  }
+
+  // 3. Validation cho Sort
+  const allowedSortFields = ["name", "price", "enrolledCounts"];
+
   if (!allowedSortFields.includes(sortBy)) {
     throw new ErrorHandler(
       `Giá trị của sortBy không hợp lệ. Chỉ chấp nhận: ${allowedSortFields.join(
@@ -288,7 +288,7 @@ export const findCoursesByTutorId = async (
     );
   }
 
-  // 4. Xây dựng Filter ($match) (Giữ nguyên)
+  // 4. Xây dựng Filter ($match)
   const baseFilter: { [key: string]: any } = {
     creatorId: new mongoose.Types.ObjectId(tutorId),
   };
@@ -302,12 +302,12 @@ export const findCoursesByTutorId = async (
   ]);
   const finalFilter = { ...baseFilter, ...keywordFilter };
 
-  // 5. Xây dựng đối tượng Sort (Giữ nguyên)
-  const sortOptions: SortOptions = {
+  // 5. Xây dựng đối tượng Sort
+  const sortOptions: { [key: string]: 1 | -1 } = {
     [sortBy]: sortOrder === "asc" ? 1 : -1,
   };
 
-  // --- 6. Aggregation Pipeline (Đã được đơn giản hóa) ---
+  // --- 6. Aggregation Pipeline ---
 
   const pageNum = parseInt(page as string) || 1;
   const limitNum = parseInt(limit as string) || 10;
@@ -318,23 +318,14 @@ export const findCoursesByTutorId = async (
     // Stage 1: Lọc
     { $match: finalFilter },
 
-    {
-      $lookup: {
-        // Tên collection của Category model (thường là số nhiều)
-        from: "categories",
-        localField: "categories", // Trường trong 'course' model
-        foreignField: "_id", // Trường trong 'category' model
-        as: "categories", // Ghi đè (overwrite) lên trường 'categories'
-      },
-    },
+    // Stage 3: Chọn lọc và tính toán
+    // <<< ĐÃ SỬ DỤNG PROJECTION ĐƯỢC CẬP NHẬT
+    { $project: courseListProjection },
 
-    // Stage 2: Chọn lọc và tính toán (SỬ DỤNG PROJECTION ĐÃ ĐỊNH NGHĨA)
-    { $project: courseTutorViewProjection }, // <-- THAY ĐỔI CHÍNH
-
-    // Stage 3: Sắp xếp
+    // Stage 4: Sắp xếp
     { $sort: sortOptions },
 
-    // Stage 4: Phân trang
+    // Stage 5: Phân trang
     {
       $facet: {
         data: [{ $skip: skip }, { $limit: limitNum }],
@@ -344,13 +335,12 @@ export const findCoursesByTutorId = async (
   ];
 
   // Thực thi pipeline
-  const results = await courseModel.aggregate(pipeline);
+  const results = await courseModel.aggregate(pipeline); // Sử dụng CourseModel
 
-  // 7. Trả về kết quả (đã được định kiểu mạnh)
-
+  // 7. Trả về kết quả (Giữ nguyên)
   if (!results[0] || !results[0].data || results[0].data.length === 0) {
     return {
-      data: [], // Kiểu trả về là ICourseTutorViewDto[]
+      data: [],
       pagination: {
         totalDocs: 0,
         limit: limitNum,
@@ -360,8 +350,7 @@ export const findCoursesByTutorId = async (
     };
   }
 
-  // Ép kiểu 'data' về DTO của chúng ta
-  const data: ICourseTutorViewDto[] = results[0].data;
+  const data: ICourseCardDto[] = results[0].data;
   const totalDocs = results[0].metadata[0].totalDocs;
   const totalPages = Math.ceil(totalDocs / limitNum);
 
@@ -372,6 +361,5 @@ export const findCoursesByTutorId = async (
     totalPages,
   };
 
-  // Kiểu trả về bây giờ khớp với IPaginatedTutorCourseResult
   return { data, pagination };
 };

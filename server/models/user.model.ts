@@ -33,6 +33,7 @@ export interface IUser extends Document {
   studentProfile?: Types.ObjectId;
   tutorProfile?: Types.ObjectId;
   adminProfile?: Types.ObjectId;
+  createdAt: Date;
 
   comparePassword: (password: string) => Promise<boolean>;
 }

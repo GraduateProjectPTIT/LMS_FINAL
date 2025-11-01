@@ -47,7 +47,6 @@ notificationRouter.get(
 
 notificationRouter.get(
   "/notification/stream", // Tên route rõ ràng
-  isAuthenticated,
   notificationStreamController
 );
 
