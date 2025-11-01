@@ -8,7 +8,6 @@ export const notificationStreamController = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     // req.user được gán từ middleware isAuthenticated
     const userId = req.user?._id;
-
     if (!userId) {
       res
         .status(401)
