@@ -28,6 +28,8 @@ import {
   getStudentDetailsInCourseService,
   getCourseReviewsService,
   getLectureCommentsService,
+  getLatestReviewsService,
+  getRelatedCoursesService,
 } from "../services/course.service";
 import {
   IAddCommentData,
@@ -63,6 +65,26 @@ export const getCourseReviews = CatchAsyncError(
     try {
       const courseId = req.params.id;
       await getCourseReviewsService(courseId, req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getLatestReviews = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getLatestReviewsService(req.query, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getRelatedCourses = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getRelatedCoursesService(req.query, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

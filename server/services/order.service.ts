@@ -131,25 +131,46 @@ export const getOrderDetailService = async (
 
     const normalized = normalizeOrder(order);
 
-    const courseId = normalized?.courseId || normalized?.items?.[0]?.courseId;
-    let course: any = null;
-    if (courseId && mongoose.Types.ObjectId.isValid(String(courseId))) {
-      course = await CourseModel.findById(courseId)
-        .select("_id name price thumbnail creatorId")
-        .populate("creatorId", "name email avatar");
+    const itemCourseIds: string[] = Array.isArray(normalized?.items)
+      ? normalized.items
+          .map((it: any) => String(it?.courseId || ""))
+          .filter((id: string) => id && mongoose.Types.ObjectId.isValid(id))
+      : [];
+
+    if (normalized?.courseId && mongoose.Types.ObjectId.isValid(String(normalized.courseId))) {
+      itemCourseIds.push(String(normalized.courseId));
     }
 
+    const uniqueCourseIds = [...new Set(itemCourseIds)];
+
+    const courses = uniqueCourseIds.length
+      ? await CourseModel.find({ _id: { $in: uniqueCourseIds } })
+          .select("_id name price thumbnail creatorId")
+          .populate("creatorId", "name email avatar")
+          .lean()
+      : [];
+
+    const courseMap = new Map<string, any>(
+      courses.map((c: any) => [String(c._id), c])
+    );
+
     const items = Array.isArray(normalized?.items)
-      ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String(course?._id) && course ? course : it
-        )
+      ? normalized.items.map((it: any) => {
+          const cid = String(it?.courseId || "");
+          const found = courseMap.get(cid);
+          return found ? found : it;
+        })
       : normalized?.items;
 
-    return res.status(200).json({ success: true, order: { ...normalized, items } });
+    return res.status(200).json({
+      success: true,
+      order: { ...normalized, items },
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };
+
 
 export const getTutorOrderDetailService = async (
   user: any,
@@ -173,39 +194,55 @@ export const getTutorOrderDetailService = async (
 
     const normalized = normalizeOrder(order);
 
-    const courseId = normalized?.courseId || normalized?.items?.[0]?.courseId;
-    if (!courseId) {
-      return next(new ErrorHandler("Order does not reference a course", 400));
+    const itemCourseIds: string[] = Array.isArray(normalized?.items)
+      ? normalized.items
+          .map((it: any) => String(it?.courseId || ""))
+          .filter((id: string) => id && mongoose.Types.ObjectId.isValid(id))
+      : [];
+
+    if (normalized?.courseId && mongoose.Types.ObjectId.isValid(String(normalized.courseId))) {
+      itemCourseIds.push(String(normalized.courseId));
     }
 
-    const course = await CourseModel.findById(String(courseId))
+    const uniqueCourseIds = [...new Set(itemCourseIds)];
+
+    if (uniqueCourseIds.length === 0) {
+      return next(new ErrorHandler("Order does not reference any course", 400));
+    }
+
+    const courses = await CourseModel.find({ _id: { $in: uniqueCourseIds } })
       .select("_id name price thumbnail creatorId")
-      .populate("creatorId", "name email avatar");
-
-    if (!course) {
-      return next(new ErrorHandler("Course not found", 404));
-    }
-
-    if (
-      String((course as any).creatorId?._id || (course as any).creatorId) !==
-      String(user._id)
-    ) {
+      .populate("creatorId", "name email avatar")
+      .lean();
+    const tutorOwnsAny = courses.some(
+      (c: any) =>
+        String(c?.creatorId?._id || c?.creatorId) === String(user._id)
+    );
+    if (!tutorOwnsAny) {
       return next(new ErrorHandler("You do not have access to this order", 403));
     }
 
+    const courseMap = new Map<string, any>(
+      courses.map((c: any) => [String(c._id), c])
+    );
+
     const items = Array.isArray(normalized?.items)
-      ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String(course?._id) && course ? course : it
-        )
+      ? normalized.items.map((it: any) => {
+          const cid = String(it?.courseId || "");
+          const found = courseMap.get(cid);
+          return found ? found : it;
+        })
       : normalized?.items;
 
-    return res
-      .status(200)
-      .json({ success: true, order: { ...normalized, items } });
+    return res.status(200).json({
+      success: true,
+      order: { ...normalized, items },
+    });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };
+
 
 export const getTutorOrdersService = async (
   user: any,

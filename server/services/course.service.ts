@@ -12,6 +12,7 @@ import NotificationModel from "../models/notification.model";
 import userModel from "../models/user.model";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import { ECourseLevel } from "../constants/course-level.enum";
+import { getInclusiveDateRange } from "../utils/date.helpers";
 import { normalizeLevel } from "../utils/course.helpers";
 import CartModel from "../models/cart.model";
 
@@ -245,6 +246,134 @@ export const createCourse = async (
     });
   } catch (error: any) {
     console.error("Create course error:", error);
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+// Get latest reviews across all courses
+export const getLatestReviewsService = async (
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    let limit = parseInt(String(query?.limit ?? "20"), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 20;
+    if (limit > 50) limit = 50;
+
+    const pipeline: any[] = [
+      { $unwind: "$reviews" },
+      { $sort: { "reviews.createdAt": -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "reviews.userId",
+          foreignField: "_id",
+          as: "reviewUser",
+        },
+      },
+      { $unwind: { path: "$reviewUser", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          course: {
+            _id: "$_id",
+            name: "$name",
+            thumbnail: "$thumbnail",
+          },
+          review: {
+            _id: "$reviews._id",
+            rating: "$reviews.rating",
+            comment: "$reviews.comment",
+            createdAt: "$reviews.createdAt",
+            repliesCount: { $size: { $ifNull: ["$reviews.replies", []] } },
+          },
+          user: {
+            _id: "$reviewUser._id",
+            name: "$reviewUser.name",
+            email: "$reviewUser.email",
+            avatar: "$reviewUser.avatar",
+          },
+        },
+      },
+    ];
+
+    const reviews = await (CourseModel as any).aggregate(pipeline);
+
+    return res.status(200).json({ success: true, reviews });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+// Get related courses by categories or a base courseId
+export const getRelatedCoursesService = async (
+  query: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    let limit = parseInt(String(query?.limit ?? "10"), 10);
+    if (Number.isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+
+    const courseIdRaw = typeof query?.courseId !== "undefined" ? String(query.courseId).trim() : "";
+
+    let categoryIds: string[] = [];
+    if (typeof query?.categoryIds !== "undefined") {
+      if (Array.isArray(query.categoryIds)) {
+        categoryIds = query.categoryIds as string[];
+      } else if (typeof query.categoryIds === "string") {
+        categoryIds = String(query.categoryIds)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+
+    let excludeId: mongoose.Types.ObjectId | null = null;
+    if (courseIdRaw && mongoose.Types.ObjectId.isValid(courseIdRaw)) {
+      excludeId = new mongoose.Types.ObjectId(courseIdRaw);
+      if (categoryIds.length === 0) {
+        const baseCourse = await CourseModel.findById(excludeId).select("categories");
+        if (!baseCourse) {
+          return next(new ErrorHandler("Base course not found", 404));
+        }
+        categoryIds = (baseCourse.categories || []).map((id: any) => String(id));
+      }
+    }
+
+    const validCategoryIds = categoryIds
+      .map((id) => String(id))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const filter: any = {};
+    if (validCategoryIds.length > 0) {
+      filter.categories = { $in: validCategoryIds };
+    }
+    if (excludeId) {
+      filter._id = { ...(filter._id || {}), $ne: excludeId };
+    }
+
+    if (!filter.categories) {
+      const fallback = await CourseModel.find({})
+        .select("name price thumbnail ratings purchased creatorId")
+        .sort({ purchased: -1, ratings: -1, createdAt: -1 })
+        .limit(limit)
+        .lean();
+      return res.status(200).json({ success: true, courses: fallback });
+    }
+
+    const courses = await CourseModel.find(filter)
+      .select("name price thumbnail ratings purchased creatorId")
+      .sort({ purchased: -1, ratings: -1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json({ success: true, courses });
+  } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };

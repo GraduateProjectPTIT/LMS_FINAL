@@ -31,6 +31,8 @@ import {
   getCourseReviews,
   getStudentDetailsInCourse,
   getLectureComments,
+  getLatestReviews,
+  getRelatedCourses,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -78,6 +80,8 @@ courseRouter.get(
 
 courseRouter.get("/course/top-purchased", getTopPurchasedCourses);
 courseRouter.get("/course/top-rated", getTopRatedCourses);
+courseRouter.get("/course/latest-reviews", getLatestReviews);
+courseRouter.get("/course/related", getRelatedCourses);
 
 courseRouter.get(
   "/course/:id/has-purchased",

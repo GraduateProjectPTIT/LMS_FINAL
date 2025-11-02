@@ -176,27 +176,35 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler("Failed to check PayPal order status", 500));
       }
 
-      // 2) Idempotent nhanh: nếu order với token này đã được xử lý thì trả về luôn
       const existingOrder = await OrderModel.findOne({
         "payment_info.order_token": token,
         payment_method: "paypal",
       });
 
       if (existingOrder) {
-        console.log("PayPal order already processed:", token);
+        if (!existingOrder.userId && req.user?._id) {
+          await OrderModel.updateOne(
+            { _id: existingOrder._id },
+            { $set: { userId: new mongoose.Types.ObjectId(String(req.user._id)) } }
+          );
+        }
+
+        const patched = await OrderModel.findById(existingOrder._id).lean();
+
         return res.status(200).json({
           success: true,
           message: "Payment already processed",
           payment: {
-            id: existingOrder.payment_info.id,
-            amount: existingOrder.payment_info.amount,
-            currency: existingOrder.payment_info.currency,
+            id: patched?.payment_info?.id,
+            amount: patched?.payment_info?.amount,
+            currency: patched?.payment_info?.currency,
           },
           order: {
-            id: existingOrder._id,
-            items: existingOrder.items,
-            total: existingOrder.total,
-            currency: existingOrder.payment_info.currency,
+            id: patched?._id,
+            items: patched?.items,
+            total: patched?.total,
+            currency: patched?.payment_info?.currency,
+            userId: patched?.userId ?? null,
           },
         });
       }
@@ -260,7 +268,7 @@ export const paypalSuccess = CatchAsyncError(
         $setOnInsert: {
           items,
           total,
-          userId: userId?.toString() || "",
+          userId: new mongoose.Types.ObjectId(String(userId)),
           payment_info: {
             id: paymentId,
             status: "succeeded",
@@ -272,18 +280,24 @@ export const paypalSuccess = CatchAsyncError(
           },
           payment_method: "paypal",
           emailSent: false,
-          notificationSent: false, // <-- đảm bảo có cờ này trong Order schema
+          notificationSent: false,
         },
       };
+
 
       const consolidatedOrder = await OrderModel.findOneAndUpdate(
         upsertFilter,
         upsertUpdate,
-        { upsert: true, new: true }
+        {
+          upsert: true,
+          new: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
       );
+
       console.log("Consolidated order created:", consolidatedOrder._id);
 
-      // 6) Xoá item đã mua khỏi giỏ
       try {
         const purchasedIds = items.map(
           (it: any) => new mongoose.Types.ObjectId(String(it.courseId))
