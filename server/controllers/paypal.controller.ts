@@ -144,25 +144,28 @@ export const paypalSuccess = CatchAsyncError(
       const targetCourseIds: string[] = courseId
         ? [courseId]
         : Array.from(new Set((courseIds as string[]).filter(Boolean)));
+
       const courses = await CourseModel.find({ _id: { $in: targetCourseIds } });
       if (!courses || courses.length === 0) {
         return next(new ErrorHandler("Course(s) not found", 404));
       }
 
+      // 1) Kiểm tra trạng thái order trên PayPal
       const orderRequest = new paypal.orders.OrdersGetRequest(token);
-      let orderStatus;
-      
+      let orderStatus: string;
+
       try {
         const orderResponse = await paypalClient.execute(orderRequest);
         orderStatus = orderResponse.result.status;
         console.log("PayPal order status:", orderStatus);
-        
+
         if (orderStatus !== "APPROVED") {
-          return next(new ErrorHandler(`PayPal order is not approved. Current status: ${orderStatus}`, 400));
+          return next(
+            new ErrorHandler(`PayPal order is not approved. Current status: ${orderStatus}`, 400)
+          );
         }
       } catch (orderError: any) {
         console.error("PayPal order status check error:", orderError);
-        
         if (orderError.statusCode === 404) {
           console.error("PayPal order not found. Token:", token);
           return next(new ErrorHandler("PayPal order not found. Please check the token.", 404));
@@ -170,16 +173,15 @@ export const paypalSuccess = CatchAsyncError(
           console.error("PayPal order invalid. Error details:", orderError.result);
           return next(new ErrorHandler("Invalid PayPal order token.", 400));
         }
-        
-        console.error("PayPal order status check error details:", orderError);
         return next(new ErrorHandler("Failed to check PayPal order status", 500));
       }
 
+      // 2) Idempotent nhanh: nếu order với token này đã được xử lý thì trả về luôn
       const existingOrder = await OrderModel.findOne({
         "payment_info.order_token": token,
-        payment_method: "paypal"
+        payment_method: "paypal",
       });
-      
+
       if (existingOrder) {
         console.log("PayPal order already processed:", token);
         return res.status(200).json({
@@ -199,24 +201,27 @@ export const paypalSuccess = CatchAsyncError(
         });
       }
 
+      // 3) Capture thanh toán
       const captureRequest = new paypal.orders.OrdersCaptureRequest(token);
-      
-      let captureResult;
+      let captureResult: any;
+
       try {
         captureResult = await paypalClient.execute(captureRequest);
         console.log("PayPal capture result:", JSON.stringify(captureResult.result, null, 2));
       } catch (captureError: any) {
         console.error("PayPal capture error:", captureError);
-        
+
         if (captureError.statusCode === 400) {
           console.error("PayPal capture 400 error details:", captureError.result);
           return next(new ErrorHandler("Invalid PayPal order. Please check the order status.", 400));
         } else if (captureError.statusCode === 404) {
           return next(new ErrorHandler("PayPal order not found. Please try again.", 404));
         } else if (captureError.statusCode === 422) {
-          return next(new ErrorHandler("PayPal order cannot be captured. Order may not be approved.", 422));
+          return next(
+            new ErrorHandler("PayPal order cannot be captured. Order may not be approved.", 422)
+          );
         }
-        
+
         return next(new ErrorHandler("Failed to capture PayPal payment", 500));
       }
 
@@ -231,7 +236,7 @@ export const paypalSuccess = CatchAsyncError(
         payerId,
         status: paymentStatus,
         amount: paymentAmount,
-        currency: capture.amount.currency_code
+        currency: capture.amount.currency_code,
       });
 
       if (paymentStatus !== "COMPLETED") {
@@ -239,33 +244,14 @@ export const paypalSuccess = CatchAsyncError(
         return next(new ErrorHandler(`Payment not completed. Status: ${paymentStatus}`, 400));
       }
 
-      const items = courses.map((c: any) => ({ courseId: String(c._id), price: Number(c.price || 0) }));
+      // 4) Tính items/total cho order
+      const items = courses.map((c: any) => ({
+        courseId: String(c._id),
+        price: Number(c.price || 0),
+      }));
       const total = items.reduce((s: number, it: any) => s + (it.price || 0), 0);
 
-      for (const c of courses) {
-        const cid = String((c as any)._id);
-        try {
-          const existing = await EnrolledCourseModel.findOne({ userId, courseId: cid });
-          if (!existing) {
-            await EnrolledCourseModel.create({ userId, courseId: cid });
-            await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
-          }
-
-          await NotificationModel.create({
-            userId: userId as any,
-            title: "Order Confirmation - PayPal",
-            message: `You have successfully purchased ${(c as any).name} via PayPal`,
-          });
-          await NotificationModel.create({
-            userId: (c as any).creatorId as any,
-            title: "New Order",
-            message: `${user.name} purchased ${(c as any).name} via PayPal`,
-          });
-        } catch (err: any) {
-          console.error("Failed processing course enrollment/notification:", cid, err?.message || err);
-        }
-      }
-
+      // 5) Upsert Order (hợp nhất đơn) theo token để đảm bảo idempotent ở mức DB
       const upsertFilter: any = {
         "payment_info.order_token": token,
         payment_method: "paypal",
@@ -282,10 +268,14 @@ export const paypalSuccess = CatchAsyncError(
             currency: capture.amount.currency_code,
             payer_id: payerId,
             order_token: token,
+            paid_at: new Date(),
           },
           payment_method: "paypal",
+          emailSent: false,
+          notificationSent: false, // <-- đảm bảo có cờ này trong Order schema
         },
       };
+
       const consolidatedOrder = await OrderModel.findOneAndUpdate(
         upsertFilter,
         upsertUpdate,
@@ -293,8 +283,11 @@ export const paypalSuccess = CatchAsyncError(
       );
       console.log("Consolidated order created:", consolidatedOrder._id);
 
+      // 6) Xoá item đã mua khỏi giỏ
       try {
-        const purchasedIds = items.map((it: any) => new mongoose.Types.ObjectId(String(it.courseId)));
+        const purchasedIds = items.map(
+          (it: any) => new mongoose.Types.ObjectId(String(it.courseId))
+        );
         await CartModel.updateOne(
           { userId: new mongoose.Types.ObjectId(String(userId)) },
           { $pull: { items: { courseId: { $in: purchasedIds } } } }
@@ -303,46 +296,96 @@ export const paypalSuccess = CatchAsyncError(
         console.error("Failed to remove purchased items from cart:", cartErr?.message || cartErr);
       }
 
-      try {
-        const totalPaid = total;
-        const mailData = {
-          order: {
-            _id: (consolidatedOrder._id as any)?.toString()?.slice(0, 6) || (paymentId as any)?.toString()?.slice(0, 6),
-            date: new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }),
-            items: courses.map((c: any) => ({ name: c.name, price: Number(c.price || 0) })),
-            total: totalPaid,
-          },
-        } as any;
+      // 7) Đặt cờ notificationSent theo kiểu nguyên tử
+      const justSetFlag = await OrderModel.findOneAndUpdate(
+        { _id: consolidatedOrder._id, notificationSent: { $ne: true } },
+        { $set: { notificationSent: true } },
+        { new: true }
+      );
 
-        const subject = items.length > 1
-          ? `Order Confirmation - ${items.length} courses`
-          : `Order Confirmation - ${courses[0]?.name || 'Course'}`;
+      // 8) Chỉ lần đầu (khi set cờ thành công) mới enroll + tạo notifications + gửi email
+      if (justSetFlag) {
+        // 8.1 Enroll & tăng purchased
+        for (const c of courses) {
+          const cid = String((c as any)._id);
+          try {
+            const existing = await EnrolledCourseModel.findOne({ userId, courseId: cid });
+            if (!existing) {
+              await EnrolledCourseModel.create({ userId, courseId: cid });
+              await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
+            }
 
-        const reservedForEmail = await OrderModel.findOneAndUpdate(
-          { "payment_info.order_token": token, payment_method: "paypal", emailSent: { $ne: true } },
-          { $set: { emailSent: true } },
-          { new: true }
-        );
-
-        if (reservedForEmail) {
-          await sendMail({
-            email: (user as any).email,
-            subject,
-            template: "order-confirmation-multi.ejs",
-            data: mailData,
-          });
-          console.log("Confirmation email sent to:", (user as any).email);
-        } else {
-          console.log("Email already sent for order:", consolidatedOrder._id);
+            // 8.2 Notifications
+            await NotificationModel.create({
+              userId: userId as any,
+              title: "Order Confirmation - PayPal",
+              message: `You have successfully purchased ${(c as any).name} via PayPal`,
+            });
+            await NotificationModel.create({
+              userId: (c as any).creatorId as any,
+              title: "New Order",
+              message: `${user.name} purchased ${(c as any).name} via PayPal`,
+            });
+          } catch (err: any) {
+            console.error(
+              "Failed processing course enrollment/notification:",
+              cid,
+              err?.message || err
+            );
+          }
         }
-      } catch (error: any) {
-        console.error("Email sending failed:", error?.message || error);
+
+        // 8.3 Email (giữ cờ emailSent như bạn đang dùng)
+        try {
+          const totalPaid = total;
+          const mailData = {
+            order: {
+              _id:
+                (consolidatedOrder._id as any)?.toString()?.slice(0, 6) ||
+                (paymentId as any)?.toString()?.slice(0, 6),
+              date: new Date().toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }),
+              items: courses.map((c: any) => ({
+                name: c.name,
+                price: Number(c.price || 0),
+              })),
+              total: totalPaid,
+            },
+          } as any;
+
+          const subject =
+            items.length > 1
+              ? `Order Confirmation - ${items.length} courses`
+              : `Order Confirmation - ${courses[0]?.name || "Course"}`;
+
+          const reservedForEmail = await OrderModel.findOneAndUpdate(
+            { _id: consolidatedOrder._id, emailSent: { $ne: true } },
+            { $set: { emailSent: true } },
+            { new: true }
+          );
+
+          if (reservedForEmail) {
+            await sendMail({
+              email: (user as any).email,
+              subject,
+              template: "order-confirmation-multi.ejs",
+              data: mailData,
+            });
+            console.log("Confirmation email sent to:", (user as any).email);
+          } else {
+            console.log("Email already sent for order:", consolidatedOrder._id);
+          }
+        } catch (error: any) {
+          console.error("Email sending failed:", error?.message || error);
+        }
+      } else {
+        console.log("Notifications already sent for order:", consolidatedOrder._id);
       }
 
+      // 9) Trả kết quả
       res.status(200).json({
         success: true,
         message: "Payment completed successfully",
@@ -364,6 +407,7 @@ export const paypalSuccess = CatchAsyncError(
     }
   }
 );
+
 
 export const checkPayPalOrderStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {

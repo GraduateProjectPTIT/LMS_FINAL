@@ -141,7 +141,7 @@ export const getOrderDetailService = async (
 
     const items = Array.isArray(normalized?.items)
       ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String(course?._id) && course ? { course } : it
+          String(it?.courseId) === String(course?._id) && course ? course : it
         )
       : normalized?.items;
 
@@ -195,7 +195,7 @@ export const getTutorOrderDetailService = async (
 
     const items = Array.isArray(normalized?.items)
       ? normalized.items.map((it: any) =>
-          String(it?.courseId) === String((course as any)?._id) && course ? { course } : it
+          String(it?.courseId) === String(course?._id) && course ? course : it
         )
       : normalized?.items;
 

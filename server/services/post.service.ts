@@ -90,7 +90,9 @@ export const getPublicPostsService = async (
 
     const filter: any = { status: "published" };
     if (tagsFilter.length) {
-      filter.tags = { $in: Array.from(new Set(tagsFilter)) };
+      const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regexArr = Array.from(new Set(tagsFilter)).map(t => new RegExp(`^${escapeRegex(t)}$`, "i"));
+      filter.tags = { $in: regexArr };
     }
 
     const [rawItems, total] = await Promise.all([

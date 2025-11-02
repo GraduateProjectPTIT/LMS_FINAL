@@ -30,6 +30,7 @@ export interface IOrder extends Document {
     payment_info: IPaymentInfo;
     payment_method: string;
     emailSent?: boolean;
+    notificationSent?: boolean;
 }
 
 const orderSchema = new Schema<IOrder>(
@@ -61,6 +62,10 @@ const orderSchema = new Schema<IOrder>(
         emailSent: {
             type: Boolean,
             default: false,
+        },
+        notificationSent: { 
+            type: Boolean, 
+            default: false 
         },
     },
     { timestamps: true }

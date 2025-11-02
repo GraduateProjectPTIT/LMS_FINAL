@@ -27,10 +27,10 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
     if (!userId) return next(new ErrorHandler("Unauthorized", 401));
     const { cart, added } = await addToCartService(String(userId), String(courseId));
     const data = await getCartService(String(userId), next);
-    res.status(200).json({
-      success: true,
+    return res.status(added ? 200 : 400).json({
+      success: added,
       message: added ? "Added course to cart" : "Course is already in the cart",
-      cart: data,
+      ...(added && { cart: data }),
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, error.statusCode || 500));
