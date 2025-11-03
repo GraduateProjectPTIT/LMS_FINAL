@@ -85,7 +85,7 @@ const SavedItems = ({ items, refreshCart }: SavedItemsProps) => {
                 <div
                     onClick={() => router.push(`/course-overview/${item._id}`)}
                     key={item._id}
-                    className="flex flex-col sm:flex-row gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow duration-200 bg-gray-50 dark:bg-gray-700"
+                    className="flex flex-col sm:flex-row gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow duration-200 bg-gray-50 dark:bg-gray-700 hover:cursor-pointer"
                 >
                     {/* Course Image */}
                     <div className="flex-shrink-0">

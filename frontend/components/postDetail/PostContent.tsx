@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image';
-import { Calendar, User, Tag } from 'lucide-react';
+import { Calendar, User, Tag, ArrowLeft } from 'lucide-react';
 import Loader from '../Loader';
 import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
+import Link from 'next/link';
+import { Button } from '../ui/button';
 
 interface PostAuthor {
     _id: string;
@@ -90,6 +92,13 @@ const PostContent = ({ slug }: { slug: string }) => {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
             <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Link href="/posts">
+                    <Button type="button" variant="outline" size="sm" className="gap-2 mb-4">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                    </Button>
+                </Link>
+
                 {/* Cover Image */}
                 {post.coverImage?.url && (
                     <div className="mb-8 rounded-lg overflow-hidden">

@@ -32,19 +32,12 @@ interface ICreator {
     avatar: IMedia;
 }
 
-interface ICourse {
+interface IOrderItem {
     _id: string;
     name: string;
     price: number;
     thumbnail: IMedia;
     creatorId: ICreator;
-}
-
-interface IOrderItem {
-    courseId: string;
-    price: number;
-    _id: string;
-    course: ICourse;
 }
 
 interface IPaymentInfo {
@@ -347,14 +340,14 @@ const OrderDetailModal = ({ isOpen, onClose, orderId }: IOrderDetailModalProps) 
                                     {order.items.map((item) => (
                                         <div
                                             key={item._id}
-                                            className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+                                            className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
                                         >
                                             {/* Course Thumbnail */}
                                             <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
-                                                {item.course?.thumbnail?.url && isValidImageUrl(item.course.thumbnail.url) ? (
+                                                {item?.thumbnail?.url && isValidImageUrl(item?.thumbnail?.url) ? (
                                                     <Image
-                                                        src={item.course.thumbnail.url}
-                                                        alt={item.course.name}
+                                                        src={item?.thumbnail?.url}
+                                                        alt={item?.name}
                                                         fill
                                                         className="object-cover"
                                                         sizes="128px"
@@ -369,14 +362,14 @@ const OrderDetailModal = ({ isOpen, onClose, orderId }: IOrderDetailModalProps) 
                                             {/* Course Details */}
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                                                    {item.course?.name}
+                                                    {item?.name}
                                                 </h4>
                                                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                                                     <div className="relative w-6 h-6 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                                                        {item.course?.creatorId?.avatar?.url && isValidImageUrl(item.course.creatorId.avatar.url) ? (
+                                                        {item?.creatorId?.avatar?.url && isValidImageUrl(item?.creatorId?.avatar?.url) ? (
                                                             <Image
-                                                                src={item.course.creatorId.avatar.url}
-                                                                alt={item.course.creatorId.name}
+                                                                src={item?.creatorId?.avatar?.url}
+                                                                alt={item?.creatorId?.name}
                                                                 fill
                                                                 className="object-cover"
                                                                 sizes="24px"
@@ -387,14 +380,14 @@ const OrderDetailModal = ({ isOpen, onClose, orderId }: IOrderDetailModalProps) 
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <span>{item.course?.creatorId?.name}</span>
+                                                    <span>{item?.creatorId?.name}</span>
                                                 </div>
                                             </div>
 
                                             {/* Price */}
                                             <div className="text-right flex-shrink-0">
                                                 <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                                    ${item.price.toFixed(2)}
+                                                    ${item?.price?.toFixed(2)}
                                                 </p>
                                             </div>
                                         </div>

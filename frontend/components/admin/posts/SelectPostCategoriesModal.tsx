@@ -15,13 +15,15 @@ interface SelectPostCategoriesModalProps {
     onClose: () => void;
     selectedCategories: string[];
     onSave: (categories: string[]) => void;
+    onSaveWithNames?: (categoriesData: { id: string, title: string }[]) => void;
 }
 
 const SelectPostCategoriesModal = ({
     isOpen,
     onClose,
     selectedCategories,
-    onSave
+    onSave,
+    onSaveWithNames
 }: SelectPostCategoriesModalProps) => {
 
     const [categories, setCategories] = useState<Category[]>([]);
@@ -91,6 +93,18 @@ const SelectPostCategoriesModal = ({
     // Handle save categories
     const handleSave = () => {
         onSave(tempSelectedCategories);
+
+        // If onSaveWithNames is provided, also send category names
+        if (onSaveWithNames) {
+            const selectedCategoriesData = categories
+                .filter(cat => tempSelectedCategories.includes(cat._id))
+                .map(cat => ({
+                    id: cat._id,
+                    title: cat.title
+                }));
+            onSaveWithNames(selectedCategoriesData);
+        }
+
         onClose();
     };
 

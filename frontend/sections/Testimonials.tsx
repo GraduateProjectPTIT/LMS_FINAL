@@ -1,80 +1,44 @@
 'use client'
-import avatar1 from "@/assets/avatar-1.png";
-import avatar2 from "@/assets/avatar-2.png";
-import avatar3 from "@/assets/avatar-3.png";
-import avatar4 from "@/assets/avatar-4.png";
-import avatar5 from "@/assets/avatar-5.png";
-import avatar6 from "@/assets/avatar-6.png";
-import avatar7 from "@/assets/avatar-7.png";
-import avatar8 from "@/assets/avatar-8.png";
-import avatar9 from "@/assets/avatar-9.png";
+
 import Image from "next/image";
-import { twMerge } from "tailwind-merge";
 import { motion } from "motion/react"
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { Star, User } from "lucide-react";
+import Loader from "@/components/Loader";
+import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
 
-const testimonials = [
-  {
-    text: "As a seasoned designer always on the lookout for innovative tools, Framer.com instantly grabbed my attention.",
-    imageSrc: avatar1.src,
-    name: "Jamie Rivera",
-    username: "@jamietechguru00",
-  },
-  {
-    text: "Our team's productivity has skyrocketed since we started using this tool. ",
-    imageSrc: avatar2.src,
-    name: "Josh Smith",
-    username: "@jjsmith",
-  },
-  {
-    text: "This app has completely transformed how I manage my projects and deadlines.",
-    imageSrc: avatar3.src,
-    name: "Morgan Lee",
-    username: "@morganleewhiz",
-  },
-  {
-    text: "I was amazed at how quickly we were able to integrate this app into our workflow.",
-    imageSrc: avatar4.src,
-    name: "Casey Jordan",
-    username: "@caseyj",
-  },
-  {
-    text: "Planning and executing events has never been easier. This app helps me keep track of all the moving parts, ensuring nothing slips through the cracks.",
-    imageSrc: avatar5.src,
-    name: "Taylor Kim",
-    username: "@taylorkimm",
-  },
-  {
-    text: "The customizability and integration capabilities of this app are top-notch.",
-    imageSrc: avatar6.src,
-    name: "Riley Smith",
-    username: "@rileysmith1",
-  },
-  {
-    text: "Adopting this app for our team has streamlined our project management and improved communication across the board.",
-    imageSrc: avatar7.src,
-    name: "Jordan Patels",
-    username: "@jpatelsdesign",
-  },
-  {
-    text: "With this app, we can easily assign tasks, track progress, and manage documents all in one place.",
-    imageSrc: avatar8.src,
-    name: "Sam Dawson",
-    username: "@dawsontechtips",
-  },
-  {
-    text: "Its user-friendly interface and robust features support our diverse needs.",
-    imageSrc: avatar9.src,
-    name: "Casey Harper",
-    username: "@casey09",
-  },
-];
+interface IReview {
+  course: {
+    _id: string;
+    name: string;
+    thumbnail: {
+      public_id?: string;
+      url: string;
+    };
+  };
+  review: {
+    _id: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    repliesCount: number;
+  };
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar: {
+      public_id?: string;
+      url: string;
+    };
+  };
+}
 
-const firstCol = testimonials.slice(0, 3);
-const secondCol = testimonials.slice(3, 6);
-const thirdCol = testimonials.slice(6, 9);
-
-const TestimonialColumn = (props: { className?: string; testimonial: typeof testimonials, duration?: number }) => (
+const TestimonialColumn = (props: {
+  className?: string;
+  testimonials: IReview[],
+  duration?: number
+}) => (
   <div className={props.className}>
     <motion.div
       className={"flex flex-col gap-6 pb-6"}
@@ -92,14 +56,57 @@ const TestimonialColumn = (props: { className?: string; testimonial: typeof test
         [...new Array(2)].fill(0).map((_, index) => (
           <React.Fragment key={index}>
             {
-              props.testimonial.map((user, index) => (
-                <div key={index} className="card dark:shadow-slate-700/50">
-                  <div>{user.text}</div>
+              props.testimonials.map((item) => (
+                <div key={item.review._id} className="card dark:shadow-slate-700/50">
+                  {/* Rating stars */}
+                  <div className="flex mb-3">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={16}
+                        className={`${star <= item.review.rating
+                          ? 'text-yellow-400 fill-yellow-400'
+                          : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Review comment */}
+                  <div className="text-gray-700 dark:text-gray-300 mb-3">
+                    {item.review.comment}
+                  </div>
+
+                  {/* Course name */}
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 italic">
+                    "{item.course.name}"
+                  </div>
+
+                  {/* User info */}
                   <div className="flex items-center gap-2 mt-5">
-                    <Image src={user.imageSrc} alt="avatar" width={40} height={40} className="rounded-full" />
-                    <div className="flex flex-col ">
-                      <div className="font-medium tracking-tight leading-5">{user.name}</div>
-                      <div className="leading-5 tracking-tight">{user.username}</div>
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-900 flex-shrink-0">
+                      {item.user.avatar?.url && isValidImageUrl(item.user.avatar.url) ? (
+                        <Image
+                          src={item.user.avatar.url}
+                          alt={item.user.name}
+                          fill
+                          sizes="40px"
+                          style={{ objectFit: "cover" }}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User size={20} className="text-indigo-600 dark:text-indigo-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="font-medium tracking-tight leading-5">
+                        {item.user.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 leading-5 tracking-tight">
+                        {item.user.email}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -113,17 +120,95 @@ const TestimonialColumn = (props: { className?: string; testimonial: typeof test
 )
 
 const Testimonials = () => {
+  const [reviews, setReviews] = useState<IReview[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/latest-reviews?limit=10`,
+          {
+            method: 'GET',
+            credentials: 'include',
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.log("Fetching reviews failed: ", data.message);
+          return;
+        }
+
+        setReviews(data.reviews || []);
+      } catch (error: any) {
+        console.error("Error fetching reviews:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
+  if (loading) {
+    return (
+      <Loader />
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <section className="theme-mode">
+        <div className="container">
+          <div className="max-w-[540px] mt-5 mx-auto">
+            <h2 className="section-title">What our users say</h2>
+            <p className="section-desc mt-5">
+              From intuitive design to powerful features, our app has become an essential tool for users around the world.
+            </p>
+          </div>
+          <div className="flex justify-center items-center my-10 min-h-[400px]">
+            <p className="text-gray-500 dark:text-gray-400">No reviews yet</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Split reviews into 3 columns
+  const columnCount = 3;
+  const itemsPerColumn = Math.ceil(reviews.length / columnCount);
+
+  const firstCol = reviews.slice(0, itemsPerColumn);
+  const secondCol = reviews.slice(itemsPerColumn, itemsPerColumn * 2);
+  const thirdCol = reviews.slice(itemsPerColumn * 2);
+
   return (
     <section className="theme-mode">
       <div className="container">
         <div className="max-w-[540px] mt-5 mx-auto">
           <h2 className="section-title">What our users say</h2>
-          <p className="section-desc mt-5">From intuitive design to powerful features, out app has become an essential tool for users around the world.</p>
+          <p className="section-desc mt-5">
+            From intuitive design to powerful features, our app has become an essential tool for users around the world.
+          </p>
         </div>
         <div className="flex justify-center max-h-[738px] overflow-hidden gap-6 my-10 [mask-image:linear-gradient(to_bottom,transparent,black_25%,black_75%,transparent)]">
-          <TestimonialColumn duration={15} testimonial={firstCol} />
-          <TestimonialColumn duration={18} testimonial={secondCol} className="hidden md:block" />
-          <TestimonialColumn duration={14} testimonial={thirdCol} className="hidden lg:block" />
+          <TestimonialColumn duration={15} testimonials={firstCol} />
+          {secondCol.length > 0 && (
+            <TestimonialColumn
+              duration={18}
+              testimonials={secondCol}
+              className="hidden md:block"
+            />
+          )}
+          {thirdCol.length > 0 && (
+            <TestimonialColumn
+              duration={14}
+              testimonials={thirdCol}
+              className="hidden lg:block"
+            />
+          )}
         </div>
       </div>
     </section>

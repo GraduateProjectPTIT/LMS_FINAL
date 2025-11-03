@@ -135,10 +135,10 @@ const Interests = ({ user }: InterestsProps) => {
                     </div>
                     {!isEditing && (
                         <Button
-                            type="button"
-                            variant="ghost"
+                            variant="outline"
+                            size="sm"
                             onClick={startEditing}
-                            className="flex items-center gap-2 cursor-pointer"
+                            className='flex items-center gap-2 hover:cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900/70'
                         >
                             <FaEdit size={16} /> Edit Interests
                         </Button>
@@ -256,7 +256,6 @@ const Interests = ({ user }: InterestsProps) => {
                                     <Button
                                         onClick={handleSubmit}
                                         disabled={selectedCategories.length === 0 || isSubmitting}
-                                        className="bg-blue-500 hover:bg-blue-600"
                                     >
                                         {isSubmitting ? "Saving..." : "Save Interests"}
                                     </Button>

@@ -35,6 +35,36 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
         setWatchedPercentage(0);
     }, [lecture?._id]);
 
+    // Suppress specific "media resource was aborted" unhandled rejection and log as console.log instead
+    useEffect(() => {
+        const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+            try {
+                const reason: any = event.reason;
+                const msg = (typeof reason === 'string' ? reason : reason?.message || '').toLowerCase();
+
+                const isAbortName = typeof reason === 'object' && reason?.name === 'AbortError';
+                const isAbortMsg =
+                    msg.includes('fetching process for the media resource was aborted') ||
+                    msg.includes('aborted by the user agent') ||
+                    msg.includes('the fetching process for the media resource was aborted') ||
+                    msg.includes('networkrequestfailed') || // optional fallback
+                    msg.includes('aborted');
+
+                if (isAbortName || isAbortMsg) {
+                    console.log('Media fetch aborted (suppressed):', reason);
+                    event.preventDefault(); // prevent browser default error logging
+                }
+            } catch {
+                // ignore
+            }
+        };
+
+        window.addEventListener('unhandledrejection', onUnhandledRejection);
+        return () => {
+            window.removeEventListener('unhandledrejection', onUnhandledRejection);
+        };
+    }, []);
+
     // Handle video time update to track progress
     const handleTimeUpdate = () => {
         if (videoRef.current && !isLectureCompleted) {

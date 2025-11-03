@@ -150,10 +150,10 @@ const Authentication = ({ user }: AuthenticationProps) => {
                             <h3 className="text-lg font-semibold">Password</h3>
                             {!isEditing && (
                                 <Button
-                                    type="button"
-                                    variant="ghost"
+                                    variant="outline"
+                                    size="sm"
                                     onClick={startEditing}
-                                    className="flex items-center gap-2 cursor-pointer"
+                                    className='flex items-center gap-2 hover:cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900/70'
                                 >
                                     <FaEdit size={16} /> Change Password
                                 </Button>

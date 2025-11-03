@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import Loader from '../Loader';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { Notification } from '@/type';
 import {
     fetchStart,
     fetchSuccess,

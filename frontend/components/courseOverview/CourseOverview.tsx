@@ -6,7 +6,7 @@ import Loader from '../Loader';
 import { useDispatch, useSelector } from 'react-redux';
 import { addItemToCartStart, addItemToCartSuccess, addItemToCartFailure } from '@/redux/cart/cartSlice';
 import { RootState } from '@/redux/store';
-import RecommendCourse from './RecommendCourse';
+import RelatedCourse from './RelatedCourse';
 import CourseReview from './CourseReview';
 import CallToActionCourse from './CallToActionCourse';
 import { useRouter } from 'next/navigation';
@@ -588,7 +588,10 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
             </div>
 
             <div className='container'>
-                <RecommendCourse />
+                <RelatedCourse
+                    courseId={courseId}
+                    categories={courseData.categories}
+                />
             </div>
 
             <div className="relative bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#183EC2,#EAEEFE_100%)] dark:bg-[radial-gradient(ellipse_200%_100%_at_bottom_left,#0A1D56,#0D1B2A_100%)] overflow-x-clip">

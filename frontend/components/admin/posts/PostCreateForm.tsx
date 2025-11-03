@@ -26,6 +26,7 @@ const PostCreateForm = () => {
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [showPreview, setShowPreview] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [selectedCategoryNames, setSelectedCategoryNames] = useState<{ id: string, title: string }[]>([]);
 
   const tinymceApiKey = process.env.NEXT_PUBLIC_TINYMCE_API_KEY;
 
@@ -120,6 +121,11 @@ const PostCreateForm = () => {
     setCoverPreview("");
   };
 
+  const removeCategory = (categoryId: string) => {
+    setCategoryIds(prev => prev.filter(id => id !== categoryId));
+    setSelectedCategoryNames(prev => prev.filter(cat => cat.id !== categoryId));
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -177,8 +183,9 @@ const PostCreateForm = () => {
     <div className="w-full min-h-screen theme-mode">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto py-4">
+        <div className="w-full mx-auto py-4 flex flex-col md:flex-1">
           <div className="flex items-center justify-between">
+            {/* Back Button + Title */}
             <div className="flex items-center gap-4">
               <Link href="/admin/posts">
                 <Button type="button" variant="outline" size="sm" className="gap-2">
@@ -187,11 +194,12 @@ const PostCreateForm = () => {
                 </Button>
               </Link>
 
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h1 className="hidden md:block text-2xl font-semibold text-gray-900 dark:text-white">
                 Create New Post
               </h1>
 
             </div>
+            {/* Button Group */}
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -206,6 +214,7 @@ const PostCreateForm = () => {
               </Button>
               <Button
                 type="submit"
+                variant="outline"
                 size="sm"
                 className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={submitting}
@@ -216,11 +225,14 @@ const PostCreateForm = () => {
               </Button>
             </div>
           </div>
+          <h1 className="flex md:hidden justify-center items-center mt-4 mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
+            Create New Post
+          </h1>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={onSubmit} className="max-w-7xl mx-auto px-4 py-6">
+      <form onSubmit={onSubmit} className="w-full mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -401,6 +413,33 @@ const PostCreateForm = () => {
                   : 'Select categories...'
                 }
               </button>
+
+              {/* Display selected categories as badges */}
+              {selectedCategoryNames.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedCategoryNames.map((category) => (
+                    <div
+                      key={category.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium"
+                    >
+                      <span>{category.title}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeCategory(category.id);
+                        }}
+                        className="hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-full p-0.5 transition-colors"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Select categories for your post
               </p>
@@ -425,6 +464,10 @@ const PostCreateForm = () => {
         onClose={() => setShowCategoryModal(false)}
         selectedCategories={categoryIds}
         onSave={(categories) => setCategoryIds(categories)}
+        onSaveWithNames={(categoriesData) => {
+          setCategoryIds(categoriesData.map(c => c.id));
+          setSelectedCategoryNames(categoriesData);
+        }}
       />
     </div>
   );
