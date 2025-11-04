@@ -1,8 +1,10 @@
+// src/controllers/notification.controller.ts
+
 import { NextFunction, Request, Response } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import * as NotificationService from "../services/notification.service";
-import { addClient, removeClient } from "../utils/sseManager";
+import { addClient, removeClient, sendEventToUser } from "../utils/sseManager"; // Import các hàm từ sseManager
 
 export const notificationStreamController = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -20,14 +22,20 @@ export const notificationStreamController = CatchAsyncError(
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    addClient(userId.toString(), res);
+    const userIdString = userId.toString();
 
-    res.write(
-      `data: ${JSON.stringify({ type: "connection_established" })}\n\n`
-    );
+    // Thêm client này vào trình quản lý SSE
+    addClient(userIdString, res);
 
+    // Gửi sự kiện xác nhận kết nối qua hàm quản lý tập trung
+    sendEventToUser(userIdString, "connection_established", {
+      message: "SSE connection successful",
+    });
+
+    // Xử lý khi client ngắt kết nối
     req.on("close", () => {
-      removeClient(userId.toString());
+      // Truyền cả userId và đối tượng `res` cụ thể
+      removeClient(userIdString, res);
       res.end();
     });
   }
@@ -41,7 +49,6 @@ export const getAllNotifications = CatchAsyncError(
     const notifications =
       await NotificationService.getAllNotificationsService();
     res.status(200).json({
-      // Nên dùng status 200 cho GET thành công
       success: true,
       notifications,
     });
@@ -54,7 +61,6 @@ export const getAllNotifications = CatchAsyncError(
 export const getMyNotifications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id;
-    // Lấy query params, đặt giá trị mặc định cho status là 'unread'
     const { status = "unread", q, page = 1, limit = 20 } = req.query as any;
 
     if (!userId) {
@@ -62,13 +68,9 @@ export const getMyNotifications = CatchAsyncError(
     }
 
     const filter: any = {};
-
-    // Chỉ thêm điều kiện lọc status nếu nó không phải là 'all'
-    // Điều này cho phép frontend có thể gọi API để lấy tất cả thông báo nếu muốn
     if (status !== "all") {
       filter.status = status;
     }
-
     if (q) filter.title = { $regex: new RegExp(q, "i") };
 
     const pageNum = Math.max(1, Number(page));
@@ -133,26 +135,25 @@ export const markAllMyNotificationsRead = CatchAsyncError(
   }
 );
 
+/**
+ * Controller để tạo thông báo mới
+ */
 export const createNotification = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId, title, message } = req.body;
-
       if (!userId || !title || !message) {
         return next(
           new ErrorHandler("userId, title, and message are required", 400)
         );
       }
 
-      // 1. Gọi service để tạo notification trong DB
-      const notification = await NotificationService.createNotificationService({
+      // <<< BƯỚC 3: Dùng hàm 2-trong-1 mới
+      const notification = await NotificationService.createAndSendNotification({
         userId,
         title,
         message,
       });
-
-      // 2. Gửi notification real-time qua SSE cho user liên quan
-      NotificationService.sendNotificationToUser(userId, notification);
 
       res.status(201).json({
         success: true,

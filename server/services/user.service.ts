@@ -24,7 +24,7 @@ import { studentModel } from "../models/student.model";
 import { _toUserResponse } from "./auth.service";
 import { adminModel } from "../models/admin.model";
 import { sendEventToUser } from "../utils/sseManager";
-import { createNotificationService } from "./notification.service";
+import { createAndSendNotification } from "./notification.service";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
@@ -32,7 +32,7 @@ export const getUserById = async (id: string) => {
 
   if (user) {
     try {
-      await createNotificationService({
+      await createAndSendNotification({
         userId: id,
         title: "Lấy thông tin người dùng",
         message: `Test tự lấy thông tin của chính tôi`,
