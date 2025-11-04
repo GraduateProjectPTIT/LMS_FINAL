@@ -1,4 +1,5 @@
-import { Response } from "express";
+// src/services/notification.service.ts
+
 import cron from "node-cron";
 import NotificationModel, {
   CreateNotificationInput,
@@ -7,48 +8,6 @@ import NotificationModel, {
 import { IUser } from "../models/user.model";
 import notificationModel from "../models/notification.model";
 import { sendEventToUser } from "../utils/sseManager";
-
-// --- Phần quản lý Real-time SSE ---
-
-// Biến này sẽ lưu trữ tất cả các client đang kết nối SSE
-// Key là ID của user, Value là đối tượng Response của Express
-const connectedClients = new Map<string, Response>();
-
-/**
- * Thêm một client mới vào danh sách đang kết nối SSE.
- * @param userId - ID của người dùng.
- * @param res - Đối tượng Response của Express để giữ kết nối.
- */
-export const addSseClient = (userId: string, res: Response): void => {
-  connectedClients.set(userId, res);
-  console.log(
-    `SSE Client connected: ${userId}. Total clients: ${connectedClients.size}`
-  );
-};
-
-/**
- * Xóa một client khỏi danh sách khi họ ngắt kết nối.
- * @param userId - ID của người dùng.
- */
-export const removeSseClient = (userId: string): void => {
-  connectedClients.delete(userId);
-  console.log(
-    `SSE Client disconnected: ${userId}. Total clients: ${connectedClients.size}`
-  );
-};
-
-export const sendNotificationToUser = (
-  userId: string,
-  notification: INotification
-): void => {
-  const clientRes = connectedClients.get(userId);
-
-  if (clientRes) {
-    clientRes.write(`event: new_notification\n`);
-    clientRes.write(`data: ${JSON.stringify(notification)}\n\n`);
-    console.log(`Sent SSE notification to user ${userId}`);
-  }
-};
 
 // --- Phần xử lý logic nghiệp vụ và tương tác DB ---
 
@@ -110,32 +69,39 @@ export const markAllNotificationsAsReadService = async (userId: string) => {
   return result.modifiedCount;
 };
 
+export const createAndSendNotification = async (
+  data: CreateNotificationInput
+) => {
+  // 1. Gọi hàm service cũ để lưu vào DB
+  const notification = await createNotificationService(data);
+
+  // 2. Gửi sự kiện real-time qua SSE Manager
+  try {
+    sendEventToUser(data.userId, "NEW_NOTIFICATION", notification);
+  } catch (sseError) {
+    console.error("Lỗi khi gửi thông báo SSE:", sseError);
+    // Việc gửi SSE thất bại không nên làm hỏng logic chính
+  }
+
+  return notification;
+};
+
 export const createNotificationService = async (
   data: CreateNotificationInput
 ) => {
   const { userId, title, message } = data;
 
-  // 1. Lưu thông báo vào cơ sở dữ liệu (như code cũ)
+  // 1. Chỉ lưu thông báo vào cơ sở dữ liệu
   const notification = await notificationModel.create({
     userId,
     title,
     message,
   });
 
-  // 2. GỌI SSE MANAGER ĐỂ ĐẨY THÔNG BÁO REAL-TIME
-  // Dữ liệu đẩy đi có thể là toàn bộ object notification
-  try {
-    sendEventToUser(userId, {
-      type: "NEW_NOTIFICATION",
-      payload: notification,
-    });
-  } catch (error) {
-    // Việc gửi SSE thất bại không nên làm hỏng cả tiến trình
-    console.error("Lỗi khi gửi thông báo SSE:", error);
-  }
-
+  // 2. Việc gửi SSE đã được chuyển cho Controller xử lý
   return notification;
 };
+
 // --- Phần công việc chạy nền (Cron Job) ---
 
 const deleteOldNotifications = async () => {
@@ -143,7 +109,7 @@ const deleteOldNotifications = async () => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const result = await NotificationModel.deleteMany({
       status: "read",
-      createdAt: { $lt: thirtyDaysAgo }, // Sửa lỗi typo từ 'createAt'
+      createdAt: { $lt: thirtyDaysAgo },
     });
     if (result.deletedCount > 0) {
       console.log(

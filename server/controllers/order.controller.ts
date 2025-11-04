@@ -23,8 +23,8 @@ import mongoose from "mongoose";
 import stripe from "../utils/stripe";
 import paypalClient, { paypal } from "../utils/paypal";
 import {
+  createAndSendNotification,
   createNotificationService,
-  sendNotificationToUser,
 } from "../services/notification.service";
 require("dotenv").config();
 
@@ -121,10 +121,7 @@ export const createOrder = CatchAsyncError(
         title: "Xác nhận đơn hàng",
         message: `Bạn đã mua thành công khóa học: ${course.name}`,
       };
-      // Gọi service để lưu vào DB
-      const userNotif = await createNotificationService(userPayload);
-      // Gọi service để gửi real-time event
-      sendNotificationToUser(userPayload.userId, userNotif);
+      createAndSendNotification(userPayload);
 
       // 2. Tạo thông báo cho giảng viên (người tạo khóa học)
       if (course.creatorId) {
@@ -136,9 +133,8 @@ export const createOrder = CatchAsyncError(
           } vừa mua khóa học của bạn: ${course.name}`,
         };
         // Gọi service để lưu vào DB
-        const tutorNotif = await createNotificationService(tutorPayload);
-        // Gọi service để gửi real-time event
-        sendNotificationToUser(tutorPayload.userId, tutorNotif);
+
+        createAndSendNotification(tutorPayload);
       }
 
       await CourseModel.updateOne(
@@ -152,7 +148,6 @@ export const createOrder = CatchAsyncError(
     }
   }
 );
-
 
 export const getAdminOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -170,7 +165,7 @@ export const getUserOrders = CatchAsyncError(
       const userId = req.user?._id;
 
       const userOrders = await OrderModel.find({ userId })
-        .populate('userId', 'name email avatar')
+        .populate("userId", "name email avatar")
         .sort({ createdAt: -1 })
         .lean();
 
