@@ -10,6 +10,7 @@ import paypalClient, { paypal } from "../utils/paypal";
 import CartModel from "../models/cart.model";
 import mongoose from "mongoose";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
+import { createAndSendNotification } from "../services/notification.service";
 
 export const createPayPalCheckoutSession = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -19,7 +20,7 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         courseIds?: string[];
       };
       const userId = req.user?._id;
-      
+
       if (!courseId && (!Array.isArray(courseIds) || courseIds.length === 0)) {
         return next(new ErrorHandler("Course ID(s) is required", 400));
       }
@@ -40,21 +41,35 @@ export const createPayPalCheckoutSession = CatchAsyncError(
       const foundIds = new Set(courses.map((c) => String((c as any)._id)));
       const missing = targetCourseIds.filter((id) => !foundIds.has(String(id)));
       if (missing.length > 0) {
-        return next(new ErrorHandler(`Course(s) not found: ${missing.join(", ")}`, 404));
+        return next(
+          new ErrorHandler(`Course(s) not found: ${missing.join(", ")}`, 404)
+        );
       }
 
       const existingEnrollments = await EnrolledCourseModel.find({
         userId,
         courseId: { $in: targetCourseIds },
       }).select("courseId");
-      const alreadyEnrolledIds = new Set(existingEnrollments.map((e: any) => String(e.courseId)));
-      const purchasableCourses = courses.filter((c: any) => !alreadyEnrolledIds.has(String(c._id)));
+      const alreadyEnrolledIds = new Set(
+        existingEnrollments.map((e: any) => String(e.courseId))
+      );
+      const purchasableCourses = courses.filter(
+        (c: any) => !alreadyEnrolledIds.has(String(c._id))
+      );
 
       if (purchasableCourses.length === 0) {
-        return next(new ErrorHandler("You have already purchased all selected courses", 400));
+        return next(
+          new ErrorHandler(
+            "You have already purchased all selected courses",
+            400
+          )
+        );
       }
 
-      const totalAmount = purchasableCourses.reduce((sum: number, c: any) => sum + Number(c.price || 0), 0);
+      const totalAmount = purchasableCourses.reduce(
+        (sum: number, c: any) => sum + Number(c.price || 0),
+        0
+      );
       const isMulti = purchasableCourses.length > 1;
 
       const request = new paypal.orders.OrdersCreateRequest();
@@ -70,15 +85,27 @@ export const createPayPalCheckoutSession = CatchAsyncError(
             description: isMulti
               ? `${purchasableCourses.length} courses purchase`
               : purchasableCourses[0].name,
-            custom_id: isMulti ? "multi_courses" : String((purchasableCourses[0] as any)._id),
+            custom_id: isMulti
+              ? "multi_courses"
+              : String((purchasableCourses[0] as any)._id),
             reference_id: userId?.toString(),
           },
         ],
         application_context: {
           return_url: isMulti
-            ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?courseIds=${encodeURIComponent(purchasableCourses.map((c: any) => String(c._id)).join(','))}`
-            : `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?courseId=${String((purchasableCourses[0] as any)._id)}`,
-          cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/courses?canceled=true`,
+            ? `${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/payment-success?courseIds=${encodeURIComponent(
+                purchasableCourses.map((c: any) => String(c._id)).join(",")
+              )}`
+            : `${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/payment-success?courseId=${String(
+                (purchasableCourses[0] as any)._id
+              )}`,
+          cancel_url: `${
+            process.env.FRONTEND_URL || "http://localhost:3000"
+          }/courses?canceled=true`,
           brand_name: "LMS Platform",
           landing_page: "BILLING",
           user_action: "PAY_NOW",
@@ -88,9 +115,9 @@ export const createPayPalCheckoutSession = CatchAsyncError(
 
       try {
         const order = await paypalClient.execute(request);
-        
+
         console.log("PayPal order created:", order.result.id);
-        
+
         res.status(200).json({
           success: true,
           orderId: order.result.id,
@@ -106,9 +133,19 @@ export const createPayPalCheckoutSession = CatchAsyncError(
       } catch (error: any) {
         console.error("PayPal order creation error:", error);
         if (error.statusCode === 400) {
-          return next(new ErrorHandler("Invalid PayPal request. Please check course price and details.", 400));
+          return next(
+            new ErrorHandler(
+              "Invalid PayPal request. Please check course price and details.",
+              400
+            )
+          );
         }
-        return next(new ErrorHandler("Failed to create PayPal order. Please try again.", 500));
+        return next(
+          new ErrorHandler(
+            "Failed to create PayPal order. Please try again.",
+            500
+          )
+        );
       }
     } catch (error: any) {
       console.error("Create checkout session error:", error);
@@ -127,10 +164,20 @@ export const paypalSuccess = CatchAsyncError(
       };
       const userId = req.user?._id;
 
-      console.log("PayPal success callback:", { courseId, courseIds, token, userId });
+      console.log("PayPal success callback:", {
+        courseId,
+        courseIds,
+        token,
+        userId,
+      });
 
-      if ((!courseId && (!Array.isArray(courseIds) || courseIds.length === 0)) || !token) {
-        return next(new ErrorHandler("Missing courseId(s) or PayPal token", 400));
+      if (
+        (!courseId && (!Array.isArray(courseIds) || courseIds.length === 0)) ||
+        !token
+      ) {
+        return next(
+          new ErrorHandler("Missing courseId(s) or PayPal token", 400)
+        );
       }
 
       if (!userId) {
@@ -161,19 +208,32 @@ export const paypalSuccess = CatchAsyncError(
 
         if (orderStatus !== "APPROVED") {
           return next(
-            new ErrorHandler(`PayPal order is not approved. Current status: ${orderStatus}`, 400)
+            new ErrorHandler(
+              `PayPal order is not approved. Current status: ${orderStatus}`,
+              400
+            )
           );
         }
       } catch (orderError: any) {
         console.error("PayPal order status check error:", orderError);
         if (orderError.statusCode === 404) {
           console.error("PayPal order not found. Token:", token);
-          return next(new ErrorHandler("PayPal order not found. Please check the token.", 404));
+          return next(
+            new ErrorHandler(
+              "PayPal order not found. Please check the token.",
+              404
+            )
+          );
         } else if (orderError.statusCode === 400) {
-          console.error("PayPal order invalid. Error details:", orderError.result);
+          console.error(
+            "PayPal order invalid. Error details:",
+            orderError.result
+          );
           return next(new ErrorHandler("Invalid PayPal order token.", 400));
         }
-        return next(new ErrorHandler("Failed to check PayPal order status", 500));
+        return next(
+          new ErrorHandler("Failed to check PayPal order status", 500)
+        );
       }
 
       const existingOrder = await OrderModel.findOne({
@@ -185,7 +245,11 @@ export const paypalSuccess = CatchAsyncError(
         if (!existingOrder.userId && req.user?._id) {
           await OrderModel.updateOne(
             { _id: existingOrder._id },
-            { $set: { userId: new mongoose.Types.ObjectId(String(req.user._id)) } }
+            {
+              $set: {
+                userId: new mongoose.Types.ObjectId(String(req.user._id)),
+              },
+            }
           );
         }
 
@@ -215,25 +279,42 @@ export const paypalSuccess = CatchAsyncError(
 
       try {
         captureResult = await paypalClient.execute(captureRequest);
-        console.log("PayPal capture result:", JSON.stringify(captureResult.result, null, 2));
+        console.log(
+          "PayPal capture result:",
+          JSON.stringify(captureResult.result, null, 2)
+        );
       } catch (captureError: any) {
         console.error("PayPal capture error:", captureError);
 
         if (captureError.statusCode === 400) {
-          console.error("PayPal capture 400 error details:", captureError.result);
-          return next(new ErrorHandler("Invalid PayPal order. Please check the order status.", 400));
+          console.error(
+            "PayPal capture 400 error details:",
+            captureError.result
+          );
+          return next(
+            new ErrorHandler(
+              "Invalid PayPal order. Please check the order status.",
+              400
+            )
+          );
         } else if (captureError.statusCode === 404) {
-          return next(new ErrorHandler("PayPal order not found. Please try again.", 404));
+          return next(
+            new ErrorHandler("PayPal order not found. Please try again.", 404)
+          );
         } else if (captureError.statusCode === 422) {
           return next(
-            new ErrorHandler("PayPal order cannot be captured. Order may not be approved.", 422)
+            new ErrorHandler(
+              "PayPal order cannot be captured. Order may not be approved.",
+              422
+            )
           );
         }
 
         return next(new ErrorHandler("Failed to capture PayPal payment", 500));
       }
 
-      const capture = captureResult.result.purchase_units[0].payments.captures[0];
+      const capture =
+        captureResult.result.purchase_units[0].payments.captures[0];
       const paymentId = capture.id;
       const payerId = captureResult.result.payer.payer_id;
       const paymentStatus = capture.status;
@@ -249,7 +330,12 @@ export const paypalSuccess = CatchAsyncError(
 
       if (paymentStatus !== "COMPLETED") {
         console.error(`Payment not completed. Status: ${paymentStatus}`);
-        return next(new ErrorHandler(`Payment not completed. Status: ${paymentStatus}`, 400));
+        return next(
+          new ErrorHandler(
+            `Payment not completed. Status: ${paymentStatus}`,
+            400
+          )
+        );
       }
 
       // 4) Tính items/total cho order
@@ -257,7 +343,10 @@ export const paypalSuccess = CatchAsyncError(
         courseId: String(c._id),
         price: Number(c.price || 0),
       }));
-      const total = items.reduce((s: number, it: any) => s + (it.price || 0), 0);
+      const total = items.reduce(
+        (s: number, it: any) => s + (it.price || 0),
+        0
+      );
 
       // 5) Upsert Order (hợp nhất đơn) theo token để đảm bảo idempotent ở mức DB
       const upsertFilter: any = {
@@ -284,7 +373,6 @@ export const paypalSuccess = CatchAsyncError(
         },
       };
 
-
       const consolidatedOrder = await OrderModel.findOneAndUpdate(
         upsertFilter,
         upsertUpdate,
@@ -307,7 +395,10 @@ export const paypalSuccess = CatchAsyncError(
           { $pull: { items: { courseId: { $in: purchasedIds } } } }
         );
       } catch (cartErr: any) {
-        console.error("Failed to remove purchased items from cart:", cartErr?.message || cartErr);
+        console.error(
+          "Failed to remove purchased items from cart:",
+          cartErr?.message || cartErr
+        );
       }
 
       // 7) Đặt cờ notificationSent theo kiểu nguyên tử
@@ -323,20 +414,28 @@ export const paypalSuccess = CatchAsyncError(
         for (const c of courses) {
           const cid = String((c as any)._id);
           try {
-            const existing = await EnrolledCourseModel.findOne({ userId, courseId: cid });
+            const existing = await EnrolledCourseModel.findOne({
+              userId,
+              courseId: cid,
+            });
             if (!existing) {
               await EnrolledCourseModel.create({ userId, courseId: cid });
-              await CourseModel.updateOne({ _id: c._id }, { $inc: { purchased: 1 } });
+              await CourseModel.updateOne(
+                { _id: c._id },
+                { $inc: { purchased: 1 } }
+              );
             }
 
             // 8.2 Notifications
-            await NotificationModel.create({
-              userId: userId as any,
+            await createAndSendNotification({
+              userId: userId.toString(),
               title: "Order Confirmation - PayPal",
-              message: `You have successfully purchased ${(c as any).name} via PayPal`,
+              message: `You have successfully purchased ${
+                (c as any).name
+              } via PayPal`,
             });
-            await NotificationModel.create({
-              userId: (c as any).creatorId as any,
+            await createAndSendNotification({
+              userId: (c as any).creatorId.toString(),
               title: "New Order",
               message: `${user.name} purchased ${(c as any).name} via PayPal`,
             });
@@ -396,7 +495,10 @@ export const paypalSuccess = CatchAsyncError(
           console.error("Email sending failed:", error?.message || error);
         }
       } else {
-        console.log("Notifications already sent for order:", consolidatedOrder._id);
+        console.log(
+          "Notifications already sent for order:",
+          consolidatedOrder._id
+        );
       }
 
       // 9) Trả kết quả
@@ -422,12 +524,11 @@ export const paypalSuccess = CatchAsyncError(
   }
 );
 
-
 export const checkPayPalOrderStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { orderId } = req.params;
-      
+
       if (!orderId) {
         return next(new ErrorHandler("Order ID is required", 400));
       }
@@ -435,11 +536,11 @@ export const checkPayPalOrderStatus = CatchAsyncError(
       console.log("Checking PayPal order status for orderId:", orderId);
 
       const orderRequest = new paypal.orders.OrdersGetRequest(orderId);
-      
+
       try {
         const order = await paypalClient.execute(orderRequest);
         console.log("PayPal order status:", order.result.status);
-        
+
         res.status(200).json({
           success: true,
           order: {
@@ -448,12 +549,12 @@ export const checkPayPalOrderStatus = CatchAsyncError(
             intent: order.result.intent,
             amount: order.result.purchase_units[0].amount,
             create_time: order.result.create_time,
-            update_time: order.result.update_time
-          }
+            update_time: order.result.update_time,
+          },
         });
       } catch (error: any) {
         console.error("PayPal order status check error:", error);
-        
+
         if (error.statusCode === 404) {
           console.error("PayPal order not found. OrderId:", orderId);
           return next(new ErrorHandler("PayPal order not found", 404));
@@ -461,9 +562,11 @@ export const checkPayPalOrderStatus = CatchAsyncError(
           console.error("PayPal order invalid. Error details:", error.result);
           return next(new ErrorHandler("Invalid PayPal order", 400));
         }
-        
+
         console.error("PayPal order status check error details:", error);
-        return next(new ErrorHandler("Failed to check PayPal order status", 500));
+        return next(
+          new ErrorHandler("Failed to check PayPal order status", 500)
+        );
       }
     } catch (error: any) {
       console.error("Unexpected error in checkPayPalOrderStatus:", error);
@@ -476,14 +579,14 @@ export const checkPayPalPaymentStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { paymentId } = req.params;
-      
+
       if (!paymentId) {
         return next(new ErrorHandler("Payment ID is required", 400));
       }
 
       const order = await OrderModel.findOne({
         "payment_info.id": paymentId,
-        payment_method: "paypal"
+        payment_method: "paypal",
       });
 
       if (!order) {
@@ -501,7 +604,7 @@ export const checkPayPalPaymentStatus = CatchAsyncError(
           items: (order as any).items || undefined,
           total: (order as any).total || undefined,
           courseId: (order as any).courseId || undefined,
-        }
+        },
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
@@ -513,15 +616,14 @@ export const cancelPayPalPayment = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { courseId } = req.query;
-      
+
       res.status(200).json({
         success: true,
         message: "Payment cancelled successfully",
-        courseId: courseId
+        courseId: courseId,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
 );
-
