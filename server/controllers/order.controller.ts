@@ -116,26 +116,23 @@ export const createOrder = CatchAsyncError(
       }
 
       // await redis.set(userId as string, JSON.stringify(user));
-      const userPayload = {
-        userId: user ? user._id.toString() : "",
-        title: "Xác nhận đơn hàng",
-        message: `Bạn đã mua thành công khóa học: ${course.name}`,
-      };
-      createAndSendNotification(userPayload);
+      // const userPayload = {
+      //   userId: user ? user._id.toString() : "",
+      //   title: "Xác nhận đơn hàng",
+      //   message: `Bạn đã mua thành công khóa học: ${course.name}`,
+      // };
+      // createAndSendNotification(userPayload);
 
-      // 2. Tạo thông báo cho giảng viên (người tạo khóa học)
-      if (course.creatorId) {
-        const tutorPayload = {
-          userId: course.creatorId.toString(),
-          title: "Đơn hàng mới",
-          message: `Học viên ${
-            user?.name ?? "Người dùng"
-          } vừa mua khóa học của bạn: ${course.name}`,
-        };
-        // Gọi service để lưu vào DB
-
-        createAndSendNotification(tutorPayload);
-      }
+      // if (course.creatorId) {
+      //   const tutorPayload = {
+      //     userId: course.creatorId.toString(),
+      //     title: "Đơn hàng mới",
+      //     message: `Học viên ${
+      //       user?.name ?? "Người dùng"
+      //     } vừa mua khóa học của bạn: ${course.name}`,
+      //   };
+      //   createAndSendNotification(tutorPayload);
+      // }
 
       await CourseModel.updateOne(
         { _id: course._id },
@@ -440,16 +437,16 @@ export const handleSuccessfulPayment = async (session: any) => {
       console.error("Email sending failed:", error.message);
     }
 
-    await NotificationModel.create({
-      userId: userId as any,
-      title: "Order Confirmation",
-      message: `You have successfully purchased ${course.name}`,
-    });
-    await NotificationModel.create({
-      userId: course.creatorId as any,
-      title: "New Order",
-      message: `${user.name} purchased ${course.name}`,
-    });
+    // await NotificationModel.create({
+    //   userId: userId as any,
+    //   title: "Order Confirmation",
+    //   message: `You have successfully purchased ${course.name}`,
+    // });
+    // await NotificationModel.create({
+    //   userId: course.creatorId as any,
+    //   title: "New Order",
+    //   message: `${user.name} purchased ${course.name}`,
+    // });
 
     console.log("Payment processed successfully");
   } catch (error: any) {
