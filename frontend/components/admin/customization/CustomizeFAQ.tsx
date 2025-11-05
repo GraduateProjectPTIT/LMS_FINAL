@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Plus } from "lucide-react";
 
 import SortableFAQItem, { type FAQ } from "./SortableFAQItem";
+import DeleteFAQModal from "./DeleteFAQModal";
 
 // DND-KIT
 import {
@@ -38,6 +39,15 @@ const CustomizeFAQ: React.FC = () => {
 
     // Multi-expand: lưu tập các ID đang mở 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+    // State cho delete modal
+    const [deleteModal, setDeleteModal] = useState({
+        isOpen: false,
+        faqId: "",
+        faqQuestion: "",
+        faqIndex: -1,
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // DND-KIT: cảm biến (chuột + bàn phím)
     const sensors = useSensors(
@@ -115,7 +125,7 @@ const CustomizeFAQ: React.FC = () => {
         });
     };
 
-    // Thêm 1 FAQ trống (id tạm). Mặc định MỞ item mới (xóa dòng setExpandedIds nếu không muốn auto mở)
+    // Thêm 1 FAQ trống (id tạm). Mặc định Mở item mới (xóa dòng setExpandedIds nếu không muốn auto mở)
     const addFAQ = (): void => {
         const newFaq: FAQ = { id: genTempId(), question: "", answer: "" };
         setFaqs((prev) => [...prev, newFaq]);
@@ -126,22 +136,107 @@ const CustomizeFAQ: React.FC = () => {
         });
     };
 
-    // Xoá 1 FAQ theo index — nếu xoá item đang mở thì loại khỏi Set
+    // Mở modal xác nhận xóa
     const removeFAQ = (index: number): void => {
         if (faqs.length <= 1) {
             toast.error("You need at least one FAQ item");
             return;
         }
-        const removed = faqs[index];
-        setFaqs((prev) => prev.filter((_, i) => i !== index));
-        setExpandedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(removed.id);
-            return next;
+
+        const faq = faqs[index];
+
+        // Nếu là FAQ mới (chưa lưu vào DB), xóa trực tiếp
+        const isNewFaq = !originalFaqs.find(orig => orig.id === faq.id);
+        if (isNewFaq) {
+            setFaqs(faqs.filter((_, i) => i !== index));
+            setExpandedIds((prev) => {
+                const next = new Set(prev);
+                next.delete(faq.id);
+                return next;
+            });
+            toast.success("FAQ removed");
+            return;
+        }
+
+        // Nếu là FAQ đã tồn tại, mở modal xác nhận
+        setDeleteModal({
+            isOpen: true,
+            faqId: String(faq.id),
+            faqQuestion: faq.question,
+            faqIndex: index,
         });
     };
 
-    // Kiểm tra có thay đổi không (so sánh theo thứ tự để coi reorder là “thay đổi”)
+    // Xử lý xóa FAQ bằng cách gọi API update với danh sách đã loại bỏ FAQ
+    const handleDeleteFAQ = async () => {
+        setIsDeleting(true);
+        try {
+            // Tạo danh sách FAQs mới không bao gồm FAQ cần xóa
+            const updatedFaqs = faqs.filter((_, i) => i !== deleteModal.faqIndex);
+
+            // Validate: phải còn ít nhất 1 FAQ
+            if (updatedFaqs.length === 0) {
+                toast.error("You need at least one FAQ item");
+                setIsDeleting(false);
+                return;
+            }
+
+            // Gọi API update với danh sách mới
+            const faqData = {
+                type: "FAQ",
+                faq: updatedFaqs.map(({ question, answer }) => ({ question, answer })),
+            };
+
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/layout/update_layout`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(faqData),
+                }
+            );
+
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error(data?.message ?? "Failed to delete FAQ");
+                return;
+            }
+
+            // Xóa thành công
+            toast.success("FAQ deleted successfully");
+
+            // Refresh lại danh sách từ server
+            await fetchFAQLayout();
+
+            // Đóng modal
+            setDeleteModal({
+                isOpen: false,
+                faqId: "",
+                faqQuestion: "",
+                faqIndex: -1,
+            });
+        } catch (err) {
+            console.error("Error deleting FAQ:", err);
+            toast.error("Something went wrong");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Đóng modal
+    const closeDeleteModal = () => {
+        if (!isDeleting) {
+            setDeleteModal({
+                isOpen: false,
+                faqId: "",
+                faqQuestion: "",
+                faqIndex: -1,
+            });
+        }
+    };
+
+    // Kiểm tra có thay đổi không (so sánh theo thứ tự để coi reorder là "thay đổi")
     const isUnchanged = (current: FAQ[], original: FAQ[]): boolean => {
         if (current.length !== original.length) return false;
         return current.every(
@@ -291,6 +386,15 @@ const CustomizeFAQ: React.FC = () => {
                     </form>
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteFAQModal
+                isOpen={deleteModal.isOpen}
+                onClose={closeDeleteModal}
+                onConfirm={handleDeleteFAQ}
+                faqQuestion={deleteModal.faqQuestion}
+                isLoading={isDeleting}
+            />
         </div>
     );
 };

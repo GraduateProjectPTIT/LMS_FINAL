@@ -1,15 +1,15 @@
 "use client"
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface DeleteCourseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm: () => Promise<void> | void;
     courseName: string;
-    isDeleting: boolean;
+    courseId?: string;
 }
 
 const DeleteCourseModal = ({
@@ -17,58 +17,151 @@ const DeleteCourseModal = ({
     onClose,
     onConfirm,
     courseName,
-    isDeleting
+    courseId
 }: DeleteCourseModalProps) => {
+    const [deleting, setDeleting] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+
     if (!isOpen) return null;
 
-    const handleConfirm = () => {
-        onConfirm();
+    const handleDelete = async () => {
+        if (confirmText.toLowerCase() !== "delete") {
+            toast.error('Please type "delete" to confirm');
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            await onConfirm();
+            setConfirmText("");
+            onClose();
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to delete course");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleClose = () => {
+        if (!deleting) {
+            setConfirmText("");
+            onClose();
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Escape" && !deleting) {
+            handleClose();
+        } else if (e.key === "Enter" && confirmText.toLowerCase() === "delete") {
+            handleDelete();
+        }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={handleClose}
+            />
+
+            {/* Modal */}
+            <div
+                className="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-lg shadow-2xl overflow-hidden"
+                onKeyDown={handleKeyDown}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+                            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                             Delete Course
-                        </h3>
+                        </h2>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClose}
+                        disabled={deleting}
+                        className="h-8 w-8 p-0"
+                    >
+                        <X className="h-5 w-5" />
+                    </Button>
+                </div>
+
+                {/* Content */}
+                <div className="px-6 py-6 space-y-4">
+                    {/* Course Info */}
+                    <div className="space-y-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            You are about to delete:
+                        </p>
+                        <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate" title={courseName}>
+                                {courseName}
+                            </p>
+                            {courseId && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">
+                                    ID: {courseId}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Warning Message */}
+                    <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg">
+                        <p className="text-sm text-red-800 dark:text-red-300">
+                            ⚠️ This action cannot be undone. All course data will be permanently deleted.
+                        </p>
+                    </div>
+
+                    {/* Confirmation Input */}
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Type <span className="font-bold text-red-600 dark:text-red-400">delete</span> to confirm:
+                        </label>
+                        <input
+                            type="text"
+                            value={confirmText}
+                            onChange={(e) => setConfirmText(e.target.value)}
+                            placeholder="Type 'delete' here"
+                            disabled={deleting}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md
+                bg-white dark:bg-slate-900 text-gray-900 dark:text-white
+                focus:ring-2 focus:ring-red-500 focus:border-transparent
+                disabled:opacity-50 disabled:cursor-not-allowed
+                placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                            autoFocus
+                        />
                     </div>
                 </div>
-                <div className="mb-6">
-                    <p className="text-gray-600 dark:text-gray-300">
-                        Are you sure you want to delete this course? This action cannot be undone.
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-slate-700 p-2 rounded">
-                        "{courseName}"
-                    </p>
-                </div>
-                <div className="flex justify-end gap-3">
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onClose}
-                        disabled={isDeleting}
-                        className="px-4 py-2"
+                        onClick={handleClose}
+                        disabled={deleting}
                     >
                         Cancel
                     </Button>
                     <Button
                         type="button"
-                        onClick={handleConfirm}
-                        disabled={isDeleting}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                        onClick={handleDelete}
+                        disabled={deleting || confirmText.toLowerCase() !== "delete"}
+                        className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isDeleting ? (
+                        {deleting ? (
                             <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Deleting...
                             </>
                         ) : (
-                            'Delete'
+                            "Delete Course"
                         )}
                     </Button>
                 </div>

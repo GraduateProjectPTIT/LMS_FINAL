@@ -303,15 +303,14 @@ const CustomizeCategories = () => {
                                             placeholder="Category title"
                                             value={category.title}
                                             onChange={(e) => handleTitleChange(index, e.target.value)}
-                                            className="w-full"
+                                            className="w-full border border-slate-300 dark:border-slate-500"
                                         />
                                     </div>
                                     <Button
                                         type="button"
-                                        variant="destructive"
                                         size="icon"
                                         onClick={() => removeCategory(index)}
-                                        className="shrink-0"
+                                        className="shrink-0 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-400 hover:bg-red-500 dark:hover:bg-red-700 hover:cursor-pointer text-gray-500 hover:text-white dark:text-black dark:hover:text-white"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>

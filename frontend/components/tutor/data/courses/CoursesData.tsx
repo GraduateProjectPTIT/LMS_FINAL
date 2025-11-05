@@ -317,7 +317,7 @@ const CoursesData = () => {
                 onClose={handleDeleteCancel}
                 onConfirm={handleDeleteConfirm}
                 courseName={courseToDelete?.name || ""}
-                isDeleting={isDeleting}
+                courseId={courseToDelete?._id || ""}
             />
         </div>
     );

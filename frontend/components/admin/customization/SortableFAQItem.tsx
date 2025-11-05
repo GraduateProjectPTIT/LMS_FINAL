@@ -64,14 +64,14 @@ const SortableFAQItem = ({
                         placeholder="Enter question here ..."
                         value={faq.question}
                         onChange={(e) => handleQuestionChange(index, e.target.value)}
-                        className="border-none pl-2 text-xs md:text-base font-medium focus:ring-0 shadow-none focus:shadow-none dark:text-white bg-transparent"
+                        className="border border-slate-300 dark:border-slate-500 pl-2 text-xs md:text-base font-medium focus:ring-0 shadow-none focus:shadow-none dark:text-white bg-transparent"
                         onClick={(e) => e.stopPropagation()} // tránh toggle khi click vào input
                         required
                     />
                 </div>
 
                 {/* Nút xoá + nút thu gọn/mở rộng */}
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 ml-2">
                     <Button
                         type="button"
                         variant="ghost"
@@ -80,7 +80,7 @@ const SortableFAQItem = ({
                             e.stopPropagation();
                             removeFAQ(index);
                         }}
-                        className="h-8 w-8 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-8 w-8 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-200 dark:hover:bg-red-900/70 hover:cursor-pointer"
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
