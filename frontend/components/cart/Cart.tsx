@@ -4,9 +4,9 @@ import { RootState } from '@/redux/store'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { getCartSuccess, getCartStart, getCartFailure } from '@/redux/cart/cartSlice'
-import SuggestedCourse from './SuggestedCourse'
 import CartSummary from './CartSummary'
 import CartContent from './CartContent'
+import RecommendedCourses from './RecommendedCourses'
 import toast from 'react-hot-toast'
 import { CartItem } from "@/type"
 
@@ -88,7 +88,7 @@ const Cart = () => {
                             />
                         </div>
                     </div>
-                    <SuggestedCourse />
+                    <RecommendedCourses />
                 </div>
             </div>
         </div>

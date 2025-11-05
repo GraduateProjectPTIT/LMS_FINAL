@@ -12,7 +12,7 @@ export const createCategoryService = async (
 };
 
 export const getAllCategoriesService = async (): Promise<ICategory[]> => {
-  const categories = await CategoryModel.find().sort({ createdAt: -1 });
+  const categories = await CategoryModel.find();
   return categories;
 };
 

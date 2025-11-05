@@ -10,27 +10,11 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
-import SortableCategoryItem, { type Category } from "./SortableCategoryItem";
+import { type Category } from "./SortableCategoryItem";
 import DeleteCategoryModal from "./DeleteCategoryModal";
-
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragEndEvent,
-} from "@dnd-kit/core";
-
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 
 const CustomizeCategories = () => {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -46,12 +30,6 @@ const CustomizeCategories = () => {
         categoryIndex: -1,
     });
     const [isDeleting, setIsDeleting] = useState(false);
-
-    // DND-KIT: cảm biến (chuột + bàn phím)
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
 
     // Fetch Categories từ API
     const fetchCategories = async () => {
@@ -296,21 +274,6 @@ const CustomizeCategories = () => {
         }
     };
 
-    // Drag end (khi thả item)
-    const handleDragEnd = (event: DragEndEvent): void => {
-        const { active, over } = event;
-        if (!over) return;
-
-        if (active.id !== over.id) {
-            setCategories((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
-                if (oldIndex === -1 || newIndex === -1) return items;
-                return arrayMove(items, oldIndex, newIndex);
-            });
-        }
-    };
-
     return (
         <div>
             <Card className="theme-mode w-full border border-gray-300 dark:border-slate-600 shadow-md">
@@ -320,28 +283,41 @@ const CustomizeCategories = () => {
                     </CardTitle>
                     <CardDescription className="text-center dark:text-gray-400">
                         {categoriesExist
-                            ? "Update and reorder your website categories"
+                            ? "Update your website categories"
                             : "Create categories for your website"}
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Bọc danh sách bằng DndContext để cho phép drag-drop */}
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                            <SortableContext items={categories.map((category) => category.id)} strategy={verticalListSortingStrategy}>
-                                {categories.map((category, index) => (
-                                    <SortableCategoryItem
-                                        key={category.id}
-                                        id={category.id}
-                                        category={category}
-                                        index={index}
-                                        handleTitleChange={handleTitleChange}
-                                        removeCategory={removeCategory}
-                                    />
-                                ))}
-                            </SortableContext>
-                        </DndContext>
+                        {/* Danh sách categories */}
+                        <div className="space-y-4">
+                            {categories.map((category, index) => (
+                                <div
+                                    key={category.id}
+                                    className="flex items-center gap-3 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+                                >
+                                    <div className="flex-1">
+                                        <Input
+                                            type="text"
+                                            placeholder="Category title"
+                                            value={category.title}
+                                            onChange={(e) => handleTitleChange(index, e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        onClick={() => removeCategory(index)}
+                                        className="shrink-0"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
 
                         {/* Nút thêm Category */}
                         <Button
@@ -353,12 +329,6 @@ const CustomizeCategories = () => {
                             <Plus className="h-4 w-4 mr-2" />
                             Add New Category
                         </Button>
-
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                <span className="font-medium">Tip:</span> Drag and drop categories to reorder them. The order shown here will be used on your website.
-                            </p>
-                        </div>
 
                         {/* Nút submit */}
                         <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500">
