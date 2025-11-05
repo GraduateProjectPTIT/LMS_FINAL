@@ -1,5 +1,3 @@
-// src/redux/notification/notificationSlice.ts
-
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Notification } from "@/type";
 
@@ -38,45 +36,33 @@ const notificationsSlice = createSlice({
       state.error = action.payload ?? "Failed to load notifications";
     },
 
-    // mark one
+    // đánh dấu 1 notification đã được đọc
     markOneStart: (state) => {
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = true;
       state.error = null;
     },
     markOneSuccess: (state, action: PayloadAction<string>) => {
       const id = action.payload;
       const i = state.items.findIndex((n) => n._id === id);
       if (i >= 0) state.items[i].status = "read";
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = false;
       state.error = null;
     },
     markOneFailure: (state, action: PayloadAction<any>) => {
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = false;
       state.error = action.payload ?? "Failed to mark as read";
     },
 
-    // mark all
+    // đánh dấu tất cả notification đã được đọc
     markAllStart: (state) => {
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = true;
       state.error = null;
     },
     markAllSuccess: (state) => {
       state.items = state.items.map((n) => ({ ...n, status: "read" }));
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = false;
       state.error = null;
     },
     markAllFailure: (state, action: PayloadAction<any>) => {
-      // <<< SỬA LỖI: Không set loading toàn cục
-      // state.loading = false;
       state.error = action.payload ?? "Failed to mark all as read";
     },
 
-    // SSE
+    // trạng thái kết nối SSE
     setConnected: (state, action: PayloadAction<boolean>) => {
       state.connected = action.payload;
     },

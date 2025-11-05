@@ -1,6 +1,5 @@
 "use client";
 
-// Đã loại bỏ 'useCallback' vì không còn dùng 'fetchNotifications'
 import React, { useMemo, useState } from "react";
 import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -10,7 +9,6 @@ import { useRouter } from "next/navigation";
 import Loader from "../Loader";
 import { Notification } from "@/type";
 import {
-  // ĐÃ XÓA: fetchStart, fetchSuccess, fetchFailure
   markOneStart,
   markOneSuccess,
   markOneFailure,
@@ -44,7 +42,6 @@ const Notifications = () => {
     [items]
   );
 
-  // ĐÃ XÓA: Toàn bộ hàm 'fetchNotifications'
   // NotificationProvider sẽ lo việc fetch lần đầu và lắng nghe SSE.
 
   // Mark as read 1 cái -> update store ngay, đồng bộ với BE
@@ -105,23 +102,20 @@ const Notifications = () => {
           }
         }}
         disabled={isMarking}
-        className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
-          isUnread ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
-        } ${isMarking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+        className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isUnread ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
+          } ${isMarking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         <div className="flex items-start gap-3">
           <div
-            className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
-              isUnread ? "bg-blue-600" : "bg-transparent"
-            }`}
+            className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${isUnread ? "bg-blue-600" : "bg-transparent"
+              }`}
           />
           <div className="flex-1 min-w-0">
             <div
-              className={`text-sm ${
-                isUnread
-                  ? "font-semibold text-gray-900 dark:text-gray-100"
-                  : "font-normal text-gray-700 dark:text-gray-300"
-              }`}
+              className={`text-sm ${isUnread
+                ? "font-semibold text-gray-900 dark:text-gray-100"
+                : "font-normal text-gray-700 dark:text-gray-300"
+                }`}
             >
               {n.title}
             </div>
@@ -161,7 +155,6 @@ const Notifications = () => {
   return (
     <DropdownMenu
       open={open}
-      // ĐÃ SỬA: Chỉ cần setOpen, không cần fetch khi mở
       onOpenChange={(o) => {
         setOpen(o);
       }}

@@ -1,15 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Loader from "../Loader";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import {
-  fetchStart,
-  fetchSuccess,
-  fetchFailure,
   markOneStart,
   markOneSuccess,
   markOneFailure,
@@ -17,22 +14,45 @@ import {
   markAllSuccess,
   markAllFailure,
 } from "@/redux/notification/notificationSlice";
+import AllNotificationsPagination from "./AllNotificationsPagination";
+
+interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
 
 const AllNotifications = () => {
   const dispatch = useDispatch();
 
-  const { items, loading } = useSelector((s: RootState) => s.notifications);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const [marking, setMarking] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
 
-  const fetchNotifications = useCallback(async () => {
+  const [meta, setMeta] = useState<PaginationMeta>({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    pageSize: 10
+  });
+
+  const { items: dropdownItems } = useSelector((s: RootState) => s.notifications);
+
+  const unreadCount = useMemo(
+    () => dropdownItems.filter((n) => n.status === "unread").length,
+    [dropdownItems]
+  );
+
+  const fetchNotifications = useCallback(async (page: number, limit: number) => {
     try {
-      dispatch(fetchStart());
+      setLoading(true);
       const status = activeTab === "unread" ? "unread" : "all";
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/my?status=${status}&page=1&limit=25`,
+        `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/my?status=${status}&page=${page}&limit=${limit}`,
         {
           method: "GET",
           credentials: "include",
@@ -42,31 +62,60 @@ const AllNotifications = () => {
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load notifications");
       }
-      dispatch(fetchSuccess(data.notifications || []));
+      setItems(data.notifications || []);
+
+      // Cập nhật meta từ pagination object
+      const pagination = data.pagination || {};
+      setMeta({
+        totalItems: pagination.total || 0,
+        totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || 10)),
+        currentPage: pagination.page || 1,
+        pageSize: pagination.limit || 10
+      });
     } catch (err: any) {
-      dispatch(fetchFailure(err.message || "Cannot load notifications"));
+      console.error("Failed to fetch notifications:", err);
       toast.error(err.message || "Cannot load notifications");
+    } finally {
+      setLoading(false);
     }
-  }, [activeTab, dispatch]);
+  }, [activeTab]);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    fetchNotifications(meta.currentPage, meta.pageSize);
+  }, [meta.currentPage, meta.pageSize, activeTab]);
 
-  // Mark as read 1 cái
+  const handlePageChange = (newPage: number) => {
+    setMeta(prev => ({ ...prev, currentPage: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Đánh dấu đọc 1 notification
   const markOne = async (id: string) => {
     try {
       setMarking(id);
       dispatch(markOneStart());
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/${id}/read`,
-        { method: "PUT", credentials: "include" }
+        {
+          method: "PUT",
+          credentials: "include"
+        }
       );
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.message || "Failed to mark as read");
       }
+
+      // 1. Dispatch tới Redux (để dropdown cập nhật)
       dispatch(markOneSuccess(id));
+
+      // 2. Cập nhật state cục bộ (để UI trang này cập nhật)
+      setItems(prevItems =>
+        prevItems.map(item => item._id === id ? { ...item, status: 'read' } : item)
+      );
+
       toast.success("Marked as read");
     } catch (err: any) {
       dispatch(markOneFailure(err.message || "Cannot mark as read"));
@@ -76,20 +125,33 @@ const AllNotifications = () => {
     }
   };
 
-  // Mark all as read
+  // Đánh dấu đọc tất cả notifications
   const markAll = async () => {
     try {
       setMarkingAll(true);
       dispatch(markAllStart());
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/my/read_all`,
-        { method: "PUT", credentials: "include" }
+        {
+          method: "PUT",
+          credentials: "include"
+        }
       );
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.message || "Failed to mark all as read");
       }
+
+      // 1. Dispatch tới Redux (để dropdown cập nhật)
       dispatch(markAllSuccess());
+
+      // 2. Cập nhật state cục bộ (để UI trang này cập nhật)
+      setItems(prevItems =>
+        prevItems.map(item => ({ ...item, status: 'read' }))
+      );
+
       toast.success("All notifications marked as read");
     } catch (err: any) {
       dispatch(markAllFailure(err.message || "Cannot mark all as read"));
@@ -117,8 +179,6 @@ const AllNotifications = () => {
     });
   };
 
-  const unreadCount = items.filter((n) => n.status === "unread").length;
-
   return (
     <div className="w-full py-8">
       <div className="max-w-4xl mx-auto">
@@ -135,22 +195,26 @@ const AllNotifications = () => {
             {/* Tabs */}
             <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
               <button
-                onClick={() => setActiveTab("all")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === "all"
-                    ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
+                onClick={() => {
+                  setActiveTab("all");
+                  setMeta(prev => ({ ...prev, currentPage: 1 }));
+                }}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "all"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
               >
                 All
               </button>
               <button
-                onClick={() => setActiveTab("unread")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors relative ${
-                  activeTab === "unread"
-                    ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
+                onClick={() => {
+                  setActiveTab("unread");
+                  setMeta(prev => ({ ...prev, currentPage: 1 }));
+                }}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors relative ${activeTab === "unread"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
               >
                 Unread
                 {unreadCount > 0 && (
@@ -197,49 +261,55 @@ const AllNotifications = () => {
                 </p>
               </div>
             ) : (
-              items.map((n) => {
-                const isUnread = n.status === "unread";
+              <>
+                {items.map((n) => {
+                  const isUnread = n.status === "unread";
 
-                return (
-                  <div
-                    key={n._id}
-                    onClick={() => markOne(n._id)}
-                    className={`group p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
-                      isUnread ? "bg-blue-50/30 dark:bg-blue-950/10" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Unread Indicator */}
-                      <div
-                        className={`mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                          isUnread ? "bg-blue-600" : "bg-transparent"
+                  return (
+                    <div
+                      key={n._id}
+                      onClick={() => markOne(n._id)}
+                      className={`group p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${isUnread ? "bg-blue-50/30 dark:bg-blue-950/10" : ""
                         }`}
-                      />
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Unread Indicator */}
                         <div
-                          className={`text-base mb-1 ${
-                            isUnread
+                          className={`mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${isUnread ? "bg-blue-600" : "bg-transparent"
+                            }`}
+                        />
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`text-base mb-1 ${isUnread
                               ? "font-semibold text-gray-900 dark:text-gray-100"
                               : "font-normal text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          {n.title}
-                        </div>
-                        {n.message && (
-                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                            {n.message}
+                              }`}
+                          >
+                            {n.title}
                           </div>
-                        )}
-                        <div className="text-xs text-slate-500 dark:text-slate-500">
-                          {formatTimeAgo(new Date(n.createdAt))}
+                          {n.message && (
+                            <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              {n.message}
+                            </div>
+                          )}
+                          <div className="text-xs text-slate-500 dark:text-slate-500">
+                            {formatTimeAgo(new Date(n.createdAt))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+
+                {/* Pagination */}
+                <AllNotificationsPagination
+                  currentPage={meta.currentPage}
+                  totalPages={Math.max(meta.totalPages, 1)}
+                  onPageChange={handlePageChange}
+                />
+              </>
             )}
           </div>
         </div>

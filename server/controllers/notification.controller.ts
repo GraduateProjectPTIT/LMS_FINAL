@@ -17,6 +17,9 @@ export const notificationStreamController = CatchAsyncError(
       return; // Dừng hàm
     }
 
+    const origin = req.headers.origin || "http://localhost:3000";
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
