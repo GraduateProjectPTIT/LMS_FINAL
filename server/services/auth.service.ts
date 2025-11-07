@@ -460,7 +460,11 @@ export const loginUserService = async (
 
   const userFromDB = await userModel.findOne({ email }).select("+password");
 
-  if (!userFromDB || !(await userFromDB.comparePassword(password))) {
+  if (
+    !userFromDB ||
+    !userFromDB.password ||
+    !(await userFromDB.comparePassword(password))
+  ) {
     throw new ErrorHandler("Invalid email or password", 400);
   }
 
