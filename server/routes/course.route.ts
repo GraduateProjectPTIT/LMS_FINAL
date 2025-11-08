@@ -33,6 +33,9 @@ import {
   getLectureComments,
   getLatestReviews,
   getRelatedCourses,
+  softDeleteCourse,
+  restoreCourse,
+  hardDeleteCourse,
 } from "../controllers/course.controller";
 import CourseModel from "../models/course.model";
 const courseRouter = express.Router();
@@ -134,6 +137,29 @@ courseRouter.delete(
   authorizeRoles("admin", "tutor"),
   checkOwnership(CourseModel),
   deleteCourse
+);
+
+courseRouter.put(
+  "/course/soft_delete/:id",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
+  softDeleteCourse
+);
+
+courseRouter.put(
+  "/course/restore/:id",
+  isAuthenticated,
+  authorizeRoles("admin", "tutor"),
+  checkOwnership(CourseModel),
+  restoreCourse
+);
+
+courseRouter.delete(
+  "/course/hard_delete/:id",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  hardDeleteCourse
 );
 courseRouter.get("/course/search", searchCourses);
 courseRouter.get("/course/categories", getAllCategories);
