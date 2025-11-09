@@ -12,6 +12,9 @@ import {
   addReviewService,
   addReplyToReviewService,
   deleteCourseService,
+  softDeleteCourseService,
+  restoreCourseService,
+  hardDeleteCourseService,
   getAllCategoriesService,
   getAllLevelsService,
   generateUploadSignatureService,
@@ -289,6 +292,49 @@ export const deleteCourse = CatchAsyncError(
     try {
       const courseId = req.params.id;
       deleteCourseService(courseId, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// soft delete or retire course (admin/tutor + ownership)
+export const softDeleteCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      const { retire = false, reason = "", removeFromCarts = true, notify = true } = (req.body || {}) as any;
+      await softDeleteCourseService(
+        req.user,
+        courseId,
+        res,
+        next,
+        { retire: Boolean(retire), reason: String(reason || ""), removeFromCarts: Boolean(removeFromCarts), notify: Boolean(notify) }
+      );
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// restore an archived/retired course (admin/tutor + ownership)
+export const restoreCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await restoreCourseService(req.user, courseId, res, next);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// hard delete a course (admin only)
+export const hardDeleteCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      await hardDeleteCourseService(req.user, courseId, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

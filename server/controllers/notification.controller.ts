@@ -79,18 +79,19 @@ export const getMyNotifications = CatchAsyncError(
     const pageNum = Math.max(1, Number(page));
     const pageSize = Math.min(100, Math.max(1, Number(limit)));
 
-    const { notifications, total } =
-      await NotificationService.getUserNotificationsService({
-        userId: userId.toString(),
-        filter,
-        page: pageNum,
-        limit: pageSize,
-      });
+    const { data, meta } = await NotificationService.getUserNotificationsService({
+      userId: userId.toString(),
+      filter,
+      page: pageNum,
+      limit: pageSize,
+    });
 
     res.status(200).json({
       success: true,
-      notifications,
-      pagination: { page: pageNum, limit: pageSize, total },
+      paginatedResult: {
+        data,
+        meta,
+      },
     });
   }
 );

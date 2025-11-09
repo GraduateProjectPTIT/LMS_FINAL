@@ -34,7 +34,16 @@ export const getUserNotificationsService = async (options: {
     NotificationModel.countDocuments(findFilter),
   ]);
 
-  return { notifications, total };
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+  return {
+    data: notifications,
+    meta: {
+      totalItems: total,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 };
 
 export const markNotificationAsReadService = async (
