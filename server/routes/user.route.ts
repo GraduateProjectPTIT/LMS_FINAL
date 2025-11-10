@@ -13,6 +13,11 @@ const userRouter = express.Router();
 // Các route cho người dùng thông thường (đã đăng nhập)
 userRouter.get("/user/me", isAuthenticated, getUserInfo);
 userRouter.put("/user/update_user_info", isAuthenticated, updateUserInfo);
+userRouter.put(
+  "/update-notification-settings",
+  isAuthenticated,
+  updateNotificationSettings // 2. Thêm route mới
+);
 userRouter.put("/user/update_avatar", isAuthenticated, updateAvatar);
 userRouter.put("/user/update_password", isAuthenticated, updatePassword);
 userRouter.delete("/user/me", isAuthenticated, deleteMyAccount);

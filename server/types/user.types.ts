@@ -21,6 +21,14 @@ export interface IUpdateStudentInterestDto {
   interests: string[];
 }
 
+export interface INotificationSettingsData {
+  on_reply_comment?: boolean;
+  on_new_lesson?: boolean;
+  on_payment_success?: boolean;
+  on_new_student?: boolean;
+  on_new_review?: boolean;
+}
+
 // Interface cho các vai trò cụ thể
 export interface IStudent extends Document {
   userId: Types.ObjectId;
