@@ -6,6 +6,7 @@ import {
   updatePassword,
   deleteMyAccount,
   updateAvatar,
+  updateNotificationSettings,
 } from "../controllers/user.controller";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth";
 const userRouter = express.Router();
