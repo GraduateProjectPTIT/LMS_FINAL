@@ -172,6 +172,68 @@ export const getOrderDetailService = async (
 };
 
 
+export const getUserOrderDetailService = async (
+  user: any,
+  orderId: string,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return next(new ErrorHandler("Invalid order id", 400));
+    }
+
+    const order = await OrderModel.findById(orderId).populate('userId', 'name email avatar');
+    if (!order) {
+      return next(new ErrorHandler("Order not found", 404));
+    }
+
+    if (String((order as any).userId?._id || (order as any).userId) !== String(user?._id)) {
+      return next(new ErrorHandler("You do not have access to this order", 403));
+    }
+
+    const normalized = normalizeOrder(order);
+
+    const itemCourseIds: string[] = Array.isArray(normalized?.items)
+      ? normalized.items
+          .map((it: any) => String(it?.courseId || ""))
+          .filter((id: string) => id && mongoose.Types.ObjectId.isValid(id))
+      : [];
+
+    if (normalized?.courseId && mongoose.Types.ObjectId.isValid(String(normalized.courseId))) {
+      itemCourseIds.push(String(normalized.courseId));
+    }
+
+    const uniqueCourseIds = [...new Set(itemCourseIds)];
+
+    const courses = uniqueCourseIds.length
+      ? await CourseModel.find({ _id: { $in: uniqueCourseIds } })
+          .select("_id name price thumbnail creatorId")
+          .populate("creatorId", "name email avatar")
+          .lean()
+      : [];
+
+    const courseMap = new Map<string, any>(
+      courses.map((c: any) => [String(c._id), c])
+    );
+
+    const items = Array.isArray(normalized?.items)
+      ? normalized.items.map((it: any) => {
+          const cid = String(it?.courseId || "");
+          const found = courseMap.get(cid);
+          return found ? found : it;
+        })
+      : normalized?.items;
+
+    return res.status(200).json({
+      success: true,
+      order: { ...normalized, items },
+    });
+  } catch (error: any) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
 export const getTutorOrderDetailService = async (
   user: any,
   orderId: string,

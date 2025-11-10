@@ -9,6 +9,7 @@ import {
   getPaidOrdersService,
   newOrder,
   getOrderDetailService,
+  getUserOrderDetailService,
   getTutorOrdersService,
   getTutorOrderDetailService,
 } from "../services/order.service";
@@ -186,6 +187,17 @@ export const getPaidOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       getPaidOrdersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const getUserOrderDetail = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orderId = req.params.id;
+      await getUserOrderDetailService(req.user, orderId, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
