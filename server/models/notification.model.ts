@@ -5,6 +5,7 @@ export interface CreateNotificationInput {
   userId: string; // Chỉ cần ID của user dưới dạng string
   title: string;
   message: string;
+  link?: string; // URL liên kết đến tài nguyên cụ thể (nếu có)
 }
 
 export interface INotification extends Document {

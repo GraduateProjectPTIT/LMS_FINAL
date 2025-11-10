@@ -39,7 +39,6 @@ export interface IUser extends Document {
     on_reply_comment: boolean;
 
     // Cài đặt cho vai trò Student
-    on_new_lesson: boolean;
     on_payment_success: boolean;
 
     // Cài đặt cho vai trò Tutor
@@ -120,7 +119,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
         // Chung
         on_reply_comment: { type: Boolean, default: true },
 
-        on_new_lesson: { type: Boolean, default: true },
         on_payment_success: { type: Boolean, default: true },
 
         // Của Tutor
@@ -129,7 +127,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       },
       default: () => ({
         on_reply_comment: true,
-        on_new_lesson: true,
         on_payment_success: true,
         on_new_student: true,
         on_new_review: true,

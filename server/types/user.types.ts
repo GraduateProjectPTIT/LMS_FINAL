@@ -23,7 +23,6 @@ export interface IUpdateStudentInterestDto {
 
 export interface INotificationSettingsData {
   on_reply_comment?: boolean;
-  on_new_lesson?: boolean;
   on_payment_success?: boolean;
   on_new_student?: boolean;
   on_new_review?: boolean;

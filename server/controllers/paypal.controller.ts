@@ -427,18 +427,32 @@ export const paypalSuccess = CatchAsyncError(
             }
 
             // 8.2 Notifications
-            await createAndSendNotification({
-              userId: userId.toString(),
-              title: "Order Confirmation - PayPal",
-              message: `You have successfully purchased ${
-                (c as any).name
-              } via PayPal`,
-            });
-            await createAndSendNotification({
-              userId: (c as any).creatorId.toString(),
-              title: "New Order",
-              message: `${user.name} purchased ${(c as any).name} via PayPal`,
-            });
+            if (user && user.notificationSettings.on_payment_success) {
+              await createAndSendNotification({
+                userId: userId.toString(), // ID của người mua
+                title: "Order Confirmation - PayPal",
+                message: `You have successfully purchased ${
+                  (c as any).name
+                } via PayPal`,
+              });
+            }
+            const creatorId = (c as any).creatorId.toString();
+            const creatorUser = await userModel
+              .findById(creatorId)
+              .select("notificationSettings");
+
+            // Chỉ gửi nếu tìm thấy user (creatorUser) VÀ họ bật 'on_new_student'
+            if (
+              creatorUser &&
+              creatorUser.notificationSettings.on_new_student
+            ) {
+              await createAndSendNotification({
+                userId: creatorId, // ID của người bán
+                title: "New Order",
+                message: `${user.name} purchased ${(c as any).name} via PayPal`,
+                link: `fakeURL`, // Thêm link
+              });
+            }
           } catch (err: any) {
             console.error(
               "Failed processing course enrollment/notification:",
