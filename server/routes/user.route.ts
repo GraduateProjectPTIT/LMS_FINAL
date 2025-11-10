@@ -15,7 +15,7 @@ const userRouter = express.Router();
 userRouter.get("/user/me", isAuthenticated, getUserInfo);
 userRouter.put("/user/update_user_info", isAuthenticated, updateUserInfo);
 userRouter.put(
-  "/update-notification-settings",
+  "/user/update_notification_settings",
   isAuthenticated,
   updateNotificationSettings // 2. Thêm route mới
 );
