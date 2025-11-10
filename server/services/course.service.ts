@@ -370,7 +370,11 @@ export const getRelatedCoursesService = async (
     }
 
     if (!filter.categories) {
-      const fallback = await CourseModel.find({ status: "published" })
+      const baseFilter: any = { status: "published" };
+      if (excludeId) {
+        baseFilter._id = { $ne: excludeId };
+      }
+      const fallback = await CourseModel.find(baseFilter)
         .select(
           "name price estimatedPrice thumbnail purchased courseData.sectionContents.videoLength"
         )
@@ -680,7 +684,7 @@ export const getTopRatedCoursesService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
-    const courses = await CourseModel.find({ status: "published" })
+    const courses = await CourseModel.find({ status: "published", ratings: { $gt: 0 } })
       .select(
         "name price estimatedPrice thumbnail purchased ratings courseData.sectionContents.videoLength"
       )
