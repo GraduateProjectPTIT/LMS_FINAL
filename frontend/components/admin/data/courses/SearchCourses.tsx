@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 interface FilterState {
     sortBy: string;
     sortOrder: string;
+    status: string;
 }
 
 interface SearchCoursesProps {
@@ -21,6 +22,7 @@ interface SearchCoursesProps {
     onApplyFilters: () => void;
     onClearFilters: () => void;
     onRemoveSortFilter: () => void;
+    onRemoveStatusFilter: () => void;
 }
 
 const SearchCourses = ({
@@ -34,7 +36,8 @@ const SearchCourses = ({
     onFilterChange,
     onApplyFilters,
     onClearFilters,
-    onRemoveSortFilter
+    onRemoveSortFilter,
+    onRemoveStatusFilter
 }: SearchCoursesProps) => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -73,17 +76,26 @@ const SearchCourses = ({
         }
     };
 
+    const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onFilterChange({ status: e.target.value });
+    };
+
     const handleApplyClick = () => {
         onApplyFilters();
         setIsFilterOpen(false);
     }
 
     // Kiểm tra active filters dựa trên appliedFilters
-    const hasActiveFilters = (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc');
+    const hasActiveFilters = (
+        appliedFilters.sortBy !== 'createdAt' ||
+        appliedFilters.sortOrder !== 'desc' ||
+        appliedFilters.status !== 'all'
+    );
 
     const getActiveFiltersCount = () => {
         let count = 0;
         if (appliedFilters.sortBy !== 'createdAt' || appliedFilters.sortOrder !== 'desc') count++;
+        if (appliedFilters.status !== 'all') count++;
         return count;
     };
 
@@ -232,6 +244,27 @@ const SearchCourses = ({
                                         <option value="name-desc">Name: Z to A</option>
                                         <option value="date-newest">Newest</option>
                                         <option value="date-oldest">Oldest</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Status Filter */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Status
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={filters.status}
+                                        onChange={handleStatusChange}
+                                        className="w-full border border-gray-300 dark:border-slate-500 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="archived">Archived</option>
+                                        <option value="retired">Retired</option>
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                 </div>

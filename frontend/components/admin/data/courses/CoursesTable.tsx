@@ -46,6 +46,7 @@ interface ICourseData {
     ratings: number;
     purchased: number;
     creatorId: ICreator;
+    status: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -53,12 +54,14 @@ interface ICourseData {
 interface CoursesTableProps {
     courses: ICourseData[];
     onDelete: (course: ICourseData) => void;
+    onRestore?: (course: ICourseData) => void;
     isLoading?: boolean;
 }
 
 const CoursesTable = ({
     courses,
     onDelete,
+    onRestore,
     isLoading = false
 }: CoursesTableProps) => {
     const formatPrice = (price: number) => {
@@ -87,10 +90,10 @@ const CoursesTable = ({
                                 <TableHead>Course Name</TableHead>
                                 <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
-                                <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
@@ -144,10 +147,10 @@ const CoursesTable = ({
                                 <TableHead>Course Name</TableHead>
                                 <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
-                                <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
@@ -180,10 +183,10 @@ const CoursesTable = ({
                             <TableHead className='border-r'>Course Name</TableHead>
                             <TableHead className='border-r'>Creator</TableHead>
                             <TableHead className='border-r'>Price</TableHead>
-                            <TableHead className='border-r'>Estimated Price</TableHead>
                             <TableHead className='border-r'>Level</TableHead>
                             <TableHead className='border-r'>Ratings</TableHead>
                             <TableHead className='border-r'>Purchased</TableHead>
+                            <TableHead className='border-r'>Status</TableHead>
                             <TableHead className='border-r'>Created At</TableHead>
                             <TableHead className="w-16 text-center">Actions</TableHead>
                         </TableRow>
@@ -213,12 +216,7 @@ const CoursesTable = ({
                                         {formatPrice(course.price)}
                                     </span>
                                 </TableCell>
-                                {/* Estimated Price */}
-                                <TableCell className='border-r'>
-                                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                                        {formatPrice(course.estimatedPrice)}
-                                    </span>
-                                </TableCell>
+
                                 {/* Level */}
                                 <TableCell className='border-r'>
                                     <span className="text-sm text-gray-600 dark:text-gray-300">
@@ -237,6 +235,12 @@ const CoursesTable = ({
                                         {course.purchased}
                                     </span>
                                 </TableCell>
+                                {/* Status */}
+                                <TableCell className='border-r'>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        {course.status}
+                                    </span>
+                                </TableCell>
                                 {/* Created At */}
                                 <TableCell className='border-r'>
                                     <span className="text-sm text-gray-600 dark:text-gray-300">
@@ -246,7 +250,11 @@ const CoursesTable = ({
                                 {/* Actions */}
                                 <TableCell>
                                     <div className='w-full h-full flex justify-center items-center'>
-                                        <CourseActions course={course} onDelete={onDelete} />
+                                        <CourseActions
+                                            course={course}
+                                            onDelete={onDelete}
+                                            onRestore={onRestore}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

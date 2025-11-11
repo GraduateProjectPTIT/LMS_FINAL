@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { FaUserEdit } from 'react-icons/fa';
 import { IoAlertCircleOutline } from "react-icons/io5";
 
-interface PersonalProps {
+interface IPersonalProps {
     user: any;
 }
 
@@ -34,7 +34,7 @@ const updatePersonalInfoSchema = z.object({
 
 type UpdateFormValues = z.infer<typeof updatePersonalInfoSchema>
 
-const Personal = ({ user }: PersonalProps) => {
+const Personal = ({ user }: IPersonalProps) => {
     const [isEditing, setIsEditing] = useState(false); // check xem người dùng có đang chỉnh sửa không
     const [avatarPreview, setAvatarPreview] = useState<string>(""); // Lưu chuỗi base64 để hiển thị lên giao diện
     const [isUploadingImage, setIsUploadingImage] = useState(false);

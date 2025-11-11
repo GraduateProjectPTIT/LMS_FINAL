@@ -62,15 +62,16 @@ const AllNotifications = () => {
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load notifications");
       }
-      setItems(data.notifications || []);
 
-      // Cập nhật meta từ pagination object
-      const pagination = data.pagination || {};
+      const paginatedResult = data.paginatedResult || {};
+      setItems(paginatedResult.data || []);
+
+      const metaData = paginatedResult.meta || {};
       setMeta({
-        totalItems: pagination.total || 0,
-        totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || 10)),
-        currentPage: pagination.page || 1,
-        pageSize: pagination.limit || 10
+        totalItems: metaData.totalItems || 0,
+        totalPages: metaData.totalPages || 1,
+        currentPage: metaData.currentPage || 1,
+        pageSize: metaData.pageSize || 10
       });
     } catch (err: any) {
       console.error("Failed to fetch notifications:", err);

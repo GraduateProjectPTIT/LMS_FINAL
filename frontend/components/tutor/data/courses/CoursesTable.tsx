@@ -46,6 +46,7 @@ interface ICourseData {
     ratings: number;
     purchased: number;
     creatorId: ICreator;
+    status: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -54,12 +55,14 @@ interface CoursesTableProps {
     courses: ICourseData[];
     onDelete: (course: ICourseData) => void;
     isLoading?: boolean;
+    onRestore: (course: ICourseData) => void;
 }
 
 const CoursesTable = ({
     courses,
     onDelete,
-    isLoading = false
+    isLoading = false,
+    onRestore
 }: CoursesTableProps) => {
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat("en-US", {
@@ -85,12 +88,12 @@ const CoursesTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Course Name</TableHead>
-                                <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
                                 <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
@@ -142,12 +145,12 @@ const CoursesTable = ({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Course Name</TableHead>
-                                <TableHead>Creator</TableHead>
                                 <TableHead>Price</TableHead>
                                 <TableHead>Estimated Price</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Ratings</TableHead>
                                 <TableHead>Purchased</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead className="w-16">Actions</TableHead>
                             </TableRow>
@@ -178,12 +181,12 @@ const CoursesTable = ({
                     <TableHeader>
                         <TableRow>
                             <TableHead className='border-r'>Course Name</TableHead>
-                            <TableHead className='border-r'>Creator</TableHead>
                             <TableHead className='border-r'>Price</TableHead>
                             <TableHead className='border-r'>Estimated Price</TableHead>
                             <TableHead className='border-r'>Level</TableHead>
                             <TableHead className='border-r'>Ratings</TableHead>
                             <TableHead className='border-r'>Purchased</TableHead>
+                            <TableHead className='border-r'>Status</TableHead>
                             <TableHead className='border-r'>Created At</TableHead>
                             <TableHead className="w-16 text-center">Actions</TableHead>
                         </TableRow>
@@ -193,18 +196,10 @@ const CoursesTable = ({
                             <TableRow key={course._id}>
                                 {/* Course Name */}
                                 <TableCell className='border-r'>
-                                    <div className="max-w-[300px]">
+                                    <div className="max-w-[400px]">
                                         <p className="font-medium text-sm text-gray-900 dark:text-white truncate" title={course.name}>
                                             {course.name}
                                         </p>
-                                    </div>
-                                </TableCell>
-                                {/* Creator */}
-                                <TableCell className='border-r'>
-                                    <div className="max-w-[150px]">
-                                        <span className="text-sm text-gray-600 dark:text-gray-300 truncate block" title={course.creatorId?.name}>
-                                            {course.creatorId?.name || 'N/A'}
-                                        </span>
                                     </div>
                                 </TableCell>
                                 {/* Price */}
@@ -237,6 +232,14 @@ const CoursesTable = ({
                                         {course.purchased}
                                     </span>
                                 </TableCell>
+                                {/* Status */}
+                                <TableCell className='border-r'>
+                                    <div className="max-w-[150px]">
+                                        <span className="text-sm text-gray-600 dark:text-gray-300 truncate block" title={course.status}>
+                                            {course.status || 'N/A'}
+                                        </span>
+                                    </div>
+                                </TableCell>
                                 {/* Created At */}
                                 <TableCell className='border-r'>
                                     <span className="text-sm text-gray-600 dark:text-gray-300">
@@ -246,7 +249,11 @@ const CoursesTable = ({
                                 {/* Actions */}
                                 <TableCell>
                                     <div className='w-full h-full flex justify-center items-center'>
-                                        <CourseActions course={course} onDelete={onDelete} />
+                                        <CourseActions
+                                            course={course}
+                                            onDelete={onDelete}
+                                            onRestore={onRestore}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

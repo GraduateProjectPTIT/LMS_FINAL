@@ -5,7 +5,8 @@ import toast from "react-hot-toast";
 import SearchCourses from "./SearchCourses";
 import CoursesTable from "./CoursesTable";
 import PaginationCourses from "./PaginationCourses";
-import DeleteCourseModal from "./DeleteCourseModal";
+import SoftDeleteCourseModal from "./SoftDeleteCourseModal";
+import RestoreCourseModal from "./RestoreCourseModal";
 
 interface PaginationInfo {
     totalItems: number;
@@ -48,6 +49,7 @@ interface ICourseData {
     ratings: number;
     purchased: number;
     creatorId: ICreator;
+    status: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -55,6 +57,7 @@ interface ICourseData {
 interface FilterState {
     sortBy: string;
     sortOrder: string;
+    status: string;
 }
 
 const CoursesData = () => {
@@ -74,18 +77,25 @@ const CoursesData = () => {
     // Filter states
     const [draftFilters, setDraftFilters] = useState<FilterState>({
         sortBy: "createdAt",
-        sortOrder: "desc"
+        sortOrder: "desc",
+        status: "all"
     });
 
     const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         sortBy: "createdAt",
-        sortOrder: "desc"
+        sortOrder: "desc",
+        status: "all"
     });
 
-    // Modal states
+    // Delete modal states
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [courseToDelete, setCourseToDelete] = useState<ICourseData | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Restore modal states
+    const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [courseToRestore, setCourseToRestore] = useState<ICourseData | null>(null);
+    const [isRestoring, setIsRestoring] = useState(false);
 
     // Build query parameters
     const buildQueryParams = useCallback(() => {
@@ -104,6 +114,11 @@ const CoursesData = () => {
         if (appliedFilters.sortBy && appliedFilters.sortBy !== 'default') {
             params.set('sortBy', appliedFilters.sortBy);
             params.set('sortOrder', appliedFilters.sortOrder);
+        }
+
+        // Add status filter
+        if (appliedFilters.status && appliedFilters.status !== 'all') {
+            params.set('status', appliedFilters.status);
         }
 
         return params.toString();
@@ -169,8 +184,8 @@ const CoursesData = () => {
     const handleSearchSubmit = () => {
         const trimmed = searchInput.trim();
         setSearchInput(trimmed);
-        setAppliedSearch(trimmed); // Thêm dòng này để trigger fetch API
-        setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset về trang 1 khi search mới
+        setAppliedSearch(trimmed);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleClearSearch = () => {
@@ -182,7 +197,8 @@ const CoursesData = () => {
     const handleClearFilters = () => {
         const defaultFilters: FilterState = {
             sortBy: "createdAt",
-            sortOrder: "desc"
+            sortOrder: "desc",
+            status: "all"
         };
 
         setDraftFilters(defaultFilters);
@@ -204,6 +220,18 @@ const CoursesData = () => {
         setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
+    const handleRemoveStatusFilter = () => {
+        setDraftFilters(prev => ({
+            ...prev,
+            status: 'all'
+        }));
+        setAppliedFilters(prev => ({
+            ...prev,
+            status: 'all'
+        }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    };
+
     // Pagination handlers
     const handlePageChange = (nextPage: number) => {
         setPagination(prev => ({ ...prev, currentPage: nextPage }));
@@ -217,42 +245,54 @@ const CoursesData = () => {
         }));
     };
 
-    // Delete handlers
+    // Soft Delete handlers
     const handleDeleteClick = (course: ICourseData) => {
         setCourseToDelete(course);
         setIsDeleteModalOpen(true);
     };
 
-    const handleDeleteConfirm = async () => {
+    const handleDeleteConfirm = async (
+        reason: string,
+        removeFromCarts: boolean,
+        notify: boolean
+    ) => {
         if (!courseToDelete) return;
 
         try {
             setIsDeleting(true);
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/delete_course/${courseToDelete._id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/soft_delete/${courseToDelete._id}`,
                 {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
                     credentials: "include",
+                    body: JSON.stringify({
+                        retire: true,
+                        reason: reason,
+                        removeFromCarts: removeFromCarts,
+                        notify: notify
+                    })
                 }
             );
 
             const data = await res.json();
 
             if (!res.ok) {
-                toast.error(data.message || "Failed to delete course");
-                console.log("Delete course failed: ", data.message);
+                toast.error(data.message || "Failed to retire course");
+                console.log("Retire course failed: ", data.message);
                 return;
             }
 
-            toast.success("Course deleted successfully");
+            toast.success("Course retired successfully");
             setIsDeleteModalOpen(false);
             setCourseToDelete(null);
 
-            // Refresh courses list after deletion
+            // Refresh courses list after soft deletion
             handleFetchCourses();
         } catch (err: any) {
-            toast.error("Error deleting course");
+            toast.error("Error retiring course");
             console.log(err?.message || err);
         } finally {
             setIsDeleting(false);
@@ -262,6 +302,55 @@ const CoursesData = () => {
     const handleDeleteCancel = () => {
         setIsDeleteModalOpen(false);
         setCourseToDelete(null);
+    };
+
+    // Restore handlers
+    const handleRestoreClick = (course: ICourseData) => {
+        setCourseToRestore(course);
+        setIsRestoreModalOpen(true);
+    };
+
+    const handleRestoreConfirm = async () => {
+        if (!courseToRestore) return;
+
+        try {
+            setIsRestoring(true);
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/restore/${courseToRestore._id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "include"
+                }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                toast.error(data.message || "Failed to restore course");
+                console.log("Restore course failed: ", data.message);
+                return;
+            }
+
+            toast.success("Course restored successfully");
+            setIsRestoreModalOpen(false);
+            setCourseToRestore(null);
+
+            // Refresh courses list after restoration
+            handleFetchCourses();
+        } catch (err: any) {
+            toast.error("Error restoring course");
+            console.log(err?.message || err);
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
+    const handleRestoreCancel = () => {
+        setIsRestoreModalOpen(false);
+        setCourseToRestore(null);
     };
 
     // Create pagination info for the PaginationCourses component
@@ -295,11 +384,13 @@ const CoursesData = () => {
                 onApplyFilters={handleApplyFilters}
                 onClearFilters={handleClearFilters}
                 onRemoveSortFilter={handleRemoveSortFilter}
+                onRemoveStatusFilter={handleRemoveStatusFilter}
             />
 
             <CoursesTable
                 courses={allCourses}
                 onDelete={handleDeleteClick}
+                onRestore={handleRestoreClick}
                 isLoading={loading}
             />
 
@@ -312,12 +403,21 @@ const CoursesData = () => {
                 />
             )}
 
-            <DeleteCourseModal
+            <SoftDeleteCourseModal
                 isOpen={isDeleteModalOpen}
                 onClose={handleDeleteCancel}
                 onConfirm={handleDeleteConfirm}
                 courseName={courseToDelete?.name || ""}
                 courseId={courseToDelete?._id || ""}
+            />
+
+            <RestoreCourseModal
+                isOpen={isRestoreModalOpen}
+                onClose={handleRestoreCancel}
+                onConfirm={handleRestoreConfirm}
+                courseName={courseToRestore?.name || ""}
+                courseId={courseToRestore?._id || ""}
+                isRestoring={isRestoring}
             />
         </div>
     );

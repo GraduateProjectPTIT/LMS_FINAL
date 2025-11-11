@@ -3,6 +3,7 @@ import Personal from './Personal';
 import Authentication from './Authentication';
 import Interests from './Interests';
 import Expertise from './Expertise';
+import Notifications from './Notifications';
 
 interface ProfileProps {
     user: any;
@@ -21,6 +22,8 @@ const Profile = ({ user, activeSection }: ProfileProps) => {
                 return <Interests user={user} />;
             case 'expertises':
                 return <Expertise user={user} />;
+            case 'notifications':
+                return <Notifications user={user} />;
             default:
                 return <Personal user={user} />;
         }
