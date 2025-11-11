@@ -8,11 +8,13 @@ import {
   updatePasswordService,
   deleteMyAccountService,
   updateAvatarService,
+  updateNotificationSettingsService,
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
 import { paginate } from "../utils/pagination.helper"; // Import our new helper
 import userModel from "../models/user.model";
+import { INotificationSettingsData } from "../types/user.types";
 
 // --- CẬP NHẬT MẬT KHẨU ---
 export const updatePassword = CatchAsyncError(
@@ -49,6 +51,32 @@ export const getUserInfo = CatchAsyncError(
 
     const user = await getUserById(userId.toString());
     res.status(200).json({ success: true, user });
+  }
+);
+
+export const updateNotificationSettings = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data: INotificationSettingsData = req.body;
+      const userId = req.user?._id;
+
+      // 2. Gọi service mới
+      if (!userId) {
+        return next(new ErrorHandler("Authentication required", 401));
+      }
+
+      const settings = await updateNotificationSettingsService(
+        userId.toString(),
+        data
+      );
+
+      res.status(200).json({
+        success: true,
+        settings, // 3. Trả về cài đặt đã cập nhật
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
   }
 );
 

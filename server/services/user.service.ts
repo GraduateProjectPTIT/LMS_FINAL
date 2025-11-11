@@ -5,6 +5,7 @@ import cloudinary from "cloudinary";
 import { Request, Response } from "express";
 // import { redis } from "../utils/redis";
 import {
+  INotificationSettingsData,
   IStudent,
   ITutor,
   IUpdateStudentInterestDto,
@@ -73,6 +74,43 @@ export const updateUserInfoService = async (
   await user.save();
   // await redis.set(userId, JSON.stringify(user));
   return user;
+};
+
+export const updateNotificationSettingsService = async (
+  userId: string,
+  data: INotificationSettingsData
+) => {
+  // Vì tất cả cài đặt đều nằm trong userModel,
+  // chúng ta có thể dùng một lệnh `updateOne` rất hiệu quả.
+
+  // 1. Tạo object $set
+  // Nó sẽ tự động build một object kiểu:
+  // { "notificationSettings.on_new_lesson": true, "notificationSettings.on_reply_comment": false }
+  const updateFields: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      updateFields[`notificationSettings.${key}`] = value;
+    }
+  }
+
+  // 2. Kiểm tra nếu không có gì để cập nhật
+  if (Object.keys(updateFields).length === 0) {
+    return { success: true, message: "No settings to update." };
+  }
+
+  // 3. Cập nhật bằng $set để không ghi đè toàn bộ object
+  const user = await userModel.findByIdAndUpdate(
+    userId,
+    { $set: updateFields },
+    { new: true }
+  );
+
+  if (!user) {
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  // await redis.set(userId, JSON.stringify(user)); // Cập nhật redis nếu cần
+  return user.notificationSettings;
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---

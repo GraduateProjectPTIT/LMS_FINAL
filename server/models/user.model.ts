@@ -34,6 +34,17 @@ export interface IUser extends Document {
   tutorProfile?: Types.ObjectId;
   adminProfile?: Types.ObjectId;
   createdAt: Date;
+  notificationSettings: {
+    // Cài đặt chung
+    on_reply_comment: boolean;
+
+    // Cài đặt cho vai trò Student
+    on_payment_success: boolean;
+
+    // Cài đặt cho vai trò Tutor
+    on_new_student: boolean;
+    on_new_review: boolean;
+  };
 
   comparePassword: (password: string) => Promise<boolean>;
 }
@@ -102,7 +113,28 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     studentProfile: { type: Schema.Types.ObjectId, ref: "Student" },
     tutorProfile: { type: Schema.Types.ObjectId, ref: "Tutor" },
     adminProfile: { type: Schema.Types.ObjectId, ref: "Admin" },
+
+    notificationSettings: {
+      type: {
+        // Chung
+        on_reply_comment: { type: Boolean, default: true },
+
+        on_payment_success: { type: Boolean, default: true },
+
+        // Của Tutor
+        on_new_student: { type: Boolean, default: true },
+        on_new_review: { type: Boolean, default: true },
+      },
+      default: () => ({
+        on_reply_comment: true,
+        on_payment_success: true,
+        on_new_student: true,
+        on_new_review: true,
+      }),
+      _id: false,
+    },
   },
+
   {
     timestamps: true,
   }

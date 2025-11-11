@@ -646,7 +646,10 @@ export const getTopPurchasedCoursesService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
-    const courses = await CourseModel.find({ purchased: { $gt: 0 }, status: "published" })
+    const courses = await CourseModel.find({
+      purchased: { $gt: 0 },
+      status: "published",
+    })
       .select(
         "name price estimatedPrice thumbnail purchased courseData.sectionContents.videoLength"
       )
@@ -846,11 +849,17 @@ export const getStudentEnrolledCoursesService = async (
       typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     let categoryIds: string[] = [];
     if (typeof query?.categoryIds !== "undefined") {
-      if (Array.isArray(query.categoryIds)) categoryIds = query.categoryIds as string[];
+      if (Array.isArray(query.categoryIds))
+        categoryIds = query.categoryIds as string[];
       else if (typeof query.categoryIds === "string") {
-        categoryIds = String(query.categoryIds).split(",").map((s) => s.trim()).filter(Boolean);
+        categoryIds = String(query.categoryIds)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
-      categoryIds = categoryIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      categoryIds = categoryIds.filter((id) =>
+        mongoose.Types.ObjectId.isValid(id)
+      );
     }
 
     const levelStr =
@@ -858,10 +867,14 @@ export const getStudentEnrolledCoursesService = async (
         ? String(query.level).trim().toLowerCase()
         : "";
     const mapLevel = (val: string) => {
-      if (val === ECourseLevel.Beginner.toLowerCase()) return ECourseLevel.Beginner;
-      if (val === ECourseLevel.Intermediate.toLowerCase()) return ECourseLevel.Intermediate;
-      if (val === ECourseLevel.Advanced.toLowerCase()) return ECourseLevel.Advanced;
-      if (val === ECourseLevel.Professional.toLowerCase()) return ECourseLevel.Professional;
+      if (val === ECourseLevel.Beginner.toLowerCase())
+        return ECourseLevel.Beginner;
+      if (val === ECourseLevel.Intermediate.toLowerCase())
+        return ECourseLevel.Intermediate;
+      if (val === ECourseLevel.Advanced.toLowerCase())
+        return ECourseLevel.Advanced;
+      if (val === ECourseLevel.Professional.toLowerCase())
+        return ECourseLevel.Professional;
       return null;
     };
     const enumLevel = levelStr ? mapLevel(levelStr) : null;
@@ -889,18 +902,28 @@ export const getStudentEnrolledCoursesService = async (
     const from = query?.from ? new Date(String(query.from)) : undefined;
     const to = query?.to ? new Date(String(query.to)) : undefined;
 
-    const allowedSortBy = ["enrolledAt", "name", "createdAt", "ratings"] as const;
+    const allowedSortBy = [
+      "enrolledAt",
+      "name",
+      "createdAt",
+      "ratings",
+    ] as const;
     const sortBy = allowedSortBy.includes(String(query?.sortBy) as any)
       ? String(query.sortBy)
       : "enrolledAt";
     const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
 
-    const enrollmentMatch: any = { userId: new mongoose.Types.ObjectId(String(user._id)) };
-    if (typeof completedFilter !== "undefined") enrollmentMatch.completed = completedFilter;
+    const enrollmentMatch: any = {
+      userId: new mongoose.Types.ObjectId(String(user._id)),
+    };
+    if (typeof completedFilter !== "undefined")
+      enrollmentMatch.completed = completedFilter;
     if (typeof minProgress === "number" || typeof maxProgress === "number") {
       enrollmentMatch.progress = {} as any;
-      if (typeof minProgress === "number") (enrollmentMatch.progress as any).$gte = minProgress;
-      if (typeof maxProgress === "number") (enrollmentMatch.progress as any).$lte = maxProgress;
+      if (typeof minProgress === "number")
+        (enrollmentMatch.progress as any).$gte = minProgress;
+      if (typeof maxProgress === "number")
+        (enrollmentMatch.progress as any).$lte = maxProgress;
     }
     if (from || to) {
       enrollmentMatch.enrolledAt = {} as any;
@@ -1183,8 +1206,10 @@ export const getCourseOverviewService = async (
       .populate("creatorId", "name avatar email bio");
 
     if (!course) return next(new ErrorHandler("Course not found", 404));
-    if (course.status === "retired") return next(new ErrorHandler("Course has been retired", 410));
-    if (course.status === "draft") return next(new ErrorHandler("Course not found", 404));
+    if (course.status === "retired")
+      return next(new ErrorHandler("Course has been retired", 410));
+    if (course.status === "draft")
+      return next(new ErrorHandler("Course not found", 404));
 
     const totalSections = course.courseData.length;
     const sections = course.courseData.map((section: any) => ({
@@ -1219,12 +1244,20 @@ export const getCourseOverviewService = async (
       totalTime: summary.totalDuration,
       reviews: course.reviews.map((review: any) => ({
         _id: review._id,
-        userId: { _id: review.userId._id, name: review.userId.name, avatar: review.userId.avatar },
+        userId: {
+          _id: review.userId._id,
+          name: review.userId.name,
+          avatar: review.userId.avatar,
+        },
         rating: review.rating,
         comment: review.comment,
         replies: review.replies.map((reply: any) => ({
           _id: reply._id,
-          userId: { _id: reply.userId._id, name: reply.userId.name, avatar: reply.userId.avatar },
+          userId: {
+            _id: reply.userId._id,
+            name: reply.userId.name,
+            avatar: reply.userId.avatar,
+          },
           answer: reply.answer,
           createdAt: reply.createdAt,
           updatedAt: reply.updatedAt,
@@ -1274,18 +1307,30 @@ export const enrollCourseService = async (
     const owner = isOwner(courseDoc, userId);
     const isEnrolled = Boolean(enrollment);
 
-    if (courseDoc.status === "retired" && !isAdmin(userId) && !owner && !isEnrolled) {
+    if (
+      courseDoc.status === "retired" &&
+      !isAdmin(userId) &&
+      !owner &&
+      !isEnrolled
+    ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
     if (!isEnrolled && !owner && !isAdmin(userId)) {
-      return next(new ErrorHandler("You are not eligible to access this course", 403));
+      return next(
+        new ErrorHandler("You are not eligible to access this course", 403)
+      );
     }
     if (courseDoc.status === "draft" && !isAdmin(userId) && !owner) {
-      return next(new ErrorHandler("You are not eligible to access this course", 403));
+      return next(
+        new ErrorHandler("You are not eligible to access this course", 403)
+      );
     }
 
     const course = await CourseModel.findById(courseId)
-      .populate("courseData.sectionContents.lectureComments.userId", "name avatar")
+      .populate(
+        "courseData.sectionContents.lectureComments.userId",
+        "name avatar"
+      )
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
       .populate("creatorId", "name avatar email")
@@ -1352,11 +1397,18 @@ export const getLectureCommentsService = async (
     if (!courseDoc) return next(new ErrorHandler("Course not found", 404));
 
     const owner = isOwner(courseDoc, userId);
-    if (courseDoc.status === "retired" && !isAdmin(userId) && !owner && !enrollment) {
+    if (
+      courseDoc.status === "retired" &&
+      !isAdmin(userId) &&
+      !owner &&
+      !enrollment
+    ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
     if (!enrollment && !owner && !isAdmin(userId)) {
-      return next(new ErrorHandler("You are not eligible to access this course", 403));
+      return next(
+        new ErrorHandler("You are not eligible to access this course", 403)
+      );
     }
 
     let page = parseInt(String(query?.page ?? "1"), 10);
@@ -1371,7 +1423,13 @@ export const getLectureCommentsService = async (
       { $project: { courseData: 1 } },
       { $unwind: "$courseData" },
       { $unwind: "$courseData.sectionContents" },
-      { $match: { "courseData.sectionContents._id": new mongoose.Types.ObjectId(contentId) } },
+      {
+        $match: {
+          "courseData.sectionContents._id": new mongoose.Types.ObjectId(
+            contentId
+          ),
+        },
+      },
       { $project: { content: "$courseData.sectionContents" } },
       {
         $addFields: {
@@ -1643,9 +1701,16 @@ export const addCommentService = async (
 ) => {
   try {
     const { comment, courseId, contentId } = commentData;
-    const course = await CourseModel.findById(courseId).select("creatorId status courseData");
+    const course = await CourseModel.findById(courseId).select(
+      "creatorId status courseData"
+    );
     if (!course) return next(new ErrorHandler("Course not found", 404));
-    if (course.status === "retired" && !isAdmin(userId) && !isOwner(course, userId) && !(await EnrolledCourseModel.findOne({ userId: userId?._id, courseId }))) {
+    if (
+      course.status === "retired" &&
+      !isAdmin(userId) &&
+      !isOwner(course, userId) &&
+      !(await EnrolledCourseModel.findOne({ userId: userId?._id, courseId }))
+    ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
 
@@ -1655,26 +1720,54 @@ export const addCommentService = async (
     });
     const owner = isOwner(course, userId);
     if (!enrollmentForQuestion && !owner && !isAdmin(userId)) {
-      return next(new ErrorHandler("You must be enrolled in this course to ask questions", 403));
+      return next(
+        new ErrorHandler(
+          "You must be enrolled in this course to ask questions",
+          403
+        )
+      );
     }
 
     const section = (course as any)?.courseData.find((sec: any) =>
       sec.sectionContents.some((cont: any) => cont._id.equals(contentId))
     );
-    const content = section?.sectionContents.find((cont: any) => cont._id.equals(contentId));
+    const content = section?.sectionContents.find((cont: any) =>
+      cont._id.equals(contentId)
+    );
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
-    const newComment: any = { userId: userId?._id, content: comment, parentId: null };
+    const newComment: any = {
+      userId: userId?._id,
+      content: comment,
+      parentId: null,
+    };
     content.lectureComments.push(newComment);
 
-    await createAndSendNotification({
-      userId: String(userId?._id),
-      title: "New Comment",
-      message: `You have a new comment in section: ${section?.sectionTitle}`,
-    });
+    const creatorId = (course as any)?.creatorId;
+    const commenterId = String(userId?._id); // Người viết comment
+
+    // 2. Chỉ gửi nếu người viết comment không phải là giảng viên
+    if (creatorId && String(creatorId) !== commenterId) {
+      // 3. Lấy cài đặt của Giảng viên
+      const creatorUser = await userModel
+        .findById(creatorId)
+        .select("notificationSettings");
+
+      // 4. Kiểm tra cài đặt
+      if (creatorUser && creatorUser.notificationSettings.on_reply_comment) {
+        await createAndSendNotification({
+          userId: String(creatorId),
+          title: "New Comment",
+          message: `${userId?.name} has a new comment in section: ${section?.sectionTitle}`,
+          link: `fakeURL`, // Ví dụ link
+        });
+      }
+    }
 
     await (course as any).save();
-    res.status(200).json({ success: true, message: "Add comment successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Add comment successfully" });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
@@ -1714,30 +1807,52 @@ export const addReplyService = async (
     });
     const owner = isOwner(course, userId);
     if (!enrollmentForAnswer && !owner && userId?.role !== "admin") {
-      return next(new ErrorHandler("You must be enrolled in this course to answer questions", 403));
+      return next(
+        new ErrorHandler(
+          "You must be enrolled in this course to answer questions",
+          403
+        )
+      );
     }
 
     const section = (course as any)?.courseData.find((sec: any) =>
       sec.sectionContents.some((cont: any) => cont._id.equals(contentId))
     );
-    const content = section?.sectionContents.find((cont: any) => cont._id.equals(contentId));
+    const content = section?.sectionContents.find((cont: any) =>
+      cont._id.equals(contentId)
+    );
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
-    const comment = content?.lectureComments.find((c: any) => c._id.equals(commentId));
+    const comment = content?.lectureComments.find((c: any) =>
+      c._id.equals(commentId)
+    );
     if (!comment) return next(new ErrorHandler("Comment not found", 404));
 
     const askedUser = await userModel.findById(comment.userId);
-    if (!askedUser || !askedUser.email) return next(new ErrorHandler("User email not found", 404));
+    if (!askedUser || !askedUser.email)
+      return next(new ErrorHandler("User email not found", 404));
 
-    const replyComment: any = { userId: userId?._id, content: reply, parentId: comment._id };
+    const replyComment: any = {
+      userId: userId?._id,
+      content: reply,
+      parentId: comment._id,
+    };
     content.lectureComments.push(replyComment);
 
     await (course as any).save();
 
     const data = { name: askedUser.name, title: section?.sectionTitle };
-    await ejs.renderFile(path.join(__dirname, "../mails/question-reply.ejs"), data);
+    await ejs.renderFile(
+      path.join(__dirname, "../mails/question-reply.ejs"),
+      data
+    );
     try {
-      await sendMail({ email: askedUser.email, subject: "Question Reply", template: "question-reply.ejs", data });
+      await sendMail({
+        email: askedUser.email,
+        subject: "Question Reply",
+        template: "question-reply.ejs",
+        data,
+      });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -1773,31 +1888,61 @@ export const addReviewService = async (
       CourseModel.findById(courseId),
     ]);
     if (!course) return next(new ErrorHandler("Course not found", 404));
-    if (course.status === "retired" && !isAdmin(userId) && !isOwner(course, userId) && !enrollmentForReview) {
+    if (
+      course.status === "retired" &&
+      !isAdmin(userId) &&
+      !isOwner(course, userId) &&
+      !enrollmentForReview
+    ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
 
     const owner = isOwner(course, userId);
     if (!enrollmentForReview && !owner && userId?.role !== "admin") {
-      return next(new ErrorHandler("You are not eligible to review this course", 403));
+      return next(
+        new ErrorHandler("You are not eligible to review this course", 403)
+      );
     }
 
-    const reviewDataObj: any = { userId: userId?._id, rating, comment: review, replies: [] };
+    const reviewDataObj: any = {
+      userId: userId?._id,
+      rating,
+      comment: review,
+      replies: [],
+    };
     (course as any)?.reviews.push(reviewDataObj);
 
     let avg = 0;
-    (course as any)?.reviews.forEach((rev: any) => { avg += rev.rating; });
-    course.ratings = ((course as any).reviews.length > 0) ? avg / (course as any).reviews.length : 0;
+    (course as any)?.reviews.forEach((rev: any) => {
+      avg += rev.rating;
+    });
+    course.ratings =
+      (course as any).reviews.length > 0
+        ? avg / (course as any).reviews.length
+        : 0;
 
     await course.save();
 
+    // --- Logic cho "New Review" (Gửi cho Giảng viên) ---
+
     const creatorId = (course as any)?.creatorId;
+
+    // 1. Chỉ gửi nếu người review không phải là giảng viên
     if (creatorId && String(creatorId) !== String(userId?._id)) {
-      await createAndSendNotification({
-        userId: String(creatorId),
-        title: "New Review Received",
-        message: `${userId?.name} has given a review in ${course?.name}`,
-      });
+      // 2. Lấy cài đặt của Giảng viên
+      const creatorUser = await userModel
+        .findById(creatorId)
+        .select("notificationSettings");
+
+      // 3. Kiểm tra cài đặt
+      if (creatorUser && creatorUser.notificationSettings.on_new_review) {
+        await createAndSendNotification({
+          userId: String(creatorId),
+          title: "New Review Received",
+          message: `${userId?.name} has given a review in ${course?.name}`,
+          link: `fakeURL`, // Ví dụ link
+        });
+      }
     }
 
     res.status(200).json({ success: true, course });
@@ -1825,7 +1970,12 @@ export const addReplyToReviewService = async (
     const { comment, courseId, reviewId } = replyData;
     const course = await CourseModel.findById(courseId);
     if (!course) return next(new ErrorHandler("Course not found", 404));
-    if (course.status === "retired" && !isAdmin(userId) && !isOwner(course, userId) && !(await EnrolledCourseModel.findOne({ userId: userId?._id, courseId }))) {
+    if (
+      course.status === "retired" &&
+      !isAdmin(userId) &&
+      !isOwner(course, userId) &&
+      !(await EnrolledCourseModel.findOne({ userId: userId?._id, courseId }))
+    ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
 
@@ -1835,11 +1985,19 @@ export const addReplyToReviewService = async (
     });
     const owner = isOwner(course, userId);
     if (!enrollmentForReviewReply && !owner && userId?.role !== "admin") {
-      return next(new ErrorHandler("You must be enrolled in this course to reply to reviews", 403));
+      return next(
+        new ErrorHandler(
+          "You must be enrolled in this course to reply to reviews",
+          403
+        )
+      );
     }
 
-    const review = (course as any)?.reviews?.find((rev: any) => rev._id.toString() === reviewId);
-    if (!review) return next(new ErrorHandler("Review of the course not found", 404));
+    const review = (course as any)?.reviews?.find(
+      (rev: any) => rev._id.toString() === reviewId
+    );
+    if (!review)
+      return next(new ErrorHandler("Review of the course not found", 404));
 
     const replyDataObj: any = { userId: userId?._id, answer: comment };
     review.replies?.push(replyDataObj);
@@ -1869,7 +2027,9 @@ export const deleteCourseService = async (
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     if (course.status === "retired" || course.status === "archived") {
-      return res.status(200).json({ success: true, message: "Course already removed" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Course already removed" });
     }
 
     (course as any).status = "archived";
@@ -1904,20 +2064,36 @@ export const softDeleteCourseService = async (
   courseId: string,
   res: Response,
   next: NextFunction,
-  opts?: { retire?: boolean; reason?: string; removeFromCarts?: boolean; notify?: boolean }
+  opts?: {
+    retire?: boolean;
+    reason?: string;
+    removeFromCarts?: boolean;
+    notify?: boolean;
+  }
 ) => {
   try {
-    const { retire = false, reason = "", removeFromCarts = true, notify = true } = opts || {};
-    if (!mongoose.Types.ObjectId.isValid(courseId)) return next(new ErrorHandler("Invalid course id", 400));
+    const {
+      retire = false,
+      reason = "",
+      removeFromCarts = true,
+      notify = true,
+    } = opts || {};
+    if (!mongoose.Types.ObjectId.isValid(courseId))
+      return next(new ErrorHandler("Invalid course id", 400));
 
-    const course = await CourseModel.findById(courseId).select("creatorId name status");
+    const course = await CourseModel.findById(courseId).select(
+      "creatorId name status"
+    );
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     const owner = isOwner(course, user);
-    if (!owner && !isAdmin(user)) return next(new ErrorHandler("Forbidden", 403));
+    if (!owner && !isAdmin(user))
+      return next(new ErrorHandler("Forbidden", 403));
 
     if (["archived", "retired"].includes(course.status as any)) {
-      return res.status(200).json({ success: true, message: "Course already soft-deleted" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Course already soft-deleted" });
     }
 
     (course as any).status = retire ? "retired" : "archived";
@@ -1942,13 +2118,17 @@ export const softDeleteCourseService = async (
       await createAndSendNotification({
         userId: course.creatorId.toString(),
         title: retire ? "Course retired" : "Course archived",
-        message: `“${(course as any).name}” đã được ${retire ? "retire" : "archive"}${reason ? `: ${reason}` : ""}.`,
+        message: `“${(course as any).name}” đã được ${
+          retire ? "retire" : "archive"
+        }${reason ? `: ${reason}` : ""}.`,
       }).catch(() => null);
     }
 
     return res.status(200).json({
       success: true,
-      message: retire ? "Retired course successfully" : "Archived course successfully",
+      message: retire
+        ? "Retired course successfully"
+        : "Archived course successfully",
     });
   } catch (e: any) {
     return next(new ErrorHandler(e.message, 500));
@@ -1962,15 +2142,21 @@ export const restoreCourseService = async (
   next: NextFunction
 ) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(courseId)) return next(new ErrorHandler("Invalid course id", 400));
-    const course = await CourseModel.findById(courseId).select("creatorId status");
+    if (!mongoose.Types.ObjectId.isValid(courseId))
+      return next(new ErrorHandler("Invalid course id", 400));
+    const course = await CourseModel.findById(courseId).select(
+      "creatorId status"
+    );
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
     const owner = isOwner(course, user);
-    if (!owner && !isAdmin(user)) return next(new ErrorHandler("Forbidden", 403));
+    if (!owner && !isAdmin(user))
+      return next(new ErrorHandler("Forbidden", 403));
 
     if (course.status === "published") {
-      return res.status(200).json({ success: true, message: "Course is already active" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Course is already active" });
     }
 
     await CourseModel.findByIdAndUpdate(courseId, {
@@ -1978,7 +2164,9 @@ export const restoreCourseService = async (
       $unset: { deletedAt: 1, deletedBy: 1, deleteReason: 1 },
     });
 
-    res.status(200).json({ success: true, message: "Restored course successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Restored course successfully" });
   } catch (e: any) {
     return next(new ErrorHandler(e.message, 500));
   }
@@ -2011,12 +2199,13 @@ export const hardDeleteCourseService = async (
       console.error("Failed to cleanup carts for deleted course", courseId, e);
     }
 
-    res.status(200).json({ success: true, message: "Course hard-deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Course hard-deleted successfully" });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
 };
-
 
 /**
  * Lấy danh sách tất cả khóa học cho Admin, có phân trang.
@@ -2398,7 +2587,8 @@ export const markLectureCompletedService = async (
       },
       { new: true, upsert: user?.role === "admin" || owner ? true : false }
     );
-    if (!updated) return next(new ErrorHandler("Enrollment record not found", 404));
+    if (!updated)
+      return next(new ErrorHandler("Enrollment record not found", 404));
 
     const completedCount = (updated.completedLectures || []).length;
     const progress = Math.min(

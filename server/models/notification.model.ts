@@ -5,6 +5,7 @@ export interface CreateNotificationInput {
   userId: string; // Chỉ cần ID của user dưới dạng string
   title: string;
   message: string;
+  link?: string; // URL liên kết đến tài nguyên cụ thể (nếu có)
 }
 
 export interface INotification extends Document {
@@ -12,6 +13,7 @@ export interface INotification extends Document {
   message: string;
   status: string;
   userId: IUser;
+  link?: string;
 }
 
 const notificationSchema = new Schema<INotification>(
@@ -30,6 +32,10 @@ const notificationSchema = new Schema<INotification>(
       default: "unread",
     },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
+    link: {
+      type: String, // Sẽ lưu URL, ví dụ: "/course-access/654b.../lecture/654c..."
+      required: false, // Không phải thông báo nào cũng có link
+    },
   },
   { timestamps: true }
 );
