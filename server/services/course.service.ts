@@ -590,6 +590,14 @@ export const getTutorCoursesService = async (
     const keyword =
       typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
     const filter: any = { creatorId: user._id };
+
+    if (query?.status) {
+      const statusValue = String(query.status).trim();
+      if (statusValue) {
+        filter.status = statusValue;
+      }
+    }
+
     if (keyword.length >= 2) {
       const regex = makeCaseInsensitiveRegex(keyword);
       filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
@@ -2220,6 +2228,14 @@ export const getAdminCoursesService = async (query: any, res: Response) => {
   const keyword =
     typeof query?.keyword !== "undefined" ? String(query.keyword).trim() : "";
   const filter: any = {};
+
+  if (query?.status) {
+    const statusValue = String(query.status).trim();
+    if (statusValue) {
+      filter.status = statusValue;
+    }
+  }
+
   if (keyword.length >= 2) {
     const regex = makeCaseInsensitiveRegex(keyword);
     filter.$or = [{ name: { $regex: regex } }, { tags: { $regex: regex } }];
