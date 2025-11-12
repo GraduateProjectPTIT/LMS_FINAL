@@ -83,9 +83,6 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Enrollment Date
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Time
-                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -138,11 +135,6 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                                             <Calendar className="w-4 h-4 mr-1.5" />
                                             {formatDate(enrollment.enrolledAt)}
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                            {getTimeAgo(enrollment.enrolledAt)}
-                                        </span>
                                     </td>
                                 </tr>
                             ))

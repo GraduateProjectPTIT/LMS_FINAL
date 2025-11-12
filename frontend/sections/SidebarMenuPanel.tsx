@@ -15,7 +15,8 @@ const SidebarMenuPanel = ({ closeMainMenu, isMobileMenuOpen }: SidebarMenuPanelP
     const menuItems = [
         { name: 'Home', url: '/' },
         { name: 'Posts', url: '/posts' },
-        { name: 'My courses', url: '/my-courses' },
+        { name: 'My Courses', url: '/my-courses' },
+        { name: 'History Orders', url: '/history-orders' }
     ];
 
     return (

@@ -285,6 +285,7 @@ const Header = () => {
                         {currentUser.role === 'tutor' && (
                           <Link href="/tutor"><DropdownMenuItem>Dashboard</DropdownMenuItem></Link>
                         )}
+                        <Link href="/history-orders"><DropdownMenuItem>History Orders</DropdownMenuItem></Link>
                         <Link href="/profile"><DropdownMenuItem>Profile</DropdownMenuItem></Link>
                         <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
                       </>

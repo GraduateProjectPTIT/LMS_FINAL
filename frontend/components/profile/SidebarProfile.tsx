@@ -43,10 +43,11 @@ const sidebarLinks = [
 interface SidebarProps {
     activeSection: string;
     setActiveSection: (section: string) => void;
+    onDeleteAccount: () => void;
 }
 
 
-const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
+const SidebarProfile = ({ activeSection, setActiveSection, onDeleteAccount }: SidebarProps) => {
 
     const router = useRouter();
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -167,11 +168,13 @@ const SidebarProfile = ({ activeSection, setActiveSection }: SidebarProps) => {
             </div>
 
             <div className="mt-auto hidden md:block">
-                <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl border-theme">
-                    <h3 className="font-semibold mb-2">Need Help?</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Have questions about your profile settings?</p>
-                    <Button variant="outline" className="w-full text-sm cursor-pointer hover:bg-gray-300 dark:hover:bg-slate-600">Contact Support</Button>
-                </div>
+                <Button
+                    onClick={onDeleteAccount}
+                    variant="destructive"
+                    className='w-full hover:cursor-pointer'
+                >
+                    Delete Account
+                </Button>
             </div>
         </section>
     );
