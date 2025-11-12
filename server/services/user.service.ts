@@ -31,17 +31,17 @@ import { createAndSendNotification } from "./notification.service";
 export const getUserById = async (id: string) => {
   const user = await userModel.findById(id);
 
-  if (user) {
-    try {
-      await createAndSendNotification({
-        userId: id,
-        title: "Lấy thông tin người dùng",
-        message: `Test tự lấy thông tin của chính tôi`,
-      });
-    } catch (error) {
-      console.error("[Notification Service] Gửi thông báo thất bại:", error);
-    }
-  }
+  // if (user) {
+  //   try {
+  //     await createAndSendNotification({
+  //       userId: id,
+  //       title: "Lấy thông tin người dùng",
+  //       message: `Test tự lấy thông tin của chính tôi`,
+  //     });
+  //   } catch (error) {
+  //     console.error("[Notification Service] Gửi thông báo thất bại:", error);
+  //   }
+  // }
   // --- KẾT THÚC PHẦN CẬP NHẬT ---
 
   // Hàm vẫn trả về kết quả chính của nó như bình thường
@@ -110,7 +110,7 @@ export const updateNotificationSettingsService = async (
   }
 
   // await redis.set(userId, JSON.stringify(user)); // Cập nhật redis nếu cần
-  return user.notificationSettings;
+  return user;
 };
 
 // --- CẬP NHẬT ẢNH ĐẠI DIỆN ---
