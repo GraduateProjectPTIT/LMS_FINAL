@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from bson import ObjectId
 
 # --- CẤU HÌNH ---
-DB_URI = "mongodb+srv://kimdungvn52:kimdung2003@lms.riqyi.mongodb.net/?retryWrites=true&w=majority&appName=Lms"
+DB_URI = "mongodb+srv://kimdungvn52:kimdung2003@lms.riqyi.mongodb.net/mock?retryWrites=true&w=majority&appName=Lms"
 DB_NAME = "mock" 
 NEW_COLLECTION_NAME = "course_similarities" # "Bảng chạy sẵn"
 

@@ -2123,14 +2123,39 @@ export const softDeleteCourseService = async (
     }
 
     if (notify) {
+      // Notify creator
       await createAndSendNotification({
         userId: course.creatorId.toString(),
         title: retire ? "Course retired" : "Course archived",
-        message: `“${(course as any).name}” đã được ${
-          retire ? "retire" : "archive"
+        message: `"${(course as any).name}" has been ${
+          retire ? "retired" : "archived"
         }${reason ? `: ${reason}` : ""}.`,
       }).catch(() => null);
+
+      // Notify all enrolled students
+      const enrolledStudents = await EnrolledCourseModel.find({
+        courseId: new mongoose.Types.ObjectId(courseId),
+      })
+        .select("userId")
+        .lean();
+
+      const studentNotifications = enrolledStudents.map((enrollment) =>
+        createAndSendNotification({
+          userId: enrollment.userId.toString(),
+          title: retire ? "Course Retired" : "Course Archived",
+          message: retire
+            ? `The course "${(course as any).name}" has been retired${
+                reason ? `: ${reason}` : ""
+              }.`
+            : `The course "${(course as any).name}" has been temporarily archived${
+                reason ? `: ${reason}` : ""
+              }.`,
+        }).catch(() => null)
+      );
+
+      await Promise.all(studentNotifications);
     }
+
 
     return res.status(200).json({
       success: true,
