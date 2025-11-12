@@ -20,11 +20,12 @@ const CheckoutHeader = () => {
                     {/* Logo */}
                     <div className="flex items-center">
                         <Image
+                            onClick={() => router.push("/")}
                             src={Logo}
                             alt="LMS Logo"
                             width={120}
                             height={40}
-                            className="h-10 w-auto"
+                            className="h-10 w-auto hover:cursor-pointer"
                             priority
                         />
                     </div>

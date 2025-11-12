@@ -36,6 +36,7 @@ const CoursePreview = ({
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewVideoUrl, setPreviewVideoUrl] = useState('');
     const [isPlaying, setIsPlaying] = useState(false);
+    const [courseStatus, setCourseStatus] = useState<'draft' | 'published'>('draft');
 
     const handleVideoPreview = (videoUrl: string) => {
         setPreviewVideoUrl(videoUrl);
@@ -88,7 +89,8 @@ const CoursePreview = ({
                     url: link.url
                 })) || []
             }))
-        }))
+        })),
+        status: courseStatus,
     }
 
     const router = useRouter();
@@ -371,47 +373,75 @@ const CoursePreview = ({
             </div>
 
             {/* Buttons */}
-            <div className="flex flex-row justify-between gap-4 mt-8">
-                <Button
-                    onClick={() => setActive(active - 1)}
-                    className="w-[200px] bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-black dark:text-white rounded-lg cursor-pointer transition-colors"
-                >
-                    Back to Course Content
-                </Button>
+            <div className="flex flex-col gap-4">
+                {/* Status Selection */}
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Status:</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCourseStatus('draft')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${courseStatus === 'draft'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                }`}
+                        >
+                            Draft
+                        </button>
+                        <button
+                            onClick={() => setCourseStatus('published')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${courseStatus === 'published'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                }`}
+                        >
+                            Published
+                        </button>
+                    </div>
+                </div>
 
-                <Button
-                    onClick={handleCreateCourse}
-                    disabled={isCreating}
-                    className={`w-[200px] bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium cursor-pointer rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    {isCreating ? (
-                        <div className="flex items-center justify-center">
-                            <svg
-                                className="animate-spin h-5 w-5 mr-2"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                ></circle>
-                                <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                ></path>
-                            </svg>
-                            Creating...
-                        </div>
-                    ) : (
-                        "Create & Publish Course"
-                    )}
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex flex-row justify-between gap-4 mt-8">
+                    <Button
+                        onClick={() => setActive(active - 1)}
+                        className="w-[200px] bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-black dark:text-white rounded-lg cursor-pointer transition-colors"
+                    >
+                        Back to Course Content
+                    </Button>
+
+                    <Button
+                        onClick={handleCreateCourse}
+                        disabled={isCreating}
+                        className={`w-[200px] bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium cursor-pointer rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {isCreating ? (
+                            <div className="flex items-center justify-center">
+                                <svg
+                                    className="animate-spin h-5 w-5 mr-2"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                                {courseStatus === 'draft' ? 'Saving Draft...' : 'Publishing...'}
+                            </div>
+                        ) : (
+                            courseStatus === 'draft' ? 'Save as Draft' : 'Create & Publish Course'
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Video Preview Modal */}

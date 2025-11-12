@@ -86,11 +86,13 @@ const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
                 credentials: "include"
               }
             );
-            const data = await res.json();
+            const responseData = await res.json();
             if (!res.ok)
-              throw new Error(data?.message || "Failed to load notifications");
+              throw new Error(responseData?.message || "Failed to load notifications");
 
-            dispatch(fetchSuccess(data.notifications || []));
+            const paginatedResult = responseData.paginatedResult || {};
+
+            dispatch(fetchSuccess(paginatedResult.data || []));
           } catch (err: any) {
             dispatch(fetchFailure(err.message || "Cannot load notifications"));
           }

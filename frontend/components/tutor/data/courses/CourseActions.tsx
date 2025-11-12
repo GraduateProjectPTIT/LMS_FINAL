@@ -8,7 +8,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Copy, Users, ArrowRightToLine } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Copy, Users, RotateCcw } from "lucide-react";
 import toast from 'react-hot-toast';
 import Link from "next/link";
 
@@ -46,6 +46,7 @@ interface ICourseData {
     ratings: number;
     purchased: number;
     creatorId: ICreator;
+    status: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -53,11 +54,13 @@ interface ICourseData {
 interface CourseActionsProps {
     course: ICourseData;
     onDelete: (course: ICourseData) => void;
+    onRestore: (course: ICourseData) => void;
 }
 
 const CourseActions = ({
     course,
-    onDelete
+    onDelete,
+    onRestore
 }: CourseActionsProps) => {
     const handleCopyId = () => {
         navigator.clipboard.writeText(course._id);
@@ -67,6 +70,14 @@ const CourseActions = ({
     const handleDelete = () => {
         onDelete(course);
     };
+
+    const handleRestore = async () => {
+        if (onRestore) {
+            onRestore(course);
+        }
+    };
+
+    const isPublished = course.status === "published";
 
     return (
         <DropdownMenu>
@@ -103,13 +114,23 @@ const CourseActions = ({
                     </DropdownMenuItem>
                 </Link>
 
-                <DropdownMenuItem
-                    onClick={handleDelete}
-                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
-                >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Course
-                </DropdownMenuItem>
+                {isPublished ? (
+                    <DropdownMenuItem
+                        onClick={handleDelete}
+                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Course
+                    </DropdownMenuItem>
+                ) : (
+                    <DropdownMenuItem
+                        onClick={handleRestore}
+                        className="cursor-pointer text-green-600 focus:text-green-600 focus:bg-green-50 dark:focus:bg-green-900/20"
+                    >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Restore Course
+                    </DropdownMenuItem>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );

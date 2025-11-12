@@ -23,6 +23,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
     const [prerequisites, setPrerequisites] = useState<any[]>([]);
 
     const [courseData, setCourseData] = useState<any[]>([]);
+    const [courseStatus, setCourseStatus] = useState<string>('');
 
     const [isUploadingDemo, setIsUploadingDemo] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -57,6 +58,7 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
                 setBenefits(data.course.benefits);
                 setPrerequisites(data.course.prerequisites);
                 setCourseData(data.course.courseData);
+                setCourseStatus(data.course.status);
             }
         } catch (error: any) {
             console.log(error.message);
@@ -151,6 +153,8 @@ const EditCourse = ({ courseId }: { courseId: string }) => {
                     thumbnailPreview={thumbnailPreview}
                     setThumbnailPreview={setThumbnailPreview}
                     courseId={courseInfo._id}
+                    courseStatus={courseStatus}
+                    setCourseStatus={setCourseStatus}
                 />
             default:
                 return <EditCourseInformation

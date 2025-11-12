@@ -10,7 +10,7 @@ import { GoPasskeyFill } from "react-icons/go";
 import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiArrowDownSLine, RiArrowUpSLine } from "react-icons/ri";
-import { MdOutlineInterests } from "react-icons/md";
+import { MdOutlineInterests, MdNotificationsActive } from "react-icons/md";
 
 const sidebarLinks = [
     {
@@ -32,7 +32,12 @@ const sidebarLinks = [
         label: 'Expertises',
         icon: <MdOutlineInterests />,
         value: 'expertises'
-    }
+    },
+    {
+        label: 'Notifications',
+        icon: <MdNotificationsActive />,
+        value: 'notifications'
+    },
 ]
 
 interface SidebarProps {

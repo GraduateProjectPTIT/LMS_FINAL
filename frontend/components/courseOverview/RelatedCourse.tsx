@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronRight, Users, ChevronLeft, Star } from 'lucide-react'
+import { ChevronRight, Clock, BookOpen, Users, ChevronLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getValidThumbnail } from '@/utils/handleImage'
+import { formatDuration } from '@/utils/convertToMinutes'
 
 interface IOverviewCategory {
     _id: string;
@@ -16,13 +17,13 @@ interface IRelatedCourse {
     _id: string;
     name: string;
     thumbnail: {
-        public_id?: string;
         url: string;
     };
     price: number;
-    ratings: number;
-    purchased: number;
-    creatorId: string;
+    estimatedPrice: number;
+    enrolledCounts: number;
+    totalLectures: number;
+    totalDuration: number;
 }
 
 interface IRelatedCourseProps {
@@ -54,7 +55,7 @@ const RelatedCourse = ({ categories, courseId }: IRelatedCourseProps) => {
             }
 
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/related?${params.toString()}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/related?courseId=${params.toString()}`,
                 {
                     method: 'GET',
                     headers: {
@@ -208,9 +209,8 @@ const RelatedCourse = ({ categories, courseId }: IRelatedCourseProps) => {
                                                     <div
                                                         onClick={() => handleSelectCourse(course._id)}
                                                         key={startIndex + index}
-                                                        className="flex-shrink-0 w-full md:w-80 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden cursor-pointer"
+                                                        className="flex-shrink-0 w-full md:w-80 bg-white dark:bg-slate-800 rounded-xl transition-all duration-300 hover:scale-105 border border-gray-200 dark:border-slate-700 overflow-hidden cursor-pointer"
                                                     >
-                                                        {/* Image */}
                                                         <div className="relative h-48 w-full bg-gray-200 dark:bg-slate-700">
                                                             <Image
                                                                 src={getValidThumbnail(course.thumbnail?.url)}
@@ -220,30 +220,32 @@ const RelatedCourse = ({ categories, courseId }: IRelatedCourseProps) => {
                                                                 sizes="(max-width: 768px) 100vw, 320px"
                                                             />
                                                         </div>
-                                                        {/* Course Info */}
                                                         <div className="p-4">
-                                                            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2 h-12">
+                                                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 h-12">
                                                                 {course.name}
                                                             </h3>
-
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                                                                    <span className="text-sm text-gray-400 dark:text-gray-500 line-through">
+                                                                        ${course.estimatedPrice}
+                                                                    </span>
+                                                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                                                         ${course.price}
                                                                     </span>
                                                                 </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                                        {course.ratings.toFixed(1)}
-                                                                    </span>
-                                                                </div>
                                                             </div>
-
-                                                            <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-slate-700">
+                                                            <div className="flex justify-between items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                                                                 <div className="flex items-center gap-1">
                                                                     <Users className="w-4 h-4" />
-                                                                    <span>{course.purchased} enrolled</span>
+                                                                    <span>{course.enrolledCounts}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <BookOpen className="w-4 h-4" />
+                                                                    <span>{course.totalLectures}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Clock className="w-4 h-4" />
+                                                                    <span>{formatDuration(course.totalDuration)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>

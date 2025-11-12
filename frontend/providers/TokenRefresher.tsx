@@ -6,6 +6,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from '@/redux/store';
 import { jwtDecode } from 'jwt-decode';
 import { signOutSuccess } from '@/redux/user/userSlice';
+import { clearAll } from "@/redux/cart/cartSlice";
+import { clearNotificationsState } from "@/redux/notification/notificationSlice";
 
 const TokenRefresher = () => {
 
@@ -29,6 +31,8 @@ const TokenRefresher = () => {
                 if (!newToken) {
                     console.error("Refresh token failed. Logging out...");
                     dispatch(signOutSuccess());
+                    dispatch(clearAll());
+                    dispatch(clearNotificationsState());
                     return;
                 }
             }
@@ -46,11 +50,15 @@ const TokenRefresher = () => {
                         if (!refreshed) {
                             console.warn("Token refresh failed. Logging out...");
                             dispatch(signOutSuccess());
+                            dispatch(clearAll());
+                            dispatch(clearNotificationsState());
                         }
                     }
                 } catch (error) {
                     console.error("Invalid access token. Logging out...");
                     dispatch(signOutSuccess());
+                    dispatch(clearAll());
+                    dispatch(clearNotificationsState());
                 }
             }
         }

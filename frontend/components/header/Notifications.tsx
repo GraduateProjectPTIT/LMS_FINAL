@@ -216,22 +216,20 @@ const Notifications = () => {
         </div>
 
         {/* Footer - View All Button */}
-        {items.length > 0 && (
-          <>
-            <DropdownMenuSeparator className="my-0" />
-            <div className="p-2">
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  router.push("/notifications");
-                }}
-                className="w-full py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30 rounded-md transition-colors"
-              >
-                View All Notifications
-              </button>
-            </div>
-          </>
-        )}
+        <>
+          <DropdownMenuSeparator className="my-0" />
+          <div className="p-2">
+            <button
+              onClick={() => {
+                setOpen(false);
+                router.push("/notifications");
+              }}
+              className="w-full py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30 rounded-md transition-colors"
+            >
+              View All Notifications
+            </button>
+          </div>
+        </>
       </DropdownMenuContent>
     </DropdownMenu>
   );
