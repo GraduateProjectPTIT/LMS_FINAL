@@ -25,30 +25,27 @@ try:
     courses_collection = db["courses"]
     orders_collection = db["orders"]
     users_collection = db["users"]
-    # (MỚI) Thêm collection cho student và tutor profiles
-    student_profiles_collection = db["students"] # 👈 Thay bằng tên collection của bạn
-    tutor_profiles_collection = db["tutors"]     # 👈 Thay bằng tên collection của bạn
+    
+    # --- ĐÃ XÓA student_profiles_collection và tutor_profiles_collection ---
     
     # XÓA SẠCH DỮ LIỆU CŨ
     courses_collection.delete_many({})
     orders_collection.delete_many({})
     users_collection.delete_many({})
-    student_profiles_collection.delete_many({})
-    tutor_profiles_collection.delete_many({})
     
-    print(f"Đã kết nối DB: {DB_NAME} và XÓA SẠCH dữ liệu cũ.")
+    print(f"Đã kết nối DB: {DB_NAME} và XÓA SẠCH dữ liệu cũ (Courses, Orders, Users).")
 except Exception as e:
     print(f"Lỗi kết nối MongoDB: {e}")
     exit()
 
 # --- Bước 1: TẠO MOCK COURSES (30 KHÓA) ---
 print("\n--- Bước 1: Tạo Mock Courses ---")
-# (Giữ nguyên code tạo 30 khóa học, tôi sẽ rút gọn ở đây)
-# ... (Code tạo 30 khóa học từ các câu trả lời trước) ...
 demo_creator_id = ObjectId()
 cluster_A_names = ["Makeup Mắt", "Makeup Nền", "Makeup Cô dâu", "Tạo khối", "Makeup Nàng thơ", "Mắt khói", "Kẻ Eyeliner", "Dự tiệc", "Phân tích khuôn mặt", "Airbrush"]
 cluster_B_names = ["Skincare Hàn Quốc", "Trị mụn", "Chăm sóc da Cơ bản", "Chống lão hóa", "Hiểu Thành phần", "Da nhạy cảm", "Trị Nám", "Massage mặt", "Skincare Sáng & Tối", "Phục hồi da"]
 cluster_C_names = ["Livestream Bán hàng", "Xây kênh TikTok", "Kinh doanh online", "Quảng cáo Facebook", "Chụp ảnh Sản phẩm", "Thương hiệu Cá nhân", "Viết Content", "Quản lý Sàn TMĐT", "Chốt sale", "Tìm Nguồn hàng"]
+
+# HÀM NÀY ĐÃ GIỮ NGUYÊN LINK CLOUDINARY CỦA BẠN
 def create_minimal_course_docs(names, creator_id):
     docs = []
     for name in names:
@@ -65,52 +62,42 @@ def create_minimal_course_docs(names, creator_id):
 cluster_A_docs = create_minimal_course_docs(cluster_A_names, demo_creator_id); result_A = courses_collection.insert_many(cluster_A_docs); cluster_A_ids = result_A.inserted_ids
 cluster_B_docs = create_minimal_course_docs(cluster_B_names, demo_creator_id); result_B = courses_collection.insert_many(cluster_B_docs); cluster_B_ids = result_B.inserted_ids
 cluster_C_docs = create_minimal_course_docs(cluster_C_names, demo_creator_id); result_C = courses_collection.insert_many(cluster_C_docs); cluster_C_ids = result_C.inserted_ids
-print("Đã tạo 30 khóa học.")
+print("Đã tạo 30 khóa học (đã giữ link Cloudinary).")
 
 
-# --- Bước 2: TẠO 31 USERS VÀ CÁC PROFILES ---
-print(f"\n--- Bước 2: Đang tạo 31 Users và Profiles... ---")
+# --- Bước 2: TẠO 31 USERS (Đã đơn giản hóa) ---
+print(f"\n--- Bước 2: Đang tạo 31 Users... ---")
 user_docs = []
-student_profile_docs = []
-tutor_profile_docs = []
-user_link_updates = []       # Dùng để liên kết profile
-list_of_buyers = []          # (QUAN TRỌNG) List ID của 30 người sẽ mua hàng
+list_of_buyers = []          # List ID của 30 người sẽ mua hàng
 
 # 1. Tạo 1 ADMIN
 admin_id = ObjectId()
 user_docs.append({
     "_id": admin_id, "name": "Admin Account", "email": "admin@example.com",
     "password": hashed_password, "role": "admin", "isVerified": True,
-    # Thêm các trường tối thiểu từ model
     "avatar": { "public_id": "demo", "url": "https://example.com/default-avatar.jpg" },
     "socials": { "facebook": "", "instagram": "", "tiktok": "" },
     "isSurveyCompleted": True, "createdAt": datetime.datetime.now(datetime.timezone.utc),
     "notificationSettings": { "on_reply_comment": True, "on_payment_success": True, "on_new_student": True, "on_new_review": True, }
+    # Không có studentProfile hay tutorProfile
 })
 print("Đã tạo 1 Admin (sẽ không mua hàng)")
 
 # 2. Tạo 10 TUTORS
 for i in range(10):
     tutor_id = ObjectId()
-    profile_id = ObjectId()
     
     # Tạo User
     user_docs.append({
         "_id": tutor_id, "name": f"Demo Tutor {i}", "email": f"tutor{i}@example.com",
         "password": hashed_password, "role": "tutor", "isVerified": True,
-        # Thêm các trường tối thiểu
         "avatar": { "public_id": "demo", "url": "https://example.com/default-avatar.jpg" },
         "socials": { "facebook": "", "instagram": "", "tiktok": "" },
         "isSurveyCompleted": True, "createdAt": datetime.datetime.now(datetime.timezone.utc),
         "notificationSettings": { "on_reply_comment": True, "on_payment_success": True, "on_new_student": True, "on_new_review": True, }
+        # Không tạo tutor_profile_docs
+        # Không tạo user_link_updates
     })
-    # Tạo Profile (giả lập)
-    tutor_profile_docs.append({
-        "_id": profile_id, "userId": tutor_id,
-        "bio": f"Đây là bio của Tutor {i}", "skills": ["makeup"] 
-    })
-    # Chuẩn bị lệnh liên kết
-    user_link_updates.append({"updateOne": {"filter": {"_id": tutor_id}, "update": {"$set": {"tutorProfile": profile_id}}}})
     # Thêm vào danh sách mua hàng
     list_of_buyers.append(tutor_id)
 
@@ -119,22 +106,18 @@ print(f"Đã chuẩn bị 10 Tutors (sẽ mua hàng)")
 # 3. Tạo 20 STUDENTS
 for i in range(20):
     student_id = ObjectId()
-    profile_id = ObjectId()
     
     # Tạo User
     user_docs.append({
         "_id": student_id, "name": f"Demo Student {i}", "email": f"student{i}@example.com",
         "password": hashed_password, "role": "student", "isVerified": True,
-        # Thêm các trường tối thiểu
         "avatar": { "public_id": "demo", "url": "https://example.com/default-avatar.jpg" },
         "socials": { "facebook": "", "instagram": "", "tiktok": "" },
         "isSurveyCompleted": True, "createdAt": datetime.datetime.now(datetime.timezone.utc),
         "notificationSettings": { "on_reply_comment": True, "on_payment_success": True, "on_new_student": False, "on_new_review": False, }
+        # Không tạo student_profile_docs
+        # Không tạo user_link_updates
     })
-    # Tạo Profile
-    student_profile_docs.append({"_id": profile_id, "userId": student_id, "interests": []})
-    # Chuẩn bị lệnh liên kết
-    user_link_updates.append({"updateOne": {"filter": {"_id": student_id}, "update": {"$set": {"studentProfile": profile_id}}}})
     # Thêm vào danh sách mua hàng
     list_of_buyers.append(student_id)
 
@@ -145,17 +128,10 @@ try:
     users_collection.insert_many(user_docs)
     print(f"Đã chèn {len(user_docs)} Users. (Mật khẩu: '{DEMO_PASSWORD}')")
     
-    if student_profile_docs:
-        student_profiles_collection.insert_many(student_profile_docs)
-    if tutor_profile_docs:
-        tutor_profiles_collection.insert_many(tutor_profile_docs)
-    print("Đã chèn Student và Tutor Profiles.")
+    # --- ĐÃ XÓA logic chèn và liên kết profile ---
     
-    if user_link_updates:
-        users_collection.bulk_write(user_link_updates)
-    print("Đã liên kết Profiles vào Users.")
 except Exception as e:
-    print(f"Lỗi khi chèn/liên kết Users/Profiles: {e}")
+    print(f"Lỗi khi chèn/liên kết Users: {e}")
     exit()
 
 # --- Bước 3: TẠO MOCK ORDERS (CHO 30 NGƯỜI) ---
@@ -179,11 +155,19 @@ for user_id in list_of_buyers:
         user_courses.add(course_id)
         
     for course_id in user_courses:
+        payment_info_doc = {
+            "id": f"demo_payment_{str(ObjectId())}",
+            "amount": random.randint(50, 200), # Giả lập 1 số tiền
+            "currency": "vnd", # Giả sử
+            "status": "succeeded",
+            "order_token": str(ObjectId()) # 👈 Thêm token duy nhất để sửa lỗi E11000
+        }
+
         order_docs.append({
             "courseId": str(course_id), # Khớp Schema (String)
             "items": [], 
             "userId": user_id,          # Khớp Schema (ObjectId)
-            "payment_info": {"status": "succeeded", "id": "demo_payment_id"},
+            "payment_info": payment_info_doc, # 👈 Sử dụng payment_info đã sửa
             "payment_method": "Demo Seeding",
             "emailSent": False, "notificationSent": False,
             "createdAt": datetime.datetime.now(datetime.timezone.utc),
