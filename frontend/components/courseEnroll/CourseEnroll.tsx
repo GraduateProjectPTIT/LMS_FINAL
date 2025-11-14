@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { RootState } from '@/redux/store';
 import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
@@ -12,6 +12,11 @@ import { CourseEnrollResponse, SectionLecture } from "@/type";
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const CourseEnroll = ({ courseId }: { courseId: string }) => {
+    const searchParams = useSearchParams();
+
+    const focusLectureId = searchParams?.get("focusLecture");
+    const focusQuestionId = searchParams?.get("focusQuestion");
+
     const [isLoading, setIsLoading] = useState(false);
     const [course, setCourse] = useState<CourseEnrollResponse | null>(null);
     const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
@@ -28,6 +33,25 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
+
+    useEffect(() => {
+        // Nếu chưa có course hoặc không có focusLectureId thì bỏ qua
+        if (!course || !focusLectureId) return;
+
+        const allLectures: SectionLecture[] = [];
+
+        course.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push(lecture);
+            });
+        });
+
+        const targetLecture = allLectures.find(l => l._id === focusLectureId);
+
+        if (targetLecture) {
+            setSelectedLecture(targetLecture);
+        }
+    }, [course, focusLectureId]);
 
     // Helper function to get all lectures from course data
     const getAllLecturesFromCourse = useCallback((courseData: CourseEnrollResponse) => {
@@ -226,6 +250,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                 course={course}
                                 onLectureCompleted={handleLectureCompleted}
                                 completedLectures={completedLectures}
+                                focusQuestionId={focusQuestionId}
                             />
                         </div>
 

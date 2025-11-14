@@ -32,11 +32,11 @@ const LogoTicker = () => {
             animate={{
               x: ["0%", "-50%"],
             }}
-            // transition={{
-            //   duration: 20,
-            //   repeat: Infinity,
-            //   ease: "linear",
-            // }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "linear",
+            }}
             style={{ minWidth: "200%" }} // Ensures enough width for two sets
           >
             {/* First set of logos */}

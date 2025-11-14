@@ -43,6 +43,7 @@ interface Comment {
 interface LectureQuestionsProps {
     courseId: string;
     contentId: string;
+    focusQuestionId?: string | null;
 }
 
 const commentSchema = z.object({
@@ -56,7 +57,7 @@ const replySchema = z.object({
 type CommentFormValues = z.infer<typeof commentSchema>;
 type ReplyFormValues = z.infer<typeof replySchema>;
 
-const LectureQuestions = ({ courseId, contentId }: LectureQuestionsProps) => {
+const LectureQuestions = ({ courseId, contentId, focusQuestionId }: LectureQuestionsProps) => {
 
     const {
         register: registerComment,
@@ -96,6 +97,8 @@ const LectureQuestions = ({ courseId, contentId }: LectureQuestionsProps) => {
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+
+    const [highlightedQuestionId, setHighlightedQuestionId] = useState<string | null>(null);
 
     // Fetch comments
     const fetchComments = useCallback(async (page: number = 1) => {
@@ -259,6 +262,23 @@ const LectureQuestions = ({ courseId, contentId }: LectureQuestionsProps) => {
         }
     }
 
+    useEffect(() => {
+        if (!focusQuestionId || comments.length === 0) return;
+
+        const el = document.getElementById(`question-${focusQuestionId}`);
+        if (!el) return;
+
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedQuestionId(focusQuestionId);
+
+        const timeoutId = setTimeout(() => {
+            setHighlightedQuestionId(null);
+        }, 4000);
+
+        return () => clearTimeout(timeoutId);
+    }, [focusQuestionId, comments]);
+
+
     if (loading) {
         return (
             <Loader />
@@ -320,7 +340,8 @@ const LectureQuestions = ({ courseId, contentId }: LectureQuestionsProps) => {
                 {comments.map((comment) => (
                     <div
                         key={comment._id}
-                        className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700"
+                        id={`question-${comment._id}`}
+                        className={`bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 ${focusQuestionId === comment._id ? 'ring-2 ring-blue-400 dark:ring-blue-600' : ''}`}
                     >
                         {/* Comment header */}
                         <div className="flex items-start gap-3">

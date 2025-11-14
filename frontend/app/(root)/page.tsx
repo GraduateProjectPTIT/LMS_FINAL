@@ -19,15 +19,15 @@ const Page = () => {
 
       <LogoTicker />
 
-      <TopPurchasedCourses />
+      <ProductShowcase />
 
       <CategoryCarousel />
 
-      <TopRatedCourses />
-
-      <ProductShowcase />
+      <TopPurchasedCourses />
 
       <Testimonials />
+
+      <TopRatedCourses />
 
       <FAQ />
 

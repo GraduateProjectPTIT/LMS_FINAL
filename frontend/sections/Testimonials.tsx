@@ -45,12 +45,12 @@ const TestimonialColumn = (props: {
       animate={{
         translateY: "-50%"
       }}
-    // transition={{
-    //   repeat: Infinity,
-    //   ease: "linear",
-    //   repeatType: "loop",
-    //   duration: props.duration || 10
-    // }}
+      transition={{
+        repeat: Infinity,
+        ease: "linear",
+        repeatType: "loop",
+        duration: props.duration || 10
+      }}
     >
       {
         [...new Array(2)].fill(0).map((_, index) => (

@@ -117,7 +117,9 @@ const NavUser = ({ user }: NavUserProps) => {
                         <DropdownMenuSeparator />
 
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => router.push("/notifications")}
+                            >
                                 <Bell />
                                 Notifications
                             </DropdownMenuItem>

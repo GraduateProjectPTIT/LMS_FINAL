@@ -9,7 +9,7 @@ import { RootState } from '@/redux/store';
 import RelatedCourse from './RelatedCourse';
 import CourseReview from './CourseReview';
 import CallToActionCourse from './CallToActionCourse';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { getValidThumbnail, isValidImageUrl } from "@/utils/handleImage";
 import { formatDuration } from '@/utils/convertToMinutes';
@@ -102,6 +102,9 @@ interface IProcessedSection {
 const CourseOverview = ({ courseId }: { courseId: string }) => {
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const focusReviewId = searchParams?.get("focusReview") || undefined;
+
     const dispatch = useDispatch();
     const { currentUser } = useSelector((state: RootState) => state.user);
     const { loading } = useSelector((state: RootState) => state.cart);
@@ -531,7 +534,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
                                     <div className="flex items-center gap-3">
-                                        <Users className="text-indigo-600 dark:text-indigo-400" size={18} />
+                                        <Users className="text-blue-600 dark:text-blue-400" size={18} />
                                         <span className="text-gray-700 dark:text-gray-200">Skill Level</span>
                                     </div>
                                     <span className="font-medium text-gray-800 dark:text-white">{courseData.level}</span>
@@ -539,7 +542,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
 
                                 <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
                                     <div className="flex items-center gap-3">
-                                        <BookOpen className="text-indigo-600 dark:text-indigo-400" size={18} />
+                                        <BookOpen className="text-blue-600 dark:text-blue-400" size={18} />
                                         <span className="text-gray-700 dark:text-gray-200">Lectures</span>
                                     </div>
                                     <span className="font-medium text-gray-800 dark:text-white">{courseData.totalLectures}</span>
@@ -547,7 +550,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
 
                                 <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
                                     <div className="flex items-center gap-3">
-                                        <Clock className="text-indigo-600 dark:text-indigo-400" size={18} />
+                                        <Clock className="text-blue-600 dark:text-blue-400" size={18} />
                                         <span className="text-gray-700 dark:text-gray-200">Duration</span>
                                     </div>
                                     <span className="font-medium text-gray-800 dark:text-white">{formatDuration(courseData.totalTime)}</span>
@@ -584,6 +587,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                 <CourseReview
                     isCreator={isCreator}
                     courseId={courseId}
+                    focusReviewId={focusReviewId}
                 />
             </div>
 

@@ -13,9 +13,10 @@ interface VideoPlayerProps {
     course: any;
     onLectureCompleted: (lectureId: string) => void; // Callback để update completion status
     completedLectures: string[]; // Array of completed lecture IDs
+    focusQuestionId?: string | null;
 }
 
-const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }: VideoPlayerProps) => {
+const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures, focusQuestionId }: VideoPlayerProps) => {
     const [activeTab, setActiveTab] = useState<'description' | 'resources' | 'questions'>('description');
     const [watchedPercentage, setWatchedPercentage] = useState(0);
     const [isMarkingCompleted, setIsMarkingCompleted] = useState(false);
@@ -34,6 +35,13 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
     useEffect(() => {
         setWatchedPercentage(0);
     }, [lecture?._id]);
+
+    // Khi deep-link có focusQuestionId -> auto mở tab Q&A
+    useEffect(() => {
+        if (focusQuestionId && lecture?._id) {
+            setActiveTab('questions');
+        }
+    }, [focusQuestionId, lecture?._id]);
 
     // Suppress specific "media resource was aborted" unhandled rejection and log as console.log instead
     useEffect(() => {
@@ -249,6 +257,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures }:
                             <LectureQuestions
                                 courseId={course._id}
                                 contentId={lecture._id}
+                                focusQuestionId={focusQuestionId}
                             />
                         </div>
                     )}

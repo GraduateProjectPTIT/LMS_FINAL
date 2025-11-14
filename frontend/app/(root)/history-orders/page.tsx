@@ -1,8 +1,17 @@
 import React from 'react'
+import Layout from '@/components/Layout'
+import Protected from '@/hooks/useProtected'
+import HistoryOrders from '@/components/historyOrders/HistoryOrders'
 
 const HistoryOrdersPage = () => {
     return (
-        <div>HistoryOrdersPage</div>
+        <Protected>
+            <Layout>
+                <div className='container w-full'>
+                    <HistoryOrders />
+                </div>
+            </Layout>
+        </Protected>
     )
 }
 

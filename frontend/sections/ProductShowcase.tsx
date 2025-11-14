@@ -11,15 +11,14 @@ const ProductShowcase = () => {
       <div className="container">
         <div className="max-w-[540px] mx-auto">
           <div className="flex justify-center">
-            <div className="tag">Empower Your Learning</div>
+            <div className="tag">AI Virtual Try-On</div>
           </div>
-          <h2 className="section-title dark:from-white dark:to-gray-400 mt-5">Transform the way you learn with an interactive LMS</h2>
-          <p className="section-desc mt-5">Unlock your potential with an intuitive LMS designed to simplify learning, track progress, and enhance engagement</p>
+          <h2 className="section-title dark:from-white dark:to-gray-400 mt-5">Learn makeup smarter with AI Virtual Try-On</h2>
+          <p className="section-desc mt-5">Instantly try makeup looks from tutorials directly on your face using AI. Find your perfect style before you even start.</p>
         </div>
-        <div className="relative">
+        {/* <div className="relative">
           <Image src={productImage} alt="product image" className="mt-10" />
-
-        </div>
+        </div> */}
       </div>
     </section>
   );

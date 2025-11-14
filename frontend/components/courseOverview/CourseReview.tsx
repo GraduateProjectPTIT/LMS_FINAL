@@ -42,15 +42,20 @@ interface IReplyReview {
 interface ICourseReviewProps {
     isCreator: boolean;
     courseId: string;
+    focusReviewId?: string;
 }
 
-const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
+const CourseReview = ({ isCreator, courseId, focusReviewId }: ICourseReviewProps) => {
     const [reviews, setReviews] = useState<IReview[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
     const [replyTexts, setReplyTexts] = useState<{ [key: string]: string }>({});
     const [loadingReply, setLoadingReply] = useState<string | null>(null);
-    const [visibleReviews, setVisibleReviews] = useState(3);
+
+    const REVIEWS_PER_PAGE = 3;
+    const [currentPage, setCurrentPage] = useState(0);
+    const [hasScrolledToFocus, setHasScrolledToFocus] = useState(false);
+    const [highlightedReviewId, setHighlightedReviewId] = useState<string | null>(null);
 
     // Fetch reviews from API
     const fetchReviews = useCallback(async () => {
@@ -176,11 +181,60 @@ const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
         }
     };
 
+    const totalPages = Math.ceil(reviews.length / REVIEWS_PER_PAGE);
+    const startIndex = currentPage * REVIEWS_PER_PAGE;
+    const endIndex = Math.min(startIndex + REVIEWS_PER_PAGE, reviews.length);
+    const displayedReviews = reviews.slice(startIndex, endIndex);
+
     const handleShowMore = () => {
-        setVisibleReviews(prev => Math.min(prev + 3, reviews.length));
+        setCurrentPage((prev) => {
+            if (prev + 1 >= totalPages) return prev;
+            return prev + 1;
+        });
     };
 
-    const displayedReviews = reviews.slice(0, visibleReviews);
+    useEffect(() => {
+        // nếu không có focusReviewId hoặc chưa có reviews thì bỏ qua
+        if (!focusReviewId || reviews.length === 0) return;
+
+        const index = reviews.findIndex((r) => r._id === focusReviewId);
+        if (index === -1) return;
+
+        const page = Math.floor(index / REVIEWS_PER_PAGE);
+        setCurrentPage(page); // ví dụ index=8, REVIEWS_PER_PAGE=3 => page=2 => hiển thị reviews[6..8]
+    }, [focusReviewId, reviews]);
+
+    useEffect(() => {
+        if (!focusReviewId || hasScrolledToFocus || reviews.length === 0) return;
+
+        const index = reviews.findIndex((r) => r._id === focusReviewId);
+        if (index === -1) return;
+
+        const page = Math.floor(index / REVIEWS_PER_PAGE);
+        // chỉ scroll khi đang ở đúng page
+        if (currentPage !== page) return;
+
+        const el = document.getElementById(`review-${focusReviewId}`);
+        if (!el) return;
+
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHasScrolledToFocus(true);
+        setHighlightedReviewId(focusReviewId);
+
+        const timeoutId = setTimeout(() => {
+            setHighlightedReviewId(null);
+        }, 4000);
+
+        return () => clearTimeout(timeoutId);
+
+    }, [focusReviewId, reviews, currentPage, hasScrolledToFocus]);
+
+    useEffect(() => {
+        setCurrentPage(0);
+        setHasScrolledToFocus(false);
+        setHighlightedReviewId(null);
+    }, [courseId]);
+
 
     if (loading) {
         return (
@@ -199,7 +253,7 @@ const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
 
             <div className="flex flex-col lg:flex-row gap-8 mb-12">
                 {/* Review Summary */}
-                <div className="lg:w-1/3 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700">
+                <div className="lg:w-1/3 h-[400px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700">
                     <div className="flex flex-col items-center">
                         <div className="text-5xl font-bold text-gray-800 dark:text-white mb-2">
                             {average.toFixed(1)}
@@ -248,7 +302,11 @@ const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
                     ) : (
                         <div className="space-y-6">
                             {displayedReviews.map((review) => (
-                                <div key={review._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700">
+                                <div
+                                    key={review._id}
+                                    id={`review-${review._id}`}
+                                    className={`bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700 ${highlightedReviewId === review._id ? 'ring-2 ring-blue-400 dark:ring-blue-600' : ''}`}
+                                >
                                     <div className="flex items-start">
                                         <div className="relative w-12 h-12 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-900 mr-4 flex-shrink-0">
                                             {review.userId?.avatar?.url && isValidImageUrl(review.userId.avatar.url) ? (
@@ -332,7 +390,7 @@ const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
                                                     {activeReplyId !== review._id ? (
                                                         <button
                                                             onClick={() => handleReplyClick(review._id)}
-                                                            className="inline-flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                                                            className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-indigo-300 font-medium hover:cursor-pointer"
                                                         >
                                                             Reply
                                                         </button>
@@ -385,13 +443,13 @@ const CourseReview = ({ isCreator, courseId }: ICourseReviewProps) => {
                         </div>
                     )}
 
-                    {reviews.length > visibleReviews && (
+                    {currentPage < totalPages - 1 && (
                         <div className="mt-6 text-center">
                             <button
                                 onClick={handleShowMore}
                                 className="inline-flex items-center px-6 py-3 border border-indigo-300 dark:border-indigo-700 rounded-lg text-base font-medium text-indigo-600 dark:text-indigo-400 bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
                             >
-                                <span>See More Reviews ({reviews.length - visibleReviews} more)</span>
+                                <span>See More Reviews ({reviews.length - endIndex} more)</span>
                                 <ChevronDown size={18} className="ml-2" />
                             </button>
                         </div>
