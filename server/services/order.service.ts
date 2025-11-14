@@ -391,3 +391,67 @@ export const getTutorOrdersService = async (
     return next(new ErrorHandler(error.message, 500));
   }
 };
+
+// Get user orders with pagination and filters
+export const getUserOrdersService = async (
+  user: any,
+  query: any,
+  res: Response
+) => {
+  let page = parseInt(String(query?.page ?? "1"), 10);
+  let limit = parseInt(String(query?.limit ?? "10"), 10);
+  if (Number.isNaN(page) || page < 1) page = 1;
+  if (Number.isNaN(limit) || limit < 1) limit = 10;
+  if (limit > 100) limit = 100;
+  const skip = (page - 1) * limit;
+
+  const status = typeof query?.status !== "undefined" ? String(query.status).trim() : undefined;
+  const method = typeof query?.method !== "undefined" ? String(query.method).trim() : undefined;
+  const { from: dateFrom, to: dateTo } = getInclusiveDateRange(query);
+
+  const filter: any = { userId: user._id };
+
+  if (status) {
+    filter["payment_info.status"] = status;
+  }
+  if (method) {
+    filter["payment_method"] = method;
+  }
+  if (dateFrom || dateTo) {
+    filter.createdAt = {} as any;
+    if (dateFrom && !Number.isNaN(dateFrom.getTime())) filter.createdAt.$gte = dateFrom;
+    if (dateTo && !Number.isNaN(dateTo.getTime())) filter.createdAt.$lte = dateTo;
+  }
+
+  const allowedSortFields = ["createdAt"] as const;
+  const sortBy = allowedSortFields.includes(String(query?.sortBy) as any)
+    ? String(query.sortBy)
+    : "createdAt";
+  const sortOrder = String(query?.sortOrder) === "asc" ? 1 : -1;
+  const sort: any = { [sortBy]: sortOrder };
+
+  const [orders, total] = await Promise.all([
+    OrderModel.find(filter)
+      .populate('userId', 'name email avatar')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    OrderModel.countDocuments(filter),
+  ]);
+
+  const normalized = normalizeOrders(orders);
+
+  res.status(200).json({
+    success: true,
+    paginatedResult: {
+      data: normalized,
+      meta: {
+        totalItems: total,
+        totalPages: Math.ceil(total / limit) || 0,
+        currentPage: page,
+        pageSize: limit,
+      },
+    },
+  });
+};

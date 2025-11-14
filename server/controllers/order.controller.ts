@@ -12,6 +12,7 @@ import {
   getUserOrderDetailService,
   getTutorOrdersService,
   getTutorOrderDetailService,
+  getUserOrdersService,
 } from "../services/order.service";
 import sendMail from "../utils/sendMail";
 import path from "path";
@@ -160,23 +161,7 @@ export const getAdminOrders = CatchAsyncError(
 export const getUserOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user?._id;
-
-      const userOrders = await OrderModel.find({ userId })
-        .populate("userId", "name email avatar")
-        .sort({ createdAt: -1 })
-        .lean();
-
-      if (userOrders.length === 0) {
-        return res.status(200).json({ success: true, orders: [] });
-      }
-
-      const normalized = normalizeOrders(userOrders);
-
-      res.status(200).json({
-        success: true,
-        orders: normalized,
-      });
+      await getUserOrdersService(req.user, req.query, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
