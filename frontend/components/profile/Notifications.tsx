@@ -32,20 +32,20 @@ const Notifications = ({ user }: INotificationsProps) => {
 
     // Khởi tạo state cho các cài đặt thông báo
     const [settings, setSettings] = useState<NotificationSettings>({
-        on_reply_comment: user?.notification_settings?.on_reply_comment || false,
-        on_payment_success: user?.notification_settings?.on_payment_success || false,
-        on_new_student: user?.notification_settings?.on_new_student || false,
-        on_new_review: user?.notification_settings?.on_new_review || false,
+        on_reply_comment: user?.notificationSettings?.on_reply_comment || false,
+        on_payment_success: user?.notificationSettings?.on_payment_success || false,
+        on_new_student: user?.notificationSettings?.on_new_student || false,
+        on_new_review: user?.notificationSettings?.on_new_review || false,
     });
 
     // Cập nhật settings khi user thay đổi
     useEffect(() => {
-        if (user?.notification_settings) {
+        if (user?.notificationSettings) {
             setSettings({
-                on_reply_comment: user.notification_settings.on_reply_comment || false,
-                on_payment_success: user.notification_settings.on_payment_success || false,
-                on_new_student: user.notification_settings.on_new_student || false,
-                on_new_review: user.notification_settings.on_new_review || false,
+                on_reply_comment: user.notificationSettings.on_reply_comment || false,
+                on_payment_success: user.notificationSettings.on_payment_success || false,
+                on_new_student: user.notificationSettings.on_new_student || false,
+                on_new_review: user.notificationSettings.on_new_review || false,
             });
         }
     }, [user]);
@@ -83,7 +83,7 @@ const Notifications = ({ user }: INotificationsProps) => {
             const data = await res.json();
 
             if (res.ok) {
-                dispatch(updateSuccess(data.user));
+                dispatch(updateSuccess(data.settings));
                 toast.success('Notification settings updated successfully!');
             } else {
                 // Rollback nếu thất bại
