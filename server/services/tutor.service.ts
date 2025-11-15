@@ -211,7 +211,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
         totalStudents: { $sum: "$purchased" },
         totalCourses: { $sum: 1 },
         totalReviews: { $sum: { $size: "$reviews" } },
-        averageRating: { $avg: "$ratings" },
+        averageRating: { $avg: { $ifNull: ["$ratings", 0] } },
       },
     },
     // Giai đoạn 3: Định dạng lại (loại bỏ _id, làm tròn rating)
