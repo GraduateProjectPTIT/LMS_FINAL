@@ -93,16 +93,19 @@ export const createPayPalCheckoutSession = CatchAsyncError(
         ],
         application_context: {
           return_url: isMulti
-            ? `${process.env.FRONTEND_URL || "http://localhost:3000"
-            }/payment-success?courseIds=${encodeURIComponent(
-              purchasableCourses.map((c: any) => String(c._id)).join(",")
-            )}`
-            : `${process.env.FRONTEND_URL || "http://localhost:3000"
-            }/payment-success?courseId=${String(
-              (purchasableCourses[0] as any)._id
-            )}`,
-          cancel_url: `${process.env.FRONTEND_URL || "http://localhost:3000"
-            }/checkout`,
+            ? `${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/payment-success?courseIds=${encodeURIComponent(
+                purchasableCourses.map((c: any) => String(c._id)).join(",")
+              )}`
+            : `${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/payment-success?courseId=${String(
+                (purchasableCourses[0] as any)._id
+              )}`,
+          cancel_url: `${
+            process.env.FRONTEND_URL || "http://localhost:3000"
+          }/checkout`,
           brand_name: "LMS Platform",
           landing_page: "BILLING",
           user_action: "PAY_NOW",
@@ -428,8 +431,9 @@ export const paypalSuccess = CatchAsyncError(
               await createAndSendNotification({
                 userId: userId.toString(), // ID của người mua
                 title: "Order Confirmation - PayPal",
-                message: `You have successfully purchased ${(c as any).name
-                  } via PayPal`,
+                message: `You have successfully purchased ${
+                  (c as any).name
+                } via PayPal`,
               });
             }
             const creatorId = (c as any).creatorId.toString();
@@ -446,7 +450,7 @@ export const paypalSuccess = CatchAsyncError(
                 userId: creatorId, // ID của người bán
                 title: "New Order",
                 message: `${user.name} purchased ${(c as any).name} via PayPal`,
-                link: `fakeURL`, // Thêm link
+                link: `/order-detail?focusOrder=${consolidatedOrder._id}`,
               });
             }
           } catch (err: any) {
