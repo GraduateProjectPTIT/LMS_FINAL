@@ -488,15 +488,11 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                     <div className="flex flex-col items-center md:items-start">
                                         <div className="flex items-center gap-1 mb-1">
                                             <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">4.9 Instructor Rating</span>
-                                        </div>
-                                        <div className="flex items-center gap-1 mb-1">
-                                            <MessageCircle size={14} className="text-indigo-500" />
-                                            <span className="text-sm text-gray-700 dark:text-gray-300">123 Reviews</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{courseData.ratings.toFixed(1)} Instructor Rating</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Users size={14} className="text-indigo-500" />
-                                            <span className="text-sm text-gray-700 dark:text-gray-300">12,345 Students</span>
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">{courseData.purchased} Students</span>
                                         </div>
                                     </div>
                                 </div>
