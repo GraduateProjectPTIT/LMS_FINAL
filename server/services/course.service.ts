@@ -696,7 +696,10 @@ export const getTopRatedCoursesService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
-    const courses = await CourseModel.find({ status: "published", ratings: { $gt: 0 } })
+    const courses = await CourseModel.find({
+      status: "published",
+      ratings: { $gt: 0 },
+    })
       .select(
         "name price estimatedPrice thumbnail purchased ratings courseData.sectionContents.videoLength"
       )
@@ -1825,7 +1828,7 @@ export const addCommentService = async (
           userId: String(creatorId),
           title: "New Comment",
           message: `${userId?.name} has a new comment in section: ${section?.sectionTitle}`,
-          link: `fakeURL`, // Ví dụ link
+          link: `/course-enroll/${courseId}?focusLecture=${contentId}&focusQuestion=${newComment._id}`,
         });
       }
     }
@@ -2017,7 +2020,7 @@ export const addReviewService = async (
           userId: String(creatorId),
           title: "New Review Received",
           message: `${userId?.name} has given a review in ${course?.name}`,
-          link: `fakeURL`, // Ví dụ link
+          link: `/course-overview/${courseId}?focusReview=${reviewDataObj._id}`, // Ví dụ link
         });
       }
     }
@@ -2216,15 +2219,14 @@ export const softDeleteCourseService = async (
             ? `The course "${(course as any).name}" has been retired${
                 reason ? `: ${reason}` : ""
               }.`
-            : `The course "${(course as any).name}" has been temporarily archived${
-                reason ? `: ${reason}` : ""
-              }.`,
+            : `The course "${
+                (course as any).name
+              }" has been temporarily archived${reason ? `: ${reason}` : ""}.`,
         }).catch(() => null)
       );
 
       await Promise.all(studentNotifications);
     }
-
 
     return res.status(200).json({
       success: true,

@@ -11,6 +11,8 @@ import { useSelector, useDispatch } from 'react-redux'
 import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { signOutSuccess } from "@/redux/user/userSlice";
+import { clearNotificationsState } from "@/redux/notification/notificationSlice";
+import { clearAll } from "@/redux/cart/cartSlice";
 
 const ProfilePage = () => {
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -46,6 +48,8 @@ const ProfilePage = () => {
 
             // Clear user data and redirect to home
             dispatch(signOutSuccess());
+            dispatch(clearNotificationsState());
+            dispatch(clearAll());
             setIsDeleteModalOpen(false);
             router.push('/');
         } catch (error) {

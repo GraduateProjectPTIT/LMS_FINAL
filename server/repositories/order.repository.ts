@@ -10,7 +10,7 @@ const getTotalSpentByStudent = async (
   const result = await orderModel.aggregate([
     {
       $match: {
-        userId: studentId.toString(), // Chỉ lọc các đơn hàng theo userId
+        userId: studentId, // Chỉ lọc các đơn hàng theo userId
       },
     },
     {
