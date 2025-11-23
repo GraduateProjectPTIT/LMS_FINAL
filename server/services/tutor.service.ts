@@ -115,6 +115,7 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
     .sort({ enrolledAt: -1 })
     .limit(5)
     .populate("userId", "name avatar email")
+    .populate("courseId", "name")
     .select("userId courseId enrolledAt");
 
   const courseIdStrings = courseIds.map((id) => String(id));
