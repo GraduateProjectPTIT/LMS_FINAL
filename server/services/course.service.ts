@@ -28,6 +28,7 @@ import {
   sanitizeCourseMedia,
 } from "../utils/course.utils";
 import { upsertCourseThumbnail } from "../utils/media.utils";
+import { countTotalLectures, recomputeEnrollmentsProgressForCourse } from "../utils/enrollment.utils";
 
 import ErrorHandler from "../utils/ErrorHandler";
 import { createAndSendNotification } from "./notification.service";
@@ -1085,6 +1086,33 @@ export const editCourseService = async (
       return next(new ErrorHandler("Course not found", 404));
     }
 
+    const oldTotalLectures = countTotalLectures(findCourse);
+
+    {
+      const payloadStatus =
+        typeof (data as any)?.status !== "undefined"
+          ? String((data as any).status)
+          : typeof (data as any)?.$set?.status !== "undefined"
+          ? String((data as any).$set.status)
+          : undefined;
+      if (typeof payloadStatus !== "undefined") {
+        const nextStatus = payloadStatus.trim().toLowerCase();
+        if (nextStatus === "draft") {
+          const enrolledCount = await EnrolledCourseModel.countDocuments({
+            courseId: new mongoose.Types.ObjectId(String(courseId)),
+          });
+          if (enrolledCount > 0) {
+            return next(
+              new ErrorHandler(
+                "Cannot change status to draft: course has enrolled students",
+                400
+              )
+            );
+          }
+        }
+      }
+    }
+
     const availableCourseThumbnail = findCourse?.thumbnail;
     data.thumbnail = await upsertCourseThumbnail(
       data.thumbnail,
@@ -1181,6 +1209,36 @@ export const editCourseService = async (
     if (course) {
       await (course as any).populate("creatorId", "name avatar email");
       await (course as any).populate("categories", "title");
+    }
+
+    try {
+      if (course) {
+        const newTotalLectures = countTotalLectures(course);
+        if (newTotalLectures !== oldTotalLectures) {
+          await recomputeEnrollmentsProgressForCourse((course as any)._id, newTotalLectures);
+
+          const delta = newTotalLectures - oldTotalLectures;
+          if (delta > 0) {
+            const enrolledStudents = await EnrolledCourseModel.find({
+              courseId: new mongoose.Types.ObjectId(String((course as any)._id)),
+            })
+              .select("userId")
+              .lean();
+
+            await Promise.all(
+              enrolledStudents.map((en) =>
+                createAndSendNotification({
+                  userId: en.userId.toString(),
+                  title: "Course Updated",
+                  message: `New lecture(s) added to "${(course as any).name}". Your progress has been recalculated.`,
+                })
+              )
+            ).catch(() => null);
+          }
+        }
+      }
+    } catch (recalcErr) {
+      console.error("Recompute/notify failed:", recalcErr);
     }
 
     res.status(201).json({
@@ -1906,10 +1964,21 @@ export const addReviewService = async (
     }
 
     const owner = isOwner(course, userId);
-    if (!enrollmentForReview && !owner && userId?.role !== "admin") {
-      return next(
-        new ErrorHandler("You are not eligible to review this course", 403)
-      );
+    // Require students to complete 100% of the course before reviewing
+    if (!owner && userId?.role !== "admin") {
+      if (!enrollmentForReview) {
+        return next(
+          new ErrorHandler("You are not eligible to review this course", 403)
+        );
+      }
+      if (!enrollmentForReview.completed) {
+        return next(
+          new ErrorHandler(
+            "You can only review after completing 100% of this course",
+            403
+          )
+        );
+      }
     }
 
     const reviewDataObj: any = {
