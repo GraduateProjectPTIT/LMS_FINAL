@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 
+#AI
+__pycache__/
+ai-makeup-479109-5ce495c923af.json

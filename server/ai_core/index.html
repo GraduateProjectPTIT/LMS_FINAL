@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Makeup Stylist</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>✨ AI Makeup Stylist</h1>
+      <p class="subtitle">
+        Thử nghiệm phong cách trang điểm mới chỉ trong vài giây
+      </p>
+
+      <div class="app-grid">
+        <div class="input-card">
+          <div class="upload-group">
+            <label class="upload-label">1. Khuôn mặt của bạn</label>
+            <div
+              class="upload-zone"
+              onclick="document.getElementById('userFaceInput').click()"
+            >
+              <div class="icon">👩</div>
+              <span>Nhấn để chọn ảnh chân dung</span>
+              <img id="previewUser" class="preview" alt="Preview Face" />
+            </div>
+            <input
+              type="file"
+              id="userFaceInput"
+              accept="image/*"
+              onchange="showPreview(this, 'previewUser')"
+            />
+          </div>
+
+          <div class="upload-group">
+            <label class="upload-label">2. Phong cách mẫu (Style)</label>
+            <div
+              class="upload-zone"
+              onclick="document.getElementById('styleImageInput').click()"
+            >
+              <div class="icon">🎨</div>
+              <span>Nhấn để chọn ảnh mẫu makeup</span>
+              <img id="previewStyle" class="preview" alt="Preview Style" />
+            </div>
+            <input
+              type="file"
+              id="styleImageInput"
+              accept="image/*"
+              onchange="showPreview(this, 'previewStyle')"
+            />
+          </div>
+
+          <div class="upload-group">
+            <label class="upload-label">3. Yêu cầu thêm (Tùy chọn)</label>
+            <input
+              type="text"
+              id="userPromptInput"
+              placeholder="Ví dụ: Làm môi đỏ hơn, thêm nhũ mắt..."
+            />
+          </div>
+
+          <button type="button" class="btn-primary" id="generateBtn">
+            ✨ Bắt đầu trang điểm (Start VTO)
+          </button>
+          <div id="errorMessage" class="error-msg" style="display: none"></div>
+        </div>
+
+        <div class="output-card" id="outputCard">
+          <h2 style="margin-bottom: 20px; font-size: 1.5rem">
+            Kết quả của bạn
+          </h2>
+
+          <div class="result-image-wrapper">
+            <img id="resultImage" src="" alt="Result" />
+          </div>
+
+          <div class="tutorial-box">
+            <h3>💄 Hướng dẫn thực hiện</h3>
+            <ul class="tutorial-list" id="tutorialList"></ul>
+          </div>
+
+          <div
+            id="coursesSection"
+            style="
+              display: none;
+              margin-top: 30px;
+              border-top: 2px dashed #eee;
+              padding-top: 20px;
+            "
+          >
+            <h3 style="color: #2d3436; margin-bottom: 15px; font-size: 1.2rem">
+              🎓 Khóa học đề xuất cho bạn
+            </h3>
+            <div class="course-grid" id="courseGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <h3 style="color: var(--primary-color)">Đang tô son, kẻ mắt...</h3>
+      <p>Vui lòng chờ AI xử lý (10-20s)</p>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

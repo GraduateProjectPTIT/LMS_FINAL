@@ -1,0 +1,347 @@
+:root {
+  --primary-color: #ff6b6b; /* Màu hồng chủ đạo */
+  --secondary-color: #4ecdc4;
+  --bg-color: #f7f9fc;
+  --text-color: #2d3436;
+  --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 2.5rem;
+}
+
+.subtitle {
+  text-align: center;
+  color: #636e72;
+  margin-bottom: 40px;
+}
+
+/* --- BỐ CỤC LƯỚI 2 CỘT --- */
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* --- PHẦN INPUT (BÊN TRÁI) --- */
+.input-card {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+}
+
+.upload-group {
+  margin-bottom: 25px;
+}
+
+.upload-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #636e72;
+}
+
+/* Khung Upload đẹp */
+.upload-zone {
+  border: 2px dashed #dfe6e9;
+  border-radius: 12px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary-color);
+  background: #fff0f0;
+}
+
+/* Ảnh preview */
+.upload-zone img.preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none; /* Ẩn mặc định */
+  z-index: 2;
+}
+
+.upload-zone .icon {
+  font-size: 2rem;
+  color: #b2bec3;
+  margin-bottom: 10px;
+}
+.upload-zone span {
+  color: #b2bec3;
+  font-size: 0.9rem;
+}
+
+/* Ẩn input file gốc xấu xí */
+input[type="file"] {
+  display: none;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid #dfe6e9;
+  border-radius: 10px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+  border-color: var(--primary-color);
+}
+
+/* Nút bấm xịn */
+button.btn-primary {
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(45deg, var(--primary-color), #ff8e8e);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+button.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.6);
+}
+
+button.btn-primary:disabled {
+  background: #b2bec3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.error-msg {
+  color: #d63031;
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 500;
+  background: #ffe6e6;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* --- PHẦN OUTPUT (BÊN PHẢI) --- */
+.output-card {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  display: none; /* Ẩn mặc định, JS sẽ bật lên */
+}
+
+.result-image-wrapper {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 25px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  min-height: 300px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-image-wrapper img {
+  width: 100%;
+  display: block;
+}
+
+/* Khung hướng dẫn */
+.tutorial-box {
+  background: #fff8f8;
+  border-left: 4px solid var(--primary-color);
+  padding: 20px;
+  border-radius: 0 10px 10px 0;
+}
+
+.tutorial-box h3 {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tutorial-list {
+  list-style: none;
+}
+
+.tutorial-list li {
+  margin-bottom: 12px;
+  padding-left: 25px;
+  position: relative;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.tutorial-list li::before {
+  content: "✨";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-size: 0.8rem;
+}
+
+.prompt-tag {
+  display: inline-block;
+  background: #eee;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* --- MÀN HÌNH LOADING --- */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  display: none; /* Ẩn mặc định */
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+/* --- COURSE CARD STYLES --- */
+.course-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Mặc định 1 cột cho gọn */
+  gap: 15px;
+}
+
+.course-card {
+  display: flex; /* Dùng flex để ảnh bên trái, chữ bên phải */
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-decoration: none; /* Bỏ gạch chân link */
+  color: inherit;
+}
+
+.course-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border-color: var(--secondary-color);
+}
+
+.course-card img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+}
+
+.course-info {
+  padding: 10px 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.course-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #2d3436;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.course-price {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.course-tags {
+  font-size: 0.7rem;
+  color: #b2bec3;
+  margin-top: 5px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive cho Mobile */
+@media (max-width: 768px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 1.8rem;
+  }
+}
