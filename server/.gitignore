@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 .env
 
+#AI
+ai_core/__pycache__/
+ai_core/.venv/
+ai_core/.env
+ai_core/*.json
