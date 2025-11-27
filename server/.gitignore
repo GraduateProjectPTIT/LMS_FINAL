@@ -25,7 +25,5 @@ dist-ssr
 .env
 
 #AI
-ai_core/__pycache__/
-ai_core/.venv/
-ai_core/.env
-ai_core/*.json
+__pycache__/
+ai-makeup-479109-5ce495c923af.json
