@@ -485,21 +485,11 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-col items-center md:items-start">
-                                        <div className="flex items-center gap-1 mb-1">
-                                            <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{courseData.ratings.toFixed(1)} Instructor Rating</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Users size={14} className="text-indigo-500" />
-                                            <span className="text-sm text-gray-700 dark:text-gray-300">{courseData.purchased} Students</span>
-                                        </div>
-                                    </div>
+                                    <h4 className="text-md text-indigo-600 dark:text-indigo-400 mb-4">Course Instructor</h4>
                                 </div>
 
                                 <div className="md:w-3/4">
                                     <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">{courseData.creatorId?.name || "Instructor Name"}</h3>
-                                    <h4 className="text-md text-indigo-600 dark:text-indigo-400 mb-4">Course Instructor</h4>
 
                                     <div className="prose prose-sm dark:prose-invert mb-4">
                                         <p className="text-gray-700 dark:text-gray-300">

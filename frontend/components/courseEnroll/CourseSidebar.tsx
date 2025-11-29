@@ -81,6 +81,10 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
     const isLectureAccessible = (lecture: SectionLecture) => {
         if (canBypass) return true;
 
+        if (completedLectures.includes(lecture._id)) {
+            return true;
+        }
+
         const allLectures = getAllLecturesInOrder();
         const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
 

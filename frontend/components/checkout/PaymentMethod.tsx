@@ -6,8 +6,8 @@ import { FaCcPaypal, FaCcStripe } from "react-icons/fa";
 import { SiZalo } from "react-icons/si";
 
 interface PaymentMethodProps {
-    selectedMethod: 'paypal' | 'stripe' | 'zalopay';
-    onMethodChange: (method: 'paypal' | 'stripe' | 'zalopay') => void;
+    selectedMethod: 'paypal' | 'stripe';
+    onMethodChange: (method: 'paypal' | 'stripe') => void;
 }
 
 const PaymentMethod = ({ selectedMethod, onMethodChange }: PaymentMethodProps) => {
@@ -26,15 +26,6 @@ const PaymentMethod = ({ selectedMethod, onMethodChange }: PaymentMethodProps) =
             name: 'Stripe',
             description: 'Visa, Mastercard, American Express',
             icon: <FaCcStripe size={24} />,
-            bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-            borderColor: 'border-blue-200 dark:border-blue-800',
-            textColor: 'text-blue-800 dark:text-blue-200'
-        },
-        {
-            id: 'zalopay' as const,
-            name: 'ZaloPay',
-            description: 'Pay with ZaloPay e-wallet',
-            icon: <SiZalo size={24} />,
             bgColor: 'bg-blue-50 dark:bg-blue-900/20',
             borderColor: 'border-blue-200 dark:border-blue-800',
             textColor: 'text-blue-800 dark:text-blue-200'
@@ -88,11 +79,6 @@ const PaymentMethod = ({ selectedMethod, onMethodChange }: PaymentMethodProps) =
                             {method.id === 'stripe' && (
                                 <p className={`text-sm ${method.textColor}`}>
                                     Enter your card details on the next step. All transactions are encrypted.
-                                </p>
-                            )}
-                            {method.id === 'zalopay' && (
-                                <p className={`text-sm ${method.textColor}`}>
-                                    You will be redirected to ZaloPay to complete your payment.
                                 </p>
                             )}
                         </div>

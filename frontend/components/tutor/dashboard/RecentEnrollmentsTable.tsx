@@ -18,7 +18,10 @@ interface IEnrolledUser {
 interface IRecentEnrollment {
     _id: string;
     userId: IEnrolledUser;
-    courseId: string;
+    courseId: {
+        _id: string;
+        name: string;
+    }
     enrolledAt: string;
 }
 
@@ -75,6 +78,9 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                     <thead className="bg-gray-50 dark:bg-gray-800/50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Course Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Student
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -100,6 +106,11 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                             enrollments.map((enrollment) => (
                                 <tr key={enrollment._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            {enrollment.courseId.name}
+                                        </p>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             {
                                                 enrollment.userId.avatar?.url && isValidImageUrl(enrollment.userId.avatar.url) ? (
@@ -119,7 +130,7 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                                                 )
                                             }
                                             <div className="ml-3">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">
                                                     {enrollment.userId.name}
                                                 </p>
                                             </div>

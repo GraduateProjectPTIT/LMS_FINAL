@@ -65,6 +65,7 @@ const AllNotifications = () => {
 
       const paginatedResult = data.paginatedResult || {};
       setItems(paginatedResult.data || []);
+      console.log("Notifications items:", items);
 
       const metaData = paginatedResult.meta || {};
       setMeta({

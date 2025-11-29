@@ -186,13 +186,6 @@ const CourseReview = ({ isCreator, courseId, focusReviewId }: ICourseReviewProps
     const endIndex = Math.min(startIndex + REVIEWS_PER_PAGE, reviews.length);
     const displayedReviews = reviews.slice(startIndex, endIndex);
 
-    const handleShowMore = () => {
-        setCurrentPage((prev) => {
-            if (prev + 1 >= totalPages) return prev;
-            return prev + 1;
-        });
-    };
-
     useEffect(() => {
         // nếu không có focusReviewId hoặc chưa có reviews thì bỏ qua
         if (!focusReviewId || reviews.length === 0) return;
@@ -228,6 +221,14 @@ const CourseReview = ({ isCreator, courseId, focusReviewId }: ICourseReviewProps
         return () => clearTimeout(timeoutId);
 
     }, [focusReviewId, reviews, currentPage, hasScrolledToFocus]);
+
+    // Scroll to top of review list when page changes (except when focusing on a specific review)
+    useEffect(() => {
+        const reviewSection = document.getElementById('review-list-section');
+        if (reviewSection && !focusReviewId) {
+            reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [currentPage, focusReviewId]);
 
     useEffect(() => {
         setCurrentPage(0);
@@ -294,7 +295,7 @@ const CourseReview = ({ isCreator, courseId, focusReviewId }: ICourseReviewProps
                 </div>
 
                 {/* Review List */}
-                <div className="lg:w-2/3">
+                <div className="lg:w-2/3" id="review-list-section">
                     {reviews.length === 0 ? (
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 border border-gray-100 dark:border-gray-700 text-center">
                             <p className="text-gray-600 dark:text-gray-400">No reviews yet. Be the first to review this course!</p>
@@ -443,14 +444,41 @@ const CourseReview = ({ isCreator, courseId, focusReviewId }: ICourseReviewProps
                         </div>
                     )}
 
-                    {currentPage < totalPages - 1 && (
-                        <div className="mt-6 text-center">
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="mt-6 flex justify-center items-center gap-2">
+                            {/* Previous Button */}
                             <button
-                                onClick={handleShowMore}
-                                className="inline-flex items-center px-6 py-3 border border-indigo-300 dark:border-indigo-700 rounded-lg text-base font-medium text-indigo-600 dark:text-indigo-400 bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                                disabled={currentPage === 0}
+                                className="px-4 py-2 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-600 dark:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                             >
-                                <span>See More Reviews ({reviews.length - endIndex} more)</span>
-                                <ChevronDown size={18} className="ml-2" />
+                                Previous
+                            </button>
+
+                            {/* Page Numbers */}
+                            <div className="flex gap-2">
+                                {Array.from({ length: totalPages }, (_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i)}
+                                        className={`w-10 h-10 rounded-lg font-medium transition-colors ${currentPage === i
+                                            ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                                            : 'border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                                            }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Next Button */}
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                                disabled={currentPage === totalPages - 1}
+                                className="px-4 py-2 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-600 dark:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            >
+                                Next
                             </button>
                         </div>
                     )}

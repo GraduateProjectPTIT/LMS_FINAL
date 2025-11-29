@@ -28,7 +28,10 @@ interface IEnrolledUser {
 interface IRecentEnrollment {
     _id: string;
     userId: IEnrolledUser;
-    courseId: string;
+    courseId: {
+        _id: string;
+        name: string;
+    }
     enrolledAt: string;
 }
 

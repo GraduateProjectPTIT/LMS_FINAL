@@ -7,8 +7,8 @@ import PaymentMethod from './PaymentMethod'
 
 interface CheckoutInformationProps {
     cartItems: CartItem[];
-    selectedPaymentMethod: 'paypal' | 'stripe' | 'zalopay';
-    onPaymentMethodChange: (method: 'paypal' | 'stripe' | 'zalopay') => void;
+    selectedPaymentMethod: 'paypal' | 'stripe';
+    onPaymentMethodChange: (method: 'paypal' | 'stripe') => void;
 }
 
 const CheckoutInformation = ({
