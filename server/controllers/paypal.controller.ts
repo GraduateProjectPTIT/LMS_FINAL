@@ -434,6 +434,7 @@ export const paypalSuccess = CatchAsyncError(
                 message: `You have successfully purchased ${
                   (c as any).name
                 } via PayPal`,
+                link: `/order-detail?focusOrder=${consolidatedOrder._id}`,
               });
             }
             const creatorId = (c as any).creatorId.toString();
@@ -450,7 +451,6 @@ export const paypalSuccess = CatchAsyncError(
                 userId: creatorId, // ID của người bán
                 title: "New Order",
                 message: `${user.name} purchased ${(c as any).name} via PayPal`,
-                link: `/order-detail?focusOrder=${consolidatedOrder._id}`,
               });
             }
           } catch (err: any) {
