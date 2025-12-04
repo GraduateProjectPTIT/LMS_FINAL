@@ -7,17 +7,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- CẤU HÌNH DATABASE (Private trong module này) ---
-MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://kimdungvn52:kimdung2003@lms.riqyi.mongodb.net/?retryWrites=true&w=majority&appName=Lms")
-DB_NAME = os.getenv("DB_NAME", "test")
+MONGO_URI = os.getenv("MONGO_URI")
+DB_NAME = os.getenv("DB_NAME")
 
-try:
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    courses_collection = db["courses"]
-    print(f"✅ [Module Course] Đã kết nối MongoDB: {DB_NAME}")
-except Exception as e:
-    print(f"❌ [Module Course] Lỗi kết nối MongoDB: {e}")
-    courses_collection = None
+courses_collection = None
+
+if not MONGO_URI:
+    print("❌ [Module Course] CẢNH BÁO: Chưa có MONGO_URI trong file .env")
+else:
+    try:
+        client = MongoClient(MONGO_URI)
+        db = client[DB_NAME]
+        courses_collection = db["courses"]
+        print(f"[Module Course] Đã kết nối MongoDB: {DB_NAME}")
+    except Exception as e:
+        print(f"[Module Course] Lỗi kết nối MongoDB: {e}")
 
 # --- CÁC HÀM XỬ LÝ LOGIC ---
 
@@ -32,44 +36,58 @@ def clean_mongo_doc(doc):
         final_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
     elif isinstance(raw_tags, list):
         final_tags = raw_tags
+
+    # 1. Lấy object thumbnail ra, nếu không có thì trả về dict rỗng {}
+    thumb_data = doc.get("thumbnail", {})
+
+    # 2. Lấy đường dẫn url bên trong. Nếu thumb_data là dict thì mới get tiếp
+    thumb_url = ""
+    if isinstance(thumb_data, dict):
+        thumb_url = thumb_data.get("url", "")
+    elif isinstance(thumb_data, str): # Phòng trường hợp dữ liệu cũ lưu dạng string
+        thumb_url = thumb_data
+
+    # Nếu không có ảnh, dùng ảnh mặc định (Placeholder)
+    if not thumb_url:
+        thumb_url = "https://via.placeholder.com/300x200?text=No+Image"
     
     return {
         "id": str(doc.get("_id", "")), 
         "name": doc.get("name", "Khóa học không tên"),
         "price": doc.get("price", "Liên hệ"),
-        "tags": final_tags
+        "tags": final_tags,
+        "thumbnail": thumb_url
     }
 
 def get_courses_from_db(keywords: list):
     """
-    Hàm chính để gọi từ bên ngoài.
-    Tìm kiếm khóa học theo từ khóa + Fallback.
+    Cải tiến: Tìm kiếm đa trường (Tags + Tên khóa học)
     """
     if courses_collection is None: return []
     
-    print(f"\n🔍 [DB] Tìm kiếm khóa học với: {keywords}")
+    print(f"\n [DB] Tìm kiếm khóa học với: {keywords}")
     
     raw_results = []
 
-    # 1. Tìm kiếm (Case-insensitive & Partial match)
     if keywords:
         try:
+            # Tạo Regex list
             regex_list = [re.compile(re.escape(k), re.IGNORECASE) for k in keywords]
-            query = {"tags": {"$in": regex_list}}
+            
+            # --- CẢI TIẾN: Dùng toán tử $or để tìm rộng hơn ---
+            query = {
+                "$or": [
+                    {"tags": {"$in": regex_list}}, # Tìm trong tags
+                    {"name": {"$in": regex_list}}, # Tìm trong tên khóa học
+                    {"description": {"$in": regex_list}} # Tìm trong mô tả khóa học
+                ]
+            }
+            
             cursor = courses_collection.find(query).limit(3)
             raw_results = list(cursor)
-            print(f"🎯 [DB] Tìm thấy: {len(raw_results)} khóa học")
+            print(f"[DB] Tìm thấy: {len(raw_results)} khóa học")
         except Exception as e:
-            print(f"❌ [DB] Lỗi truy vấn: {e}")
-
-    # 2. Fallback
-    if not raw_results:
-        print("⚠️ [DB] Không tìm thấy -> Chạy Fallback.")
-        try:
-            cursor = courses_collection.find().sort("_id", -1).limit(3)
-            raw_results = list(cursor)
-        except Exception as e:
-            print(f"❌ [DB] Lỗi Fallback: {e}")
+            print(f"[DB] Lỗi truy vấn: {e}")
 
     # 3. Clean Data
     clean_list = []

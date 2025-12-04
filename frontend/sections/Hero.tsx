@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import React, { useState } from 'react'
+import { useSelector } from 'react-redux'
 import { RootState } from "@/redux/store";
 import SelectPreferencesModal from './SelectPreferencesModal';
 import ArrowRight from "@/assets/arrow-right.svg"
-import { Settings, CheckCheck } from 'lucide-react'
+import { Settings, CheckCheck, Compass } from 'lucide-react'
 
 const Hero = () => {
 
@@ -14,6 +14,24 @@ const Hero = () => {
 
     const handleCompleteProfile = () => {
         setShowCompleteProfileModal(true);
+    };
+
+    const scrollToSection = (sectionId: string) => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    };
+
+    const handleExploreFeaturesClick = () => {
+        scrollToSection('product-showcase');
+    };
+
+    const handleExploreCoursesClick = () => {
+        scrollToSection('top-purchased-courses');
     };
 
     return (
@@ -102,11 +120,20 @@ const Hero = () => {
                             </div>
                         ) : (
                             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                                <button className="px-8 py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-slate-900 font-medium rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200">
-                                    Start Learning Free
-                                </button>
+                                    <button 
+                                        onClick={handleExploreFeaturesClick}
+                                        className="group px-8 py-4 bg-blue-500 dark:bg-blue-600 backdrop-blur-sm border border-gray-200 dark:border-gray-700 font-medium rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
+                                    >
+                                        <span className="flex items-center gap-2 text-white">
+                                            Explore Features
+                                            <Compass className="w-5 h-5 group-hover:translate-x-1 transition-transform text-gray-300" />
+                                        </span>
+                                    </button>
 
-                                <button className="group px-8 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-gray-600 font-medium rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200">
+                                <button 
+                                    onClick={handleExploreCoursesClick}
+                                    className="group px-8 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-gray-600 font-medium rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
+                                >
                                     <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                         Explore Courses
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform text-slate-600 dark:text-slate-400" />

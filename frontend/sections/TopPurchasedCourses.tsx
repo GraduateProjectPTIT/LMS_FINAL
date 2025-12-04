@@ -121,7 +121,7 @@ const TopPurchasedCourses = () => {
     }
 
     return (
-        <div className='py-16 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-blue-900/20 dark:to-indigo-900/30'>
+        <div id="top-purchased-courses" className='py-16 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-blue-900/20 dark:to-indigo-900/30'>
             <div className='container max-w-6xl px-4 mx-auto'>
                 <div className="text-center mb-12">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
