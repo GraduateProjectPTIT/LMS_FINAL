@@ -98,13 +98,14 @@ export const createAndSendNotification = async (
 export const createNotificationService = async (
   data: CreateNotificationInput
 ) => {
-  const { userId, title, message } = data;
+  const { userId, title, message, link } = data;
 
   // 1. Chỉ lưu thông báo vào cơ sở dữ liệu
   const notification = await notificationModel.create({
     userId,
     title,
     message,
+    link,
   });
 
   // 2. Việc gửi SSE đã được chuyển cho Controller xử lý

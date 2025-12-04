@@ -121,8 +121,8 @@ const getPrecomputedRecommendations = async (
   userPurchasedCourses: mongoose.Types.ObjectId[],
   limit: number
 ): Promise<any[]> => {
-  // Đây là truy vấn aggregate MỚI,
-  // chạy trên collection "course_similarities" (Rất nhỏ, Rất nhanh)
+  // Bạn nên đổi any[] thành ICourseCardDto[] cho đồng bộ
+
   return CourseSimilarityModel.aggregate([
     // 1. Chỉ tìm các khóa học mà user ĐÃ MUA
     {
@@ -134,14 +134,13 @@ const getPrecomputedRecommendations = async (
     {
       $unwind: "$recommendations",
     },
-    // 3. Lọc ra các khóa học user ĐÃ CÓ
+    // 3. Lọc ra các khóa học user ĐÃ CÓ (tránh gợi ý lại cái đã mua)
     {
       $match: {
         "recommendations.courseId": { $nin: userPurchasedCourses },
       },
     },
     // 4. Gom nhóm lại và CỘNG ĐIỂM
-    // (Nếu A -> C (0.5đ) và B -> C (0.4đ) => C = 0.9đ)
     {
       $group: {
         _id: "$recommendations.courseId",
@@ -152,11 +151,11 @@ const getPrecomputedRecommendations = async (
     {
       $sort: { totalScore: -1 },
     },
-    // 6. Giới hạn
+    // 6. Giới hạn số lượng
     {
       $limit: limit,
     },
-    // 7. Lấy thông tin chi tiết khóa học (y như cũ)
+    // 7. Lookup lấy thông tin chi tiết (lúc này data đang nằm trong field courseDetails)
     {
       $lookup: {
         from: "courses",
@@ -168,13 +167,24 @@ const getPrecomputedRecommendations = async (
     {
       $unwind: "$courseDetails",
     },
+
+    // 🔥 BƯỚC QUAN TRỌNG NHẤT: Bóc tách dữ liệu 🔥
     {
-      $project: {
-        _id: "$courseDetails._id",
-        name: "$courseDetails.name",
-        price: "$courseDetails.price",
-        score: "$totalScore",
+      $replaceRoot: {
+        newRoot: {
+          // Trộn thông tin khóa học với điểm số (nếu muốn giữ lại điểm để debug)
+          $mergeObjects: [
+            "$courseDetails",
+            { recommendationScore: "$totalScore" },
+          ],
+        },
       },
+    },
+
+    // 8. Cuối cùng: Áp dụng projection Y HỆT như hàm Cold Start
+    // Đảm bảo biến courseListProjection được import vào đây
+    {
+      $project: courseListProjection,
     },
   ]);
 };
