@@ -63,8 +63,6 @@ export const updateStudentInterestService = async (
   }
   await Promise.all([studentProfile.save(), user.save()]);
 
-  await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800);
-
   // ✨ BẮT ĐẦU CHUẨN BỊ RESPONSE GIỐNG HỆT LOGIC TUTOR ✨
 
   // 3. Populate trường 'interests' sau khi đã lưu

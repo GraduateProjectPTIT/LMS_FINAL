@@ -68,8 +68,6 @@ export const updateTutorExpertiseService = async (
   }
   await Promise.all([tutorProfile.save(), user.save()]);
 
-  await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800);
-
   // BƯỚC 3: Chuẩn bị response (POPULATE MỘT LẦN DUY NHẤT Ở ĐÂY)
   // Populate document sau khi đã được lưu với dữ liệu mới nhất
   const populatedProfile = await tutorProfile.populate<{
@@ -100,12 +98,6 @@ export const updateTutorExpertiseService = async (
 };
 
 export const getTutorDashboardSummaryService = async (userId: string) => {
-  const cached = await redis.get(`tutor:${userId}:dashboard:summary`);
-  if (cached) {
-    try {
-      return JSON.parse(cached);
-    } catch {}
-  }
   const courses = await courseModel
     .find({ creatorId: userId })
     .select("_id purchased ratings")
@@ -142,7 +134,7 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
   const myRevenue =
     Array.isArray(revenueAgg) && revenueAgg.length ? revenueAgg[0].revenue : 0;
 
-  const result = {
+  return {
     summary: {
       myCoursesCount,
       myStudentsCount,
@@ -150,26 +142,12 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
     },
     recentEnrollments,
   };
-  await redis.set(
-    `tutor:${userId}:dashboard:summary`,
-    JSON.stringify(result),
-    "EX",
-    120
-  );
-  return result;
 };
 
 export const getTutorEarningsChartService = async (
   userId: string,
   range: string = "30d"
 ) => {
-  const cacheKey = `tutor:${userId}:earn:${range}`;
-  const cached = await redis.get(cacheKey);
-  if (cached) {
-    try {
-      return JSON.parse(cached);
-    } catch {}
-  }
   const isMonthly = range === "12m";
   const courses = await courseModel
     .find({ creatorId: userId })
@@ -198,9 +176,7 @@ export const getTutorEarningsChartService = async (
     },
   ]);
 
-  const result = { range, series };
-  await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
-  return result;
+  return { range, series };
 };
 
 export const getTutorDetailsService = async (tutorId: string) => {
