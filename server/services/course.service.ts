@@ -29,7 +29,10 @@ import {
   sanitizeCourseMedia,
 } from "../utils/course.utils";
 import { upsertCourseThumbnail } from "../utils/media.utils";
-import { countTotalLectures, recomputeEnrollmentsProgressForCourse } from "../utils/enrollment.utils";
+import {
+  countTotalLectures,
+  recomputeEnrollmentsProgressForCourse,
+} from "../utils/enrollment.utils";
 
 import ErrorHandler from "../utils/ErrorHandler";
 import { createAndSendNotification } from "./notification.service";
@@ -1279,7 +1282,9 @@ export const editCourseService = async (
           const delta = newTotalLectures - oldTotalLectures;
           if (delta > 0) {
             const enrolledStudents = await EnrolledCourseModel.find({
-              courseId: new mongoose.Types.ObjectId(String((course as any)._id)),
+              courseId: new mongoose.Types.ObjectId(
+                String((course as any)._id)
+              ),
             })
               .select("userId")
               .lean();
@@ -1289,7 +1294,9 @@ export const editCourseService = async (
                 createAndSendNotification({
                   userId: en.userId.toString(),
                   title: "Course Updated",
-                  message: `New lecture(s) added to "${(course as any).name}". Your progress has been recalculated.`,
+                  message: `New lecture(s) added to "${
+                    (course as any).name
+                  }". Your progress has been recalculated.`,
                 })
               )
             ).catch(() => null);
@@ -1876,6 +1883,8 @@ export const addCommentService = async (
       "creatorId status courseData"
     );
     if (!course) return next(new ErrorHandler("Course not found", 404));
+
+    // Kiểm tra quyền truy cập (Admin / Owner / Enrolled)
     if (
       course.status === "retired" &&
       !isAdmin(userId) &&
@@ -1899,6 +1908,7 @@ export const addCommentService = async (
       );
     }
 
+    // Tìm section và content
     const section = (course as any)?.courseData.find((sec: any) =>
       sec.sectionContents.some((cont: any) => cont._id.equals(contentId))
     );
@@ -1907,35 +1917,39 @@ export const addCommentService = async (
     );
     if (!content) return next(new ErrorHandler("Content not found", 404));
 
+    // --- FIX: Tự tạo ID cho Comment ---
+    const commentId = new mongoose.Types.ObjectId(); // 2. Tạo ID mới
+
     const newComment: any = {
+      _id: commentId, // 3. Gán ID vào đây
       userId: userId?._id,
       content: comment,
       parentId: null,
     };
     content.lectureComments.push(newComment);
 
+    // Xử lý thông báo
     const creatorId = (course as any)?.creatorId;
-    const commenterId = String(userId?._id); // Người viết comment
+    const commenterId = String(userId?._id);
 
-    // 2. Chỉ gửi nếu người viết comment không phải là giảng viên
     if (creatorId && String(creatorId) !== commenterId) {
-      // 3. Lấy cài đặt của Giảng viên
       const creatorUser = await userModel
         .findById(creatorId)
         .select("notificationSettings");
 
-      // 4. Kiểm tra cài đặt
       if (creatorUser && creatorUser.notificationSettings.on_reply_comment) {
         await createAndSendNotification({
           userId: String(creatorId),
           title: "New Comment",
           message: `${userId?.name} has a new comment in section: ${section?.sectionTitle}`,
-          link: `/course-enroll/${courseId}?focusLecture=${contentId}&focusQuestion=${newComment._id}`,
+          // 4. Dùng commentId đã tạo ở trên vào Link
+          link: `/course-enroll/${courseId}?focusLecture=${contentId}&focusQuestion=${commentId}`,
         });
       }
     }
 
     await (course as any).save();
+
     res
       .status(200)
       .json({ success: true, message: "Add comment successfully" });
@@ -2058,17 +2072,22 @@ export const addReviewService = async (
       EnrolledCourseModel.findOne({ userId: userId?._id, courseId }),
       CourseModel.findById(courseId),
     ]);
+
     if (!course) return next(new ErrorHandler("Course not found", 404));
+
+    // Kiểm tra trạng thái Retired
+    // (Giả định các hàm isAdmin, isOwner đã được import)
+    const owner = isOwner(course, userId); // Hàm kiểm tra chủ sở hữu
+
     if (
       course.status === "retired" &&
-      !isAdmin(userId) &&
-      !isOwner(course, userId) &&
+      !isAdmin(userId) && // Hàm kiểm tra admin
+      !owner &&
       !enrollmentForReview
     ) {
       return next(new ErrorHandler("Course has been retired", 410));
     }
 
-    const owner = isOwner(course, userId);
     // Require students to complete 100% of the course before reviewing
     if (!owner && userId?.role !== "admin") {
       if (!enrollmentForReview) {
@@ -2086,14 +2105,20 @@ export const addReviewService = async (
       }
     }
 
+    // --- FIX: Tự tạo ID cho Review trước ---
+    const reviewId = new mongoose.Types.ObjectId();
+
     const reviewDataObj: any = {
+      _id: reviewId, // Gán ID đã tạo vào đây
       userId: userId?._id,
       rating,
       comment: review,
       replies: [],
     };
+
     (course as any)?.reviews.push(reviewDataObj);
 
+    // Tính toán lại Average Rating
     let avg = 0;
     (course as any)?.reviews.forEach((rev: any) => {
       avg += rev.rating;
@@ -2117,7 +2142,6 @@ export const addReviewService = async (
     } catch {}
 
     // --- Logic cho "New Review" (Gửi cho Giảng viên) ---
-
     const creatorId = (course as any)?.creatorId;
 
     // 1. Chỉ gửi nếu người review không phải là giảng viên
@@ -2127,13 +2151,14 @@ export const addReviewService = async (
         .findById(creatorId)
         .select("notificationSettings");
 
-      // 3. Kiểm tra cài đặt
+      // 3. Kiểm tra cài đặt và gửi thông báo
       if (creatorUser && creatorUser.notificationSettings.on_new_review) {
         await createAndSendNotification({
           userId: String(creatorId),
           title: "New Review Received",
           message: `${userId?.name} has given a review in ${course?.name}`,
-          link: `/course-overview/${courseId}?focusReview=${reviewDataObj._id}`, // Ví dụ link
+          // FIX: Sử dụng reviewId đã tạo ở trên
+          link: `/course-overview/${courseId}?focusReview=${reviewId}`,
         });
       }
     }
