@@ -3,7 +3,7 @@ import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
-// import { redis } from "../utils/redis";
+import { redis } from "../utils/redis";
 import {
   INotificationSettingsData,
   IStudent,
@@ -29,22 +29,17 @@ import { createAndSendNotification } from "./notification.service";
 
 // --- LẤY USER BẰNG ID (đã có) ---
 export const getUserById = async (id: string) => {
+  const cached = await redis.get(`user:${id}`);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch {}
+  }
+
   const user = await userModel.findById(id);
-
-  // if (user) {
-  //   try {
-  //     await createAndSendNotification({
-  //       userId: id,
-  //       title: "Lấy thông tin người dùng",
-  //       message: `Test tự lấy thông tin của chính tôi`,
-  //     });
-  //   } catch (error) {
-  //     console.error("[Notification Service] Gửi thông báo thất bại:", error);
-  //   }
-  // }
-  // --- KẾT THÚC PHẦN CẬP NHẬT ---
-
-  // Hàm vẫn trả về kết quả chính của nó như bình thường
+  if (user) {
+    await redis.set(`user:${id}`, JSON.stringify(user), "EX", 1800);
+  }
   return user;
 };
 
@@ -72,7 +67,7 @@ export const updateUserInfoService = async (
     Object.assign(user.socials, data.socials);
   }
   await user.save();
-  // await redis.set(userId, JSON.stringify(user));
+  await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800);
   return user;
 };
 
@@ -109,7 +104,7 @@ export const updateNotificationSettingsService = async (
     throw new ErrorHandler("User not found", 404);
   }
 
-  // await redis.set(userId, JSON.stringify(user)); // Cập nhật redis nếu cần
+  await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800); // Cập nhật redis nếu cần
   return user;
 };
 
@@ -156,6 +151,8 @@ export const updateAvatarService = async (
     await user.save();
 
     // 5. --- SEND RESPONSE ---
+    await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800);
+
     res.status(200).json({
       success: true,
       message: "Avatar updated successfully",
@@ -172,7 +169,7 @@ export const updateUserRoleService = async (id: string, role: string) => {
   if (!user) {
     throw new ErrorHandler("User not found", 404);
   }
-  // await redis.set(id, JSON.stringify(user));
+  await redis.set(`user:${id}`, JSON.stringify(user), "EX", 1800);
   return user;
 };
 

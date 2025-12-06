@@ -34,6 +34,7 @@ import { createKeywordSearchFilter } from "../utils/query.helper";
 import { SortOptions } from "../utils/pagination.helper";
 import CourseModel from "../models/course.model";
 import OrderModel from "../models/order.model";
+import { redis } from "../utils/redis";
 // --- XÓA USER ---
 // export const deleteUserService = async (id: string) => {
 //   const user = await userModel.findById(id);
@@ -49,6 +50,12 @@ import OrderModel from "../models/order.model";
 
 // Admin dashboard summary
 export const getAdminDashboardSummaryService = async () => {
+  const cached = await redis.get("admin:dashboard:summary");
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch {}
+  }
   const [
     totalUsers,
     totalTutors,
@@ -95,7 +102,7 @@ export const getAdminDashboardSummaryService = async () => {
       ? paidOrdersAgg[0].totalRevenue
       : 0;
 
-  return {
+  const result = {
     summary: {
       totalUsers,
       totalTutors,
@@ -107,10 +114,21 @@ export const getAdminDashboardSummaryService = async () => {
     recentUsers,
     recentPaidOrders,
   };
+  try {
+    await redis.set("admin:dashboard:summary", JSON.stringify(result), "EX", 120);
+  } catch {}
+  return result;
 };
 
 // Admin revenue chart
 export const getAdminRevenueChartService = async (range: string = "30d") => {
+  const cacheKey = `admin:revenue:${range}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch {}
+  }
   const isMonthly = range === "12m";
   const matchStage = {
     "payment_info.status": { $in: ["succeeded", "paid"] },
@@ -144,7 +162,11 @@ export const getAdminRevenueChartService = async (range: string = "30d") => {
     },
   ]);
 
-  return { range, series: data };
+  const result = { range, series: data };
+  try {
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
+  } catch {}
+  return result;
 };
 
 // --- LẤY TẤT CẢ USERS (đã có) ---

@@ -15,6 +15,7 @@ import { ECourseLevel } from "../constants/course-level.enum";
 import { getInclusiveDateRange } from "../utils/date.helpers";
 import { normalizeLevel } from "../utils/course.helpers";
 import CartModel from "../models/cart.model";
+import { redis } from "../utils/redis";
 
 import { makeCaseInsensitiveRegex } from "../utils/search.utils";
 import { parsePaging, buildSort } from "../utils/paging.utils";
@@ -266,6 +267,15 @@ export const getLatestReviewsService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 20;
     if (limit > 50) limit = 50;
 
+    const cacheKey = `course:latestReviews:${limit}`;
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const reviews = JSON.parse(cached);
+        return res.status(200).json({ success: true, reviews, cached: true });
+      }
+    } catch {}
+
     const pipeline: any[] = [
       { $match: { status: "published" } },
       { $unwind: "$reviews" },
@@ -306,6 +316,10 @@ export const getLatestReviewsService = async (
     ];
 
     const reviews = await (CourseModel as any).aggregate(pipeline);
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(reviews), "EX", 60);
+    } catch {}
 
     return res.status(200).json({ success: true, reviews });
   } catch (error: any) {
@@ -655,6 +669,15 @@ export const getTopPurchasedCoursesService = async (
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
+    const cacheKey = `course:topPurchased:${limit}`;
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const courses = JSON.parse(cached);
+        return res.status(200).json({ success: true, courses, cached: true });
+      }
+    } catch {}
+
     const courses = await CourseModel.find({
       purchased: { $gt: 0 },
       status: "published",
@@ -679,6 +702,10 @@ export const getTopPurchasedCoursesService = async (
       };
     });
 
+    try {
+      await redis.set(cacheKey, JSON.stringify(mapped), "EX", 300);
+    } catch {}
+
     return res.status(200).json({ success: true, courses: mapped });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -695,6 +722,15 @@ export const getTopRatedCoursesService = async (
     let limit = Number.parseInt(String(query?.limit ?? "10"), 10);
     if (Number.isNaN(limit) || limit < 1) limit = 10;
     if (limit > 100) limit = 100;
+
+    const cacheKey = `course:topRated:${limit}`;
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const courses = JSON.parse(cached);
+        return res.status(200).json({ success: true, courses, cached: true });
+      }
+    } catch {}
 
     const courses = await CourseModel.find({
       status: "published",
@@ -757,6 +793,18 @@ export const checkUserPurchasedCourseService = async (
       return res.status(200).json({ success: true, hasPurchased: true });
     }
 
+    const cacheKey = `course:userHasPurchased:${user._id}:${courseId}`;
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return res
+          .status(200)
+          .json({ success: true, hasPurchased: !!parsed.hasPurchased, cached: true });
+      }
+    } catch {}
+
     // Regular user: check enrollment
     const enrollment = await EnrolledCourseModel.findOne({
       userId: user._id,
@@ -764,6 +812,11 @@ export const checkUserPurchasedCourseService = async (
     }).select("_id");
 
     const hasPurchased = Boolean(enrollment);
+
+    try {
+      await redis.set(cacheKey, JSON.stringify({ hasPurchased }), "EX", 180);
+    } catch {}
+
     return res.status(200).json({ success: true, hasPurchased });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -1218,7 +1271,10 @@ export const editCourseService = async (
       if (course) {
         const newTotalLectures = countTotalLectures(course);
         if (newTotalLectures !== oldTotalLectures) {
-          await recomputeEnrollmentsProgressForCourse((course as any)._id, newTotalLectures);
+          await recomputeEnrollmentsProgressForCourse(
+            (course as any)._id,
+            newTotalLectures
+          );
 
           const delta = newTotalLectures - oldTotalLectures;
           if (delta > 0) {
@@ -1244,6 +1300,10 @@ export const editCourseService = async (
       console.error("Recompute/notify failed:", recalcErr);
     }
 
+    try {
+      await redis.del(`course:overview:${courseId}`);
+    } catch {}
+
     res.status(201).json({
       success: true,
       course,
@@ -1251,7 +1311,7 @@ export const editCourseService = async (
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
   }
-};
+}
 
 /**
  * Lấy thông tin tổng quan khóa học (không cần mua) theo id.
@@ -1268,6 +1328,18 @@ export const getCourseOverviewService = async (
   next: NextFunction
 ) => {
   try {
+    const cacheKey = `course:overview:${courseId}`;
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const courseData = JSON.parse(cached);
+        return res
+          .status(200)
+          .json({ success: true, course: courseData, cached: true });
+      }
+    } catch {}
+
     const course = await CourseModel.findById(courseId)
       .populate("reviews.userId", "name avatar")
       .populate("reviews.replies.userId", "name avatar")
@@ -1342,6 +1414,10 @@ export const getCourseOverviewService = async (
       updatedAt: (course as any).updatedAt,
       status: (course as any).status,
     };
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(courseData), "EX", 300);
+    } catch {}
 
     res.status(200).json({ success: true, course: courseData });
   } catch (error: any) {
@@ -1725,6 +1801,28 @@ export const searchCoursesService = async (
       sortOption = { createdAt: -1 };
     }
 
+    const sortKey = typeof sort === "string" ? sort : "";
+
+    const cacheKeyBase = JSON.stringify({
+      searchQuery,
+      category,
+      level,
+      priceMin,
+      priceMax,
+      sort: sortKey,
+    });
+    const cacheKey = `course:search:${Buffer.from(cacheKeyBase).toString(
+      "base64"
+    )}`;
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const courses = JSON.parse(cached);
+        return res.status(200).json({ success: true, courses, cached: true });
+      }
+    } catch {}
+
     const courses = await CourseModel.find(filter)
       .select(
         "_id name description overview categories price estimatedPrice thumbnail tags level videoDemo ratings purchased createdAt"
@@ -1743,6 +1841,10 @@ export const searchCoursesService = async (
       obj.level = normalizeLevel(obj.level);
       return obj;
     });
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(mapped), "EX", 60);
+    } catch {}
 
     res.status(200).json({
       success: true,
@@ -2003,6 +2105,17 @@ export const addReviewService = async (
 
     await course.save();
 
+    try {
+      await redis.del(
+        `course:overview:${courseId}`,
+        "course:latestReviews:10",
+        "course:latestReviews:20",
+        "course:latestReviews:50",
+        "course:topRated:10",
+        "course:topRated:20"
+      );
+    } catch {}
+
     // --- Logic cho "New Review" (Gửi cho Giảng viên) ---
 
     const creatorId = (course as any)?.creatorId;
@@ -2083,6 +2196,17 @@ export const addReplyToReviewService = async (
     review.replies?.push(replyDataObj);
 
     await course.save();
+
+    try {
+      await redis.del(
+        `course:overview:${courseId}`,
+        "course:latestReviews:10",
+        "course:latestReviews:20",
+        "course:latestReviews:50",
+        "course:topRated:10",
+        "course:topRated:20"
+      );
+    } catch {}
     res.status(200).json({ success: true, course });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -2129,6 +2253,10 @@ export const deleteCourseService = async (
     } catch (e) {
       console.error("Failed to cleanup carts for archived course", courseId, e);
     }
+
+    try {
+      await redis.del(`course:overview:${courseId}`);
+    } catch {}
 
     res.status(200).json({
       success: true,
@@ -2193,6 +2321,10 @@ export const softDeleteCourseService = async (
         }
       ).catch(() => null);
     }
+
+    try {
+      await redis.del(`course:overview:${courseId}`);
+    } catch {}
 
     if (notify) {
       // Notify creator
@@ -2268,6 +2400,10 @@ export const restoreCourseService = async (
       $unset: { deletedAt: 1, deletedBy: 1, deleteReason: 1 },
     });
 
+    try {
+      await redis.del(`course:overview:${courseId}`);
+    } catch {}
+
     res
       .status(200)
       .json({ success: true, message: "Restored course successfully" });
@@ -2302,6 +2438,10 @@ export const hardDeleteCourseService = async (
     } catch (e) {
       console.error("Failed to cleanup carts for deleted course", courseId, e);
     }
+
+    try {
+      await redis.del(`course:overview:${courseId}`);
+    } catch {}
 
     res
       .status(200)
@@ -2482,9 +2622,26 @@ export const getAllCategoriesService = async (
   next: NextFunction
 ) => {
   try {
+    const cacheKey = "course:categories:all";
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const categories = JSON.parse(cached);
+        return res
+          .status(200)
+          .json({ success: true, categories, cached: true });
+      }
+    } catch {}
+
     const categories = await CategoryModel.find()
       .sort({ createdAt: -1 })
       .select("_id title");
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(categories), "EX", 1800);
+    } catch {}
+
     res.status(200).json({ success: true, categories });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -2502,7 +2659,24 @@ export const getAllLevelsService = async (
   next: NextFunction
 ) => {
   try {
+    const cacheKey = "course:levels";
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const levels = JSON.parse(cached);
+        return res
+          .status(200)
+          .json({ success: true, levels, cached: true });
+      }
+    } catch {}
+
     const levels = Object.values(ECourseLevel);
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(levels), "EX", 3600);
+    } catch {}
+
     res.status(200).json({ success: true, levels });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

@@ -1,6 +1,7 @@
 import CategoryModel, { ICategory } from "../models/category.model";
 import CourseModel from "../models/course.model";
 import ErrorHandler from "../utils/ErrorHandler";
+import { redis } from "../utils/redis";
 
 export const createCategoryService = async (
   title: string
@@ -8,11 +9,23 @@ export const createCategoryService = async (
   const isCategoryExist = await CategoryModel.findOne({ title });
 
   const category = await CategoryModel.create({ title });
+  try {
+    await redis.del("categories:all");
+  } catch {}
   return category;
 };
 
 export const getAllCategoriesService = async (): Promise<ICategory[]> => {
+  const cached = await redis.get("categories:all");
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch {}
+  }
   const categories = await CategoryModel.find();
+  try {
+    await redis.set("categories:all", JSON.stringify(categories), "EX", 3600);
+  } catch {}
   return categories;
 };
 
@@ -35,6 +48,9 @@ export const updateCategoryService = async (
     throw new ErrorHandler("Category not found", 404);
   }
 
+  try {
+    await redis.del("categories:all");
+  } catch {}
   return updated;
 };
 
@@ -51,4 +67,7 @@ export const deleteCategoryService = async (id: string): Promise<void> => {
   if (!deleted) {
     throw new ErrorHandler("Category not found", 404);
   }
+  try {
+    await redis.del("categories:all");
+  } catch {}
 };

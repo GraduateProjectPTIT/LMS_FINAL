@@ -3,7 +3,7 @@ import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
-// import { redis } from "../utils/redis";
+import { redis } from "../utils/redis";
 import {
   IStudent,
   ITutor,
@@ -62,6 +62,8 @@ export const updateStudentInterestService = async (
     user.isSurveyCompleted = true;
   }
   await Promise.all([studentProfile.save(), user.save()]);
+
+  await redis.set(`user:${userId}`, JSON.stringify(user), "EX", 1800);
 
   // ✨ BẮT ĐẦU CHUẨN BỊ RESPONSE GIỐNG HỆT LOGIC TUTOR ✨
 
