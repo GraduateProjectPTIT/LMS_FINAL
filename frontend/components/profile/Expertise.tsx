@@ -181,7 +181,7 @@ const Expertise = ({ user }: ExpertiseProps) => {
                         {user?.expertise && user.expertise.length > 0 && (
                             <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20">
                                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    💡 <strong>Tip:</strong> Having well-defined expertise areas helps students discover your courses and builds trust in your teaching abilities.
+                                    <strong>Tip:</strong> Having well-defined expertise areas helps students discover your courses and builds trust in your teaching abilities.
                                 </p>
                             </div>
                         )}
@@ -255,7 +255,7 @@ const Expertise = ({ user }: ExpertiseProps) => {
                                 {/* Pro tip */}
                                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
                                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        💡 <strong>Pro tip:</strong> Choose expertise areas you're genuinely passionate about and have experience teaching. This attracts the right students to your courses.
+                                        <strong>Pro tip:</strong> Choose expertise areas you're genuinely passionate about and have experience teaching. This attracts the right students to your courses.
                                     </p>
                                 </div>
 

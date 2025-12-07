@@ -8,24 +8,31 @@ export const createCategoryService = async (
 ): Promise<ICategory> => {
   const isCategoryExist = await CategoryModel.findOne({ title });
 
+  if(isCategoryExist) {
+    throw new ErrorHandler("Category title already exists", 400);
+  }
+
   const category = await CategoryModel.create({ title });
   try {
     await redis.del("categories:all");
-  } catch {}
+  } catch { }
   return category;
 };
 
 export const getAllCategoriesService = async (): Promise<ICategory[]> => {
-  const cached = await redis.get("categories:all");
-  if (cached) {
-    try {
+  try {
+    const cached = await redis.get("categories:all");
+    if (cached) {
       return JSON.parse(cached);
-    } catch {}
+    }
+  } catch (error) {
+    console.warn("Redis get error:", error);
   }
+
   const categories = await CategoryModel.find();
   try {
     await redis.set("categories:all", JSON.stringify(categories), "EX", 3600);
-  } catch {}
+  } catch { }
   return categories;
 };
 
@@ -50,7 +57,7 @@ export const updateCategoryService = async (
 
   try {
     await redis.del("categories:all");
-  } catch {}
+  } catch { }
   return updated;
 };
 
@@ -69,5 +76,5 @@ export const deleteCategoryService = async (id: string): Promise<void> => {
   }
   try {
     await redis.del("categories:all");
-  } catch {}
+  } catch { }
 };

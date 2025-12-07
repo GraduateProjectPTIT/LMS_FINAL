@@ -341,14 +341,14 @@ const LectureQuestions = ({ courseId, contentId, focusQuestionId }: LectureQuest
                     <div
                         key={comment._id}
                         id={`question-${comment._id}`}
-                        className={`bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 ${focusQuestionId === comment._id ? 'ring-2 ring-blue-400 dark:ring-blue-600' : ''}`}
+                        className={`bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 ${focusQuestionId === comment._id ? 'ring-2 ring-inset ring-blue-400 dark:ring-blue-600' : ''}`}
                     >
                         {/* Comment header */}
                         <div className="flex items-start gap-3">
                             {/* Avatar */}
-                            {
-                                comment.userId.avatar.url && isValidImageUrl(comment.userId.avatar.url) ? (
-                                    <div className='relative w-10 h-10'>
+                            <div className='relative h-10 w-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0'>
+                                {
+                                    comment.userId.avatar.url && isValidImageUrl(comment.userId.avatar.url) ? (
                                         <Image
                                             src={comment.userId.avatar.url}
                                             alt={comment.userId.name || 'User'}
@@ -357,13 +357,13 @@ const LectureQuestions = ({ courseId, contentId, focusQuestionId }: LectureQuest
                                             style={{ objectFit: "cover" }}
                                             className="rounded-full object-cover"
                                         />
-                                    </div>
-                                ) : (
-                                    <div className="w-full h-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
-                                        <User size={48} className="text-indigo-600 dark:text-indigo-300" />
-                                    </div>
-                                )
-                            }
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center">
+                                            <User size={26} className="text-indigo-600 dark:text-indigo-300" />
+                                        </div>
+                                    )
+                                }
+                            </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-gray-900 dark:text-white">

@@ -83,6 +83,9 @@ const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
               `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/my?status=unread&page=1&limit=20`,
               {
                 method: "GET",
+                headers: {
+                  'Content-Type': 'application/json'
+                },
                 credentials: "include"
               }
             );

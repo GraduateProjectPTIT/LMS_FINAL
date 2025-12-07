@@ -140,6 +140,11 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const isLectureAccessible = useCallback((lecture: SectionLecture) => {
         if (canBypass) return true;
 
+        // Nếu lecture này đã hoàn thành rồi, cho phép xem lại
+        if (completedLectures.includes(lecture._id)) {
+            return true;
+        }
+
         const allLectures = getAllLecturesInOrder();
         const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
 

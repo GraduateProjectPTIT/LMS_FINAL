@@ -29,51 +29,70 @@ const Notifications = () => {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // Dữ liệu giờ đây được cung cấp tự động bởi NotificationProvider qua Redux
   const { items, loading } = useSelector((s: RootState) => s.notifications);
 
   const [marking, setMarking] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // unreadCount sẽ tự động cập nhật khi Redux state thay đổi
   const unreadCount = useMemo(
     () => items.filter((n) => n.status === "unread").length,
     [items]
   );
 
-  // NotificationProvider sẽ lo việc fetch lần đầu và lắng nghe SSE.
+  const markOne = async (id: string, notification: Notification, shouldNavigate: boolean = false) => {
+    // Nếu có link và cần navigate
+    if (shouldNavigate && notification.link && notification.link.trim() !== "") {
+      setOpen(false); // Đóng dropdown ngay
+      router.push(notification.link);
+    }
 
-  // Mark as read 1 cái -> update store ngay, đồng bộ với BE
-  const markOne = async (id: string) => {
+    // Nếu đã đọc rồi thì thôi, không gọi API nữa 
+    if (notification.status === 'read') return;
+
     try {
       setMarking(id);
-      dispatch(markOneStart()); // Chỉ set error, không set loading toàn cục
+      dispatch(markOneStart()); 
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/${id}/read`,
-        { method: "PUT", credentials: "include" }
+        { 
+          method: "PUT", 
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: "include",
+          keepalive: true 
+        }
       );
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.message || "Failed to mark as read");
       }
+
       dispatch(markOneSuccess(id));
     } catch (err: any) {
       dispatch(markOneFailure(err.message || "Cannot mark as read"));
-      toast.error(err.message || "Cannot mark as read");
+      console.error(err);
     } finally {
       setMarking(null);
     }
   };
 
-  // Mark all -> update store ngay, đồng bộ với BE
   const markAll = async () => {
     try {
       setMarkingAll(true);
-      dispatch(markAllStart()); // Chỉ set error, không set loading toàn cục
+      dispatch(markAllStart()); 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/my/read_all`,
-        { method: "PUT", credentials: "include" }
+        { 
+          method: "PUT", 
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: "include" 
+        }
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -88,22 +107,23 @@ const Notifications = () => {
     }
   };
 
-  // UI cho item - Click vào item sẽ mark as read
   const ItemRow = (n: Notification) => {
     const isUnread = n.status === "unread";
     const isMarking = marking === n._id;
 
+    const handleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+
+      markOne(n._id, n, true);
+    }
+
     return (
       <button
         key={n._id}
-        onClick={() => {
-          if (isUnread && !isMarking) {
-            markOne(n._id);
-          }
-        }}
-        disabled={isMarking}
+        onClick={handleClick}
+        // disabled={isMarking}
         className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isUnread ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
-          } ${isMarking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          } cursor-pointer`}
       >
         <div className="flex items-start gap-3">
           <div
@@ -137,7 +157,6 @@ const Notifications = () => {
     );
   };
 
-  // Format time ago
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -161,7 +180,7 @@ const Notifications = () => {
     >
       <DropdownMenuTrigger className="relative outline-none">
         <Bell className="w-5 h-5 hover:cursor-pointer text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors" />
-        {/* 'unreadCount' sẽ tự động cập nhật từ Redux state */}
+   
         {unreadCount > 0 && (
           <span className="absolute -top-2 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center font-semibold">
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -196,7 +215,6 @@ const Notifications = () => {
 
         {/* Notifications List */}
         <div className="max-h-[400px] overflow-y-auto">
-          {/* 'loading' này chỉ hiển thị khi Provider fetch lần đầu */}
           {loading ? (
             <div className="py-8">
               <Loader />

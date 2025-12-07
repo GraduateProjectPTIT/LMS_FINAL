@@ -5,6 +5,7 @@ import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Loader from "../Loader";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import { RootState } from "@/redux/store";
 import {
   markOneStart,
@@ -24,6 +25,7 @@ interface PaginationMeta {
 }
 
 const AllNotifications = () => {
+  const router = useRouter();
   const dispatch = useDispatch();
 
   const [items, setItems] = useState<any[]>([]);
@@ -91,8 +93,16 @@ const AllNotifications = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Đánh dấu đọc 1 notification
-  const markOne = async (id: string) => {
+  const markOne = async (id: string, notification: any, shouldNavigate: boolean = false) => {
+
+    // Nếu có link và cần navigate
+    if (shouldNavigate && notification.link && notification.link.trim() !== "") {
+      router.push(notification.link);
+    }
+
+    // Nếu đã đọc rồi thì thôi, không gọi API nữa 
+    if (notification.status === 'read') return;
+
     try {
       setMarking(id);
       dispatch(markOneStart());
@@ -101,7 +111,11 @@ const AllNotifications = () => {
         `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/notification/${id}/read`,
         {
           method: "PUT",
-          credentials: "include"
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: "include",
+          keepalive: true
         }
       );
 
@@ -110,10 +124,7 @@ const AllNotifications = () => {
         throw new Error(data?.message || "Failed to mark as read");
       }
 
-      // 1. Dispatch tới Redux (để dropdown cập nhật)
       dispatch(markOneSuccess(id));
-
-      // 2. Cập nhật state cục bộ (để UI trang này cập nhật)
       setItems(prevItems =>
         prevItems.map(item => item._id === id ? { ...item, status: 'read' } : item)
       );
@@ -127,7 +138,6 @@ const AllNotifications = () => {
     }
   };
 
-  // Đánh dấu đọc tất cả notifications
   const markAll = async () => {
     try {
       setMarkingAll(true);
@@ -146,10 +156,8 @@ const AllNotifications = () => {
         throw new Error(data?.message || "Failed to mark all as read");
       }
 
-      // 1. Dispatch tới Redux (để dropdown cập nhật)
       dispatch(markAllSuccess());
 
-      // 2. Cập nhật state cục bộ (để UI trang này cập nhật)
       setItems(prevItems =>
         prevItems.map(item => ({ ...item, status: 'read' }))
       );
@@ -270,7 +278,7 @@ const AllNotifications = () => {
                   return (
                     <div
                       key={n._id}
-                      onClick={() => markOne(n._id)}
+                      onClick={() => markOne(n._id, n, true)}
                       className={`group p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${isUnread ? "bg-blue-50/30 dark:bg-blue-950/10" : ""
                         }`}
                     >

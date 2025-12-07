@@ -79,7 +79,9 @@ const OrderDetail = ({ orderId }: IOrderDetailProps) => {
                     `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/order/get_user_order_detail/${orderId}`,
                     {
                         method: 'GET',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json' 
+                        },
                         credentials: 'include',
                     }
                 );

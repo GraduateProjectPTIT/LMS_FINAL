@@ -304,4 +304,5 @@ export interface Notification {
     message?: string;
     status: 'unread' | 'read';
     createdAt: string;
+    link?: string;
 }
