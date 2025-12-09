@@ -1836,7 +1836,7 @@ export const addCommentService = async (
   try {
     const { comment, courseId, contentId } = commentData;
     const course = await CourseModel.findById(courseId).select(
-      "creatorId status courseData"
+      "creatorId status courseData name"
     );
     if (!course) return next(new ErrorHandler("Course not found", 404));
 
@@ -1896,8 +1896,8 @@ export const addCommentService = async (
       if (creatorUser && creatorUser.notificationSettings.on_reply_comment) {
         await createAndSendNotification({
           userId: String(creatorId),
-          title: "New Comment",
-          message: `${userId?.name} has a new comment in section: ${section?.sectionTitle}`,
+          title: `New Comment in course: ${(course as any)?.name}`,
+          message: `${userId?.name} has a new comment in course: ${(course as any)?.name} - section: ${section?.sectionTitle}`,
           // 4. Dùng commentId đã tạo ở trên vào Link
           link: `/course-enroll/${courseId}?focusLecture=${contentId}&focusQuestion=${commentId}`,
         });
