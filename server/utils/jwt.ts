@@ -15,20 +15,22 @@ const refreshTokenExpire = parseInt(
 ); // 259200 giây = 3 ngày
 
 // Options cho cookies
+const isProduction = process.env.NODE_ENV === "production";
+
 export const accessTokenOptions: ITokenOptions = {
   expires: new Date(Date.now() + accessTokenExpire * 1000), // Sửa lại công thức
   maxAge: accessTokenExpire * 1000, // Sửa lại công thức
   httpOnly: true,
-  secure: false,
-  sameSite: "lax",
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
 };
 
 export const refreshTokenOptions: ITokenOptions = {
   expires: new Date(Date.now() + refreshTokenExpire * 1000), // Sửa lại công thức
   maxAge: refreshTokenExpire * 1000, // Sửa lại công thức
   httpOnly: true,
-  secure: false,
-  sameSite: "lax",
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
 };
 
 export const generateAccessToken = (user: IUserResponse): string => {
