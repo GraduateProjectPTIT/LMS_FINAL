@@ -1983,11 +1983,12 @@ export const addReplyService = async (
     await (course as any).save();
 
     const data = { name: askedUser.name, title: section?.sectionTitle };
-    await ejs.renderFile(
-      path.join(__dirname, "../mails/question-reply.ejs"),
-      data
-    );
     try {
+      await ejs.renderFile(
+        path.join(__dirname, "../mails/question-reply.ejs"),
+        data
+      );
+
       await sendMail({
         email: askedUser.email,
         subject: "Question Reply",
@@ -1995,7 +1996,23 @@ export const addReplyService = async (
         data,
       });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+      console.error("Error sending reply email:", error?.message || error);
+    }
+
+    try {
+      await createAndSendNotification({
+        userId: askedUser._id.toString(),
+        title: "New Reply To Your Question",
+        message: `${userId?.name || "Someone"} replied to your question in course "${
+          (course as any)?.name || ""
+        }" - section "${section?.sectionTitle || ""}"`,
+        link: undefined,
+      });
+    } catch (notifyError: any) {
+      console.error(
+        "Error creating notification for reply:",
+        notifyError?.message || notifyError
+      );
     }
 
     res.status(200).json({ success: true, message: "Reply successfully" });
