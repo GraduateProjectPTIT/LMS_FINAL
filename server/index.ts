@@ -24,7 +24,7 @@ import recommendationRouter from "./routes/recommendation.route";
 
 app.post(
   "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
+  express.raw({ type: "*/*" }), 
   stripeWebhook
 );
 app.use(express.json({ limit: "50mb" }));
