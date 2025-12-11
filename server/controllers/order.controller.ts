@@ -253,7 +253,7 @@ export const createStripeCheckoutSession = CatchAsyncError(
         );
       }
 
-      const baseUrl = "http://localhost:3000";
+      const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
       try {
         new URL(baseUrl);
