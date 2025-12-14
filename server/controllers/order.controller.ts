@@ -4,6 +4,7 @@ import OrderModel, { IOrder } from "../models/order.model";
 import userModel from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import CourseModel, { ICourse } from "../models/course.model";
+import CartModel from "../models/cart.model";
 import {
   getAllOrdersService,
   getPaidOrdersService,
@@ -416,6 +417,19 @@ export const handleSuccessfulPayment = async (session: any) => {
     );
 
     console.log("Consolidated Stripe order:", consolidatedOrder._id);
+
+    try {
+      const purchasedId = new mongoose.Types.ObjectId(String(courseId));
+      await CartModel.updateOne(
+        { userId: new mongoose.Types.ObjectId(String(userId)) },
+        { $pull: { items: { courseId: { $in: [purchasedId] } } } }
+      );
+    } catch (cartErr: any) {
+      console.error(
+        "Failed to remove purchased items from cart (Stripe):",
+        cartErr?.message || cartErr
+      );
+    }
 
     const justSetFlag = await OrderModel.findOneAndUpdate(
       { _id: consolidatedOrder._id, notificationSent: { $ne: true } },
