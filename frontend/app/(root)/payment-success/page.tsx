@@ -108,11 +108,13 @@ const PaymentSuccess = () => {
     };
 
     const handleStripeSuccess = async (sessionId: string) => {
-        // Simple Stripe success handler using session_id from redirect URL
+        const amountParam = searchParams?.get('amount');
+        const amount = amountParam ? Number(amountParam) : 0;
+
         toast.success("Stripe payment completed!");
         setPaymentData({
             id: sessionId,
-            amount: 0,
+            amount: isNaN(amount) ? 0 : amount,
             currency: 'USD'
         });
     };

@@ -262,7 +262,7 @@ export const createStripeCheckoutSession = CatchAsyncError(
         return next(new ErrorHandler("Invalid ORIGIN URL configuration", 500));
       }
 
-      const successUrl = `${baseUrl}/payment-success?success=true&session_id={CHECKOUT_SESSION_ID}&courseId=${courseId}`;
+      const successUrl = `${baseUrl}/payment-success?success=true&session_id={CHECKOUT_SESSION_ID}&courseId=${courseId}&amount=${course.price}`;
       const cancelUrl = `${baseUrl}/courses?canceled=true`;
 
       console.log("Base URL:", baseUrl);
