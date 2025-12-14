@@ -90,18 +90,19 @@ const CheckoutSummary = ({ cart, selectedPaymentMethod }: CheckoutSummaryProps) 
     };
 
     const handleStripeCheckout = async (courseIds: string[]) => {
-        // TODO: Implement Stripe checkout when backend is ready
-        toast.error("Stripe payment is coming soon!");
+        if (!courseIds || courseIds.length === 0) {
+            throw new Error("No course selected for Stripe payment");
+        }
 
-        // Placeholder for future Stripe implementation
-        /*
+        const primaryCourseId = courseIds[0];
+
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/stripe/create-checkout-session`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             credentials: "include",
-            body: JSON.stringify({ courseIds }),
+            body: JSON.stringify({ courseId: primaryCourseId }),
         });
 
         const data = await res.json();
@@ -110,11 +111,11 @@ const CheckoutSummary = ({ cart, selectedPaymentMethod }: CheckoutSummaryProps) 
             throw new Error(data.message || "Failed to create Stripe checkout session");
         }
 
-        // Redirect to Stripe
         if (data.url) {
             window.location.href = data.url;
+        } else {
+            throw new Error("Stripe checkout URL not found");
         }
-        */
     };
 
     const handleZaloPayCheckout = async (courseIds: string[]) => {

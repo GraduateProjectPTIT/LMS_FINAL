@@ -40,15 +40,15 @@ const PaymentSuccess = () => {
                 const courseId = searchParams?.get('courseId');
                 const courseIds = searchParams?.get('courseIds');
                 const token = searchParams?.get('token');
-                const paymentId = searchParams?.get('paymentId');
+                const sessionId = searchParams?.get('session_id');
 
                 // Handle different payment methods
                 if (token) {
                     // PayPal payment
                     await handlePayPalSuccess(courseId, courseIds, token);
-                } else if (paymentId) {
-                    // Stripe payment (future implementation)
-                    await handleStripeSuccess(courseId, courseIds, paymentId);
+                } else if (sessionId) {
+                    // Stripe payment
+                    await handleStripeSuccess(sessionId);
                 } else {
                     // Check for other payment method parameters
                     const orderInfo = searchParams?.get('orderInfo');
@@ -107,11 +107,11 @@ const PaymentSuccess = () => {
         });
     };
 
-    const handleStripeSuccess = async (courseId: string | null | undefined, courseIds: string | null | undefined, paymentId: string) => {
-        // TODO: Implement when Stripe is ready
+    const handleStripeSuccess = async (sessionId: string) => {
+        // Simple Stripe success handler using session_id from redirect URL
         toast.success("Stripe payment completed!");
         setPaymentData({
-            id: paymentId,
+            id: sessionId,
             amount: 0,
             currency: 'USD'
         });

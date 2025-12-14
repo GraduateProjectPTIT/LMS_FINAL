@@ -365,87 +365,156 @@ export const handleSuccessfulPayment = async (session: any) => {
       return;
     }
 
-    const existingEnrollment = await EnrolledCourseModel.findOne({
-      userId,
-      courseId,
-    });
-
-    if (existingEnrollment) {
-      console.log("User already has this course");
-      return;
-    }
-
-    try {
-      await EnrolledCourseModel.create({ userId, courseId });
-    } catch (enrollErr: any) {
-      if (enrollErr?.code === 11000) {
-        console.warn("Enrollment already exists for user/course", {
-          userId,
-          courseId,
-        });
-      } else {
-        console.error(
-          "Failed to create enrollment:",
-          enrollErr?.message || enrollErr
-        );
-      }
-    }
-
-    const orderData = {
-      courseId: courseId,
-      userId: userId,
-      payment_info: {
-        id: session.payment_intent,
-        status: session.payment_status === "paid" ? "succeeded" : "failed",
-        amount: session.amount_total / 100,
-        currency: session.currency,
+    const items = [
+      {
+        courseId: String(course._id),
+        price: Number(course.price || 0),
       },
+    ];
+
+    const total = items[0].price || 0;
+
+    const upsertFilter: any = {
+      "payment_info.id": session.payment_intent,
       payment_method: "stripe",
     };
 
-    await OrderModel.create(orderData);
-
-    await CourseModel.updateOne(
-      { _id: course._id },
-      { $inc: { purchased: 1 } }
-    );
-
-    const mailData = {
-      order: {
-        _id: courseId.slice(0, 6),
-        name: course.name,
-        price: course.price,
-        date: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
+    const upsertUpdate: any = {
+      $setOnInsert: {
+        courseId: String(course._id),
+        items,
+        total,
+        userId: new mongoose.Types.ObjectId(String(userId)),
+        payment_info: {
+          id: session.payment_intent,
+          payment_intent_id: session.payment_intent,
+          status:
+            session.payment_status === "paid" ? "succeeded" : "failed",
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          metadata: session.metadata || {},
+          paid_at: new Date(),
+        },
+        payment_method: "stripe",
+        emailSent: false,
+        notificationSent: false,
       },
     };
 
-    try {
-      await sendMail({
-        email: user.email,
-        subject: "Order Confirmation",
-        template: "order-confirmation.ejs",
-        data: mailData,
-      });
-    } catch (error: any) {
-      console.error("Email sending failed:", error.message);
+    const consolidatedOrder = await OrderModel.findOneAndUpdate(
+      upsertFilter,
+      upsertUpdate,
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log("Consolidated Stripe order:", consolidatedOrder._id);
+
+    const justSetFlag = await OrderModel.findOneAndUpdate(
+      { _id: consolidatedOrder._id, notificationSent: { $ne: true } },
+      { $set: { notificationSent: true } },
+      { new: true }
+    );
+
+    if (justSetFlag) {
+      try {
+        const existingEnrollment = await EnrolledCourseModel.findOne({
+          userId,
+          courseId,
+        });
+
+        if (!existingEnrollment) {
+          await EnrolledCourseModel.create({ userId, courseId });
+          await CourseModel.updateOne(
+            { _id: course._id },
+            { $inc: { purchased: 1 } }
+          );
+        }
+
+        if (user && (user as any).notificationSettings?.on_payment_success) {
+          await createAndSendNotification({
+            userId: userId.toString(),
+            title: "Order Confirmation - Stripe",
+            message: `You have successfully purchased ${course.name} via Stripe`,
+            link: `/order-detail?focusOrder=${consolidatedOrder._id}`,
+          });
+        }
+
+        const creatorId = (course as any).creatorId?.toString();
+        if (creatorId) {
+          const creatorUser = await userModel
+            .findById(creatorId)
+            .select("notificationSettings");
+
+          if (
+            creatorUser &&
+            (creatorUser as any).notificationSettings?.on_new_student
+          ) {
+            await createAndSendNotification({
+              userId: creatorId,
+              title: "New Order",
+              message: `${user.name} purchased ${course.name} via Stripe`,
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error(
+          "Failed processing Stripe enrollment/notification:",
+          err?.message || err
+        );
+      }
+
+      const mailData = {
+        order: {
+          _id:
+            (consolidatedOrder._id as any)?.toString()?.slice(0, 6) ||
+            (courseId as any)?.toString()?.slice(0, 6),
+          name: course.name,
+          price: course.price,
+          date: new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        },
+      };
+
+      try {
+        const reservedForEmail = await OrderModel.findOneAndUpdate(
+          { _id: consolidatedOrder._id, emailSent: { $ne: true } },
+          { $set: { emailSent: true } },
+          { new: true }
+        );
+
+        if (reservedForEmail) {
+          await sendMail({
+            email: user.email,
+            subject: "Order Confirmation",
+            template: "order-confirmation.ejs",
+            data: mailData,
+          });
+          console.log("Confirmation email sent to:", user.email);
+        } else {
+          console.log(
+            "Email already sent for Stripe order:",
+            consolidatedOrder._id
+          );
+        }
+      } catch (error: any) {
+        console.error("Email sending failed:", error?.message || error);
+      }
+    } else {
+      console.log(
+        "Notifications already processed for Stripe order:",
+        consolidatedOrder._id
+      );
     }
 
-    // await NotificationModel.create({
-    //   userId: userId as any,
-    //   title: "Order Confirmation",
-    //   message: `You have successfully purchased ${course.name}`,
-    // });
-    // await NotificationModel.create({
-    //   userId: course.creatorId as any,
-    //   title: "New Order",
-    //   message: `${user.name} purchased ${course.name}`,
-    // });
-
-    console.log("Payment processed successfully");
+    console.log("Stripe payment processed successfully");
   } catch (error: any) {
     console.error("Error processing payment:", error.message);
   }
