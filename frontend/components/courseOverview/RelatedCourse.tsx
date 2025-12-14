@@ -55,7 +55,7 @@ const RelatedCourse = ({ categories, courseId }: IRelatedCourseProps) => {
             }
 
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/related?courseId=${params.toString()}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/course/related?${params.toString()}`,            
                 {
                     method: 'GET',
                     headers: {
