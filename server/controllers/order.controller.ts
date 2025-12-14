@@ -374,8 +374,10 @@ export const handleSuccessfulPayment = async (session: any) => {
 
     const total = items[0].price || 0;
 
+    const stripeOrderToken = session.id; 
+
     const upsertFilter: any = {
-      "payment_info.id": session.payment_intent,
+      "payment_info.order_token": stripeOrderToken,
       payment_method: "stripe",
     };
 
@@ -388,6 +390,7 @@ export const handleSuccessfulPayment = async (session: any) => {
         payment_info: {
           id: session.payment_intent,
           payment_intent_id: session.payment_intent,
+          order_token: stripeOrderToken,
           status:
             session.payment_status === "paid" ? "succeeded" : "failed",
           amount: session.amount_total / 100,
