@@ -116,10 +116,12 @@ export const createNotificationService = async (
 
 const deleteOldNotifications = async () => {
   try {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
     const result = await NotificationModel.deleteMany({
       status: "read",
-      createdAt: { $lt: thirtyDaysAgo },
+      createdAt: { $lt: sixMonthsAgo },
     });
     if (result.deletedCount > 0) {
       console.log(
