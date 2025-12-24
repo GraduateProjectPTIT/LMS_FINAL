@@ -360,7 +360,7 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                                             )}
 
                                             {/* Course Preview Badge */}
-                                            <div className="absolute top-4 left-4 flex justify-center items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
+                                            <div className="absolute top-4 left-4 flex justify-center items-center gap-2 bg-blue-500 dark:bg-blue-700 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
                                                 <BsCameraVideo className='' />
                                                 <p className=''>Preview</p>
                                             </div>
