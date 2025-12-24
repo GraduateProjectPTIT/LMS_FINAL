@@ -34,7 +34,7 @@ require("dotenv").config();
 export const createOrder = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId, payment_info, payment_method } = req.body as IOrder;
+      let { courseId, payment_info, payment_method } = req.body as IOrder;
 
       const userId = req.user?._id;
       const user = await userModel.findById(req.user?._id);
@@ -62,13 +62,27 @@ export const createOrder = CatchAsyncError(
       }
 
       const courseIdSafe = String(course._id);
+
+      if (course.price === 0) {
+        payment_info = {
+          id: `free_${new Date().toISOString()}`,
+          status: "succeeded",
+          amount: 0,
+          currency: "usd",
+        };
+      } else {
+        if (!payment_info) {
+          return next(new ErrorHandler("Payment info is required for paid courses", 400));
+        }
+      }
+
       const data: any = {
         courseId: courseIdSafe,
         items: [{ courseId: courseIdSafe, price: Number(course.price || 0) }],
         total: Number(course.price || 0),
         userId: (user?._id as unknown as string).toString(),
         payment_info,
-        payment_method: payment_method || "stripe",
+        payment_method: course.price === 0 ? "free" : (payment_method || "stripe"),
       };
 
       const mailData = {
@@ -122,6 +136,30 @@ export const createOrder = CatchAsyncError(
         { _id: course._id },
         { $inc: { purchased: 1 } }
       );
+
+      if (user && (user as any).notificationSettings?.on_payment_success) {
+        if (userId) {
+          await createAndSendNotification({
+            userId: userId.toString(),
+            title: "Order Confirmation",
+            message: `You have successfully enrolled in ${course.name}`,
+            link: `/order-detail?focusOrder=${data.courseId}`, 
+          });
+        }
+      }
+
+       const creatorId = (course as any).creatorId?.toString();
+       if (creatorId) {
+         const creatorUser = await userModel.findById(creatorId).select("notificationSettings");
+         if (creatorUser && (creatorUser as any).notificationSettings?.on_new_student) {
+           await createAndSendNotification({
+             userId: creatorId,
+             title: "New Student Enrolled",
+             message: `${user?.name || "Student"} has enrolled in your course: ${course.name}`,
+           });
+         }
+       }
+
 
       newOrder(data, res, next);
     } catch (error: any) {

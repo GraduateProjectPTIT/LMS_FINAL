@@ -251,6 +251,38 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
         }
     }
 
+    const handleFreeEnroll = async () => {
+        if (!currentUser) {
+            toast("Please login to enroll");
+            router.push(`/login?callbackUrl=/course-overview/${courseId}`);
+            return;
+        }
+
+        setLoadingEnroll(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/order/create_order`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ courseId }), 
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error(data.message || "Enrollment failed");
+                return;
+            }
+            toast.success("Enrolled successfully!");
+            await handleCheckPurchasedCourses();
+            router.push(`/course-enroll/${courseId}`);
+        } catch (error: any) {
+            toast.error(error.message || "Enrollment failed");
+        } finally {
+            setLoadingEnroll(false);
+        }
+    }
+
     return (
         <div className='theme-mode min-h-screen'>
             {/* Hero Section */}
@@ -546,12 +578,12 @@ const CourseOverview = ({ courseId }: { courseId: string }) => {
                             <button
                                 className={`w-full bg-blue-500 dark:bg-blue-700 hover:opacity-75 cursor-pointer text-white font-bold py-3 px-4 rounded-lg transition-all mt-6 shadow-md hover:shadow-lg transform hover:-translate-y-0.5
         ${loadingEnroll || isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
-                                onClick={isAllowed ? () => handleEnroll(courseId) : handleAddToCart}
+                                onClick={isAllowed ? () => handleEnroll(courseId) : (courseData.price === 0 ? handleFreeEnroll : handleAddToCart)}
                                 disabled={loadingEnroll || isLoading}
                             >
                                 {isAllowed
                                     ? (loadingEnroll ? "Enrolling..." : "Enter to course")
-                                    : (loading ? "Adding..." : "Add to cart")}
+                                    : (courseData.price === 0 ? (loadingEnroll ? "Enrolling..." : "Enroll Now") : (loading ? "Adding..." : "Add to cart"))}
                             </button>
 
                             <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-100 dark:border-yellow-900/50">

@@ -71,7 +71,7 @@ export const createCourse = async (
       return next(new ErrorHandler("Course overview is required", 400));
     }
 
-    if (!data.price) {
+    if (data.price === undefined || data.price === null) {
       console.log("Course price is missing");
       return next(new ErrorHandler("Course price is required", 400));
     }
