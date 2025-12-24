@@ -113,7 +113,7 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             {
-                                                enrollment.userId.avatar?.url && isValidImageUrl(enrollment.userId.avatar.url) ? (
+                                                enrollment.userId?.avatar?.url && isValidImageUrl(enrollment.userId.avatar.url) ? (
                                                     <div className="relative h-10 w-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                                                         <Image
                                                             src={enrollment.userId.avatar.url}
@@ -131,14 +131,14 @@ const RecentEnrollmentsTable = ({ enrollments }: RecentEnrollmentsTableProps) =>
                                             }
                                             <div className="ml-3">
                                                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                    {enrollment.userId.name}
+                                                    {enrollment.userId?.name || "Deleted User"}
                                                 </p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <p className="text-sm text-gray-600 dark:text-gray-300">
-                                            {enrollment.userId.email}
+                                            {enrollment.userId?.email || "N/A"}
                                         </p>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

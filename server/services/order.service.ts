@@ -81,6 +81,11 @@ export const getAllOrdersService = async (query: any, res: Response) => {
   ]);
   const normalized = normalizeOrders(orders).map((o: any) => ({
     ...o,
+    userId: o.userId || { 
+      name: "Deleted User", 
+      email: "N/A", 
+      avatar: { url: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" }
+    },
     payer_name: o?.payment_info?.payer_name ?? undefined,
     payer_email: o?.payment_info?.payer_email ?? undefined,
   }));
@@ -162,9 +167,18 @@ export const getOrderDetailService = async (
       })
       : normalized?.items;
 
+    const orderData = {
+      ...normalized,
+      userId: normalized.userId || {
+        name: "Deleted User",
+        email: "N/A",
+        avatar: { url: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" }
+      }
+    };
+
     return res.status(200).json({
       success: true,
-      order: { ...normalized, items },
+      order: { ...orderData, items },
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -296,9 +310,18 @@ export const getTutorOrderDetailService = async (
       })
       : normalized?.items;
 
+    const orderData = {
+      ...normalized,
+      userId: normalized.userId || {
+        name: "Deleted User",
+        email: "N/A",
+        avatar: { url: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" }
+      }
+    };
+
     return res.status(200).json({
       success: true,
-      order: { ...normalized, items },
+      order: { ...orderData, items },
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));
@@ -373,7 +396,14 @@ export const getTutorOrdersService = async (
       OrderModel.countDocuments(filter),
     ]);
 
-    const normalized = normalizeOrders(orders);
+    const normalized = normalizeOrders(orders).map((o: any) => ({
+      ...o,
+      userId: o.userId || { 
+        name: "Deleted User", 
+        email: "N/A", 
+        avatar: { url: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" } 
+      },
+    }));
 
     return res.status(200).json({
       success: true,
