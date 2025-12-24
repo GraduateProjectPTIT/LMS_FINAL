@@ -111,7 +111,6 @@ const PaymentSuccess = () => {
         const amountParam = searchParams?.get('amount');
         const amount = amountParam ? Number(amountParam) : 0;
 
-        toast.success("Stripe payment completed!");
         setPaymentData({
             id: sessionId,
             amount: isNaN(amount) ? 0 : amount,

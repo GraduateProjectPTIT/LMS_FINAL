@@ -6,7 +6,6 @@ import {
   deleteCategoryService,
 } from "../services/category.service";
 
-// Controller để tạo category
 export const createCategory = async (
   req: Request,
   res: Response,
@@ -21,7 +20,6 @@ export const createCategory = async (
   }
 };
 
-// Controller để lấy tất cả categories
 export const getAllCategories = async (
   req: Request,
   res: Response,

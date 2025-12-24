@@ -118,25 +118,6 @@ export const createOrder = CatchAsyncError(
         }
       }
 
-      // await redis.set(userId as string, JSON.stringify(user));
-      // const userPayload = {
-      //   userId: user ? user._id.toString() : "",
-      //   title: "Xác nhận đơn hàng",
-      //   message: `Bạn đã mua thành công khóa học: ${course.name}`,
-      // };
-      // createAndSendNotification(userPayload);
-
-      // if (course.creatorId) {
-      //   const tutorPayload = {
-      //     userId: course.creatorId.toString(),
-      //     title: "Đơn hàng mới",
-      //     message: `Học viên ${
-      //       user?.name ?? "Người dùng"
-      //     } vừa mua khóa học của bạn: ${course.name}`,
-      //   };
-      //   createAndSendNotification(tutorPayload);
-      // }
-
       await CourseModel.updateOne(
         { _id: course._id },
         { $inc: { purchased: 1 } }
