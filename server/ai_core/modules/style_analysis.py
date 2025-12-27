@@ -15,7 +15,7 @@ def _configure_gemini():
 async def consult_styles_with_gemini(user_request: str) -> list:
     if not _configure_gemini(): return [_get_fallback_data()]
 
-    model = genai.GenerativeModel('gemini-2.5-pro')
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
     print(f"Gemini Consulting: '{user_request}'...")
 

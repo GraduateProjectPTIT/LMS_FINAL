@@ -551,7 +551,10 @@ export const getCourseReviewsService = async (
       Array.isArray(result) && result.length > 0
         ? result[0]
         : { data: [], total: [] };
-    const data = bucket.data ?? [];
+    const data = (bucket.data ?? []).filter((r: any) => r.userId && r.userId._id).map((r: any) => ({
+      ...r,
+      replies: (r.replies || []).filter((sub: any) => sub.userId && sub.userId._id)
+    }));
     const totalItems =
       (bucket.total && bucket.total[0] && bucket.total[0].count) || 0;
 
@@ -1344,6 +1347,35 @@ export const getCourseOverviewService = async (
 
     const summary = summarizeCourseData(course.courseData);
 
+    const reviewsSafe = (course.reviews || [])
+      .filter((r: any) => r?.userId) // bỏ review mất user
+      .map((review: any) => ({
+        _id: review._id,
+        userId: {
+          _id: review.userId._id,
+          name: review.userId.name,
+          avatar: review.userId.avatar,
+        },
+        rating: review.rating,
+        comment: review.comment,
+        replies: (review.replies || [])
+          .filter((rp: any) => rp?.userId) // bỏ reply mất user
+          .map((reply: any) => ({
+            _id: reply._id,
+            userId: {
+              _id: reply.userId._id,
+              name: reply.userId.name,
+              avatar: reply.userId.avatar,
+            },
+            answer: reply.answer,
+            createdAt: reply.createdAt,
+            updatedAt: reply.updatedAt,
+          })),
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+      }));
+
+
     const courseData = {
       _id: course._id,
       name: course.name,
@@ -1361,29 +1393,7 @@ export const getCourseOverviewService = async (
       totalSections,
       totalLectures: summary.totalLectures,
       totalTime: summary.totalDuration,
-      reviews: course.reviews.map((review: any) => ({
-        _id: review._id,
-        userId: {
-          _id: review.userId._id,
-          name: review.userId.name,
-          avatar: review.userId.avatar,
-        },
-        rating: review.rating,
-        comment: review.comment,
-        replies: review.replies.map((reply: any) => ({
-          _id: reply._id,
-          userId: {
-            _id: reply.userId._id,
-            name: reply.userId.name,
-            avatar: reply.userId.avatar,
-          },
-          answer: reply.answer,
-          createdAt: reply.createdAt,
-          updatedAt: reply.updatedAt,
-        })),
-        createdAt: review.createdAt,
-        updatedAt: review.updatedAt,
-      })),
+      reviews: reviewsSafe,
       courseData: sections,
       ratings: course.ratings,
       purchased: course.purchased,
@@ -1481,6 +1491,25 @@ export const enrollCourseService = async (
     const shouldSanitize = !owner && !isAdmin(userId);
     let payloadCourse: any = course;
     if (shouldSanitize && course) payloadCourse = sanitizeCourseMedia(course);
+
+    if (payloadCourse && payloadCourse.reviews) {
+      payloadCourse.reviews = payloadCourse.reviews.filter((r: any) => r.userId);
+      payloadCourse.reviews.forEach((r: any) => {
+        if (r.replies) r.replies = r.replies.filter((rep: any) => rep.userId);
+      });
+    }
+
+    if (payloadCourse && payloadCourse.courseData) {
+      payloadCourse.courseData.forEach((section: any) => {
+        section.sectionContents.forEach((lecture: any) => {
+          if (lecture.lectureComments) {
+            lecture.lectureComments = lecture.lectureComments.filter(
+              (c: any) => c.userId
+            );
+          }
+        });
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -1626,7 +1655,9 @@ export const getLectureCommentsService = async (
       return next(new ErrorHandler("Lecture not found", 404));
     }
 
-    const allComments: any[] = result[0]?.comments ?? [];
+    const allComments: any[] = (result[0]?.comments ?? []).filter(
+      (c: any) => c.userId && c.userId._id
+    );
     const topLevel = allComments
       .filter((c: any) => !c.parentId)
       .sort((a: any, b: any) =>
