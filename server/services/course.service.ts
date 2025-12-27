@@ -1344,6 +1344,35 @@ export const getCourseOverviewService = async (
 
     const summary = summarizeCourseData(course.courseData);
 
+    const reviewsSafe = (course.reviews || [])
+      .filter((r: any) => r?.userId) // bỏ review mất user
+      .map((review: any) => ({
+        _id: review._id,
+        userId: {
+          _id: review.userId._id,
+          name: review.userId.name,
+          avatar: review.userId.avatar,
+        },
+        rating: review.rating,
+        comment: review.comment,
+        replies: (review.replies || [])
+          .filter((rp: any) => rp?.userId) // bỏ reply mất user
+          .map((reply: any) => ({
+            _id: reply._id,
+            userId: {
+              _id: reply.userId._id,
+              name: reply.userId.name,
+              avatar: reply.userId.avatar,
+            },
+            answer: reply.answer,
+            createdAt: reply.createdAt,
+            updatedAt: reply.updatedAt,
+          })),
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+      }));
+
+
     const courseData = {
       _id: course._id,
       name: course.name,
@@ -1361,29 +1390,7 @@ export const getCourseOverviewService = async (
       totalSections,
       totalLectures: summary.totalLectures,
       totalTime: summary.totalDuration,
-      reviews: course.reviews.map((review: any) => ({
-        _id: review._id,
-        userId: {
-          _id: review.userId._id,
-          name: review.userId.name,
-          avatar: review.userId.avatar,
-        },
-        rating: review.rating,
-        comment: review.comment,
-        replies: review.replies.map((reply: any) => ({
-          _id: reply._id,
-          userId: {
-            _id: reply.userId._id,
-            name: reply.userId.name,
-            avatar: reply.userId.avatar,
-          },
-          answer: reply.answer,
-          createdAt: reply.createdAt,
-          updatedAt: reply.updatedAt,
-        })),
-        createdAt: review.createdAt,
-        updatedAt: review.updatedAt,
-      })),
+      reviews: reviewsSafe,
       courseData: sections,
       ratings: course.ratings,
       purchased: course.purchased,
