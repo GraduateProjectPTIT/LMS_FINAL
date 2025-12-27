@@ -1,8 +1,15 @@
 import mongoose, { Types } from "mongoose";
 import userModel, { IUser } from "../models/user.model";
-import { IStudent } from "../types/user.types";
-// Import OrderModel và các interface liên quan
-import orderModel, { IOrder, IOrderItem } from "../models/order.model";
+import orderModel, { IOrderItem } from "../models/order.model";
+import { studentModel } from "../models/student.model";
+import { tutorModel } from "../models/tutor.model";
+import { adminModel } from "../models/admin.model";
+
+// --- FIND METHODS ---
+
+const findById = async (id: string | Types.ObjectId) => {
+  return userModel.findById(id);
+};
 
 const findUserDetailById = async (
   userId: string | Types.ObjectId
@@ -16,7 +23,58 @@ const findUserDetailById = async (
 const findSimpleById = async (id: Types.ObjectId) =>
   userModel.findById(id).select("_id").lean();
 
-// --- CÁC HÀM ĐÃ SỬA ---
+const findUserWithPassword = async (userId: string) => {
+  return userModel.findById(userId).select("+password");
+};
+
+// --- UPDATE METHODS ---
+
+const updateUserRole = async (userId: string, role: string) => {
+  return userModel.findByIdAndUpdate(userId, { role }, { new: true });
+};
+
+const updateNotificationSettings = async (
+  userId: string,
+  updateFields: any
+) => {
+  return userModel.findByIdAndUpdate(
+    userId,
+    { $set: updateFields },
+    { new: true }
+  );
+};
+
+// --- DELETE METHODS ---
+
+const deleteUser = async (userId: string) => {
+  // Vì trong service dùng user.deleteOne() để kích hoạt middleware (nếu có)
+  // Nhưng nếu muốn xóa nhanh thì dùng deleteOne({_id: userId}).
+  // Để tương thích với logic cũ (lấy user instance rồi xóa), ta có thể tìm rồi xóa,
+  // hoặc dùng findByIdAndDelete. Ở đây dùng findByIdAndDelete cho gọn.
+  return userModel.findByIdAndDelete(userId);
+};
+
+/**
+ * Helper để xóa các profile liên quan (Student/Tutor/Admin)
+ * Việc này giúp Service không phải import các Model con.
+ */
+const deleteRelatedProfile = async (
+  role: string,
+  profileId: string | Types.ObjectId
+) => {
+  switch (role) {
+    case "student": // UserRole.Student
+      return studentModel.findByIdAndDelete(profileId);
+    case "tutor": // UserRole.Tutor
+      return tutorModel.findByIdAndDelete(profileId);
+    case "admin": // UserRole.Admin
+      return adminModel.findByIdAndDelete(profileId);
+    default:
+      return null;
+  }
+};
+
+// --- QUERY PHỨC TẠP (Logic cũ của bạn giữ nguyên) ---
 
 /**
  * Lấy danh sách các khóa học đã mua của người dùng từ 'orderModel'.
@@ -76,9 +134,15 @@ const findUserPurchases = async (
   return { purchasedCourses };
 };
 
-// Export thành một đối tượng để dễ dàng import
+// Export repository object
 export const userRepository = {
+  findById,
   findUserDetailById,
   findSimpleById,
-  findUserPurchases, // Đã sửa
+  findUserWithPassword,
+  updateUserRole,
+  updateNotificationSettings,
+  deleteUser,
+  deleteRelatedProfile,
+  findUserPurchases,
 };

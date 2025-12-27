@@ -1,20 +1,18 @@
-// src/services/notification.service.ts
-
 import cron from "node-cron";
-import NotificationModel, {
-  CreateNotificationInput,
+import {
   INotification,
+  CreateNotificationInput,
 } from "../models/notification.model";
 import { IUser } from "../models/user.model";
-import notificationModel from "../models/notification.model";
 import { sendEventToUser } from "../utils/sseManager";
+import { notificationRepository } from "../repositories/notification.repostitory";
 
-// --- Phần xử lý logic nghiệp vụ và tương tác DB ---
+// --- Xử lý logic nghiệp vụ ---
 
 export const getAllNotificationsService = async (): Promise<
   INotification[]
 > => {
-  return NotificationModel.find().sort({ createdAt: -1 });
+  return notificationRepository.findAll();
 };
 
 export const getUserNotificationsService = async (options: {
@@ -25,13 +23,12 @@ export const getUserNotificationsService = async (options: {
 }) => {
   const { userId, filter, page, limit } = options;
   const findFilter = { userId, ...filter };
+  const skip = (page - 1) * limit;
 
+  // Gọi repository song song
   const [notifications, total] = await Promise.all([
-    NotificationModel.find(findFilter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit),
-    NotificationModel.countDocuments(findFilter),
+    notificationRepository.findByUser(findFilter, skip, limit),
+    notificationRepository.countByUser(findFilter),
   ]);
 
   const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
@@ -50,79 +47,74 @@ export const markNotificationAsReadService = async (
   notificationId: string,
   user: IUser
 ): Promise<INotification | null> => {
-  const notification = await NotificationModel.findById(notificationId);
+  // 1. Tìm thông báo từ repo
+  const notification = await notificationRepository.findById(notificationId);
+
   if (!notification) {
-    return null; // Controller sẽ xử lý việc ném lỗi 404
+    return null; // Controller sẽ xử lý 404
   }
 
-  // Kiểm tra quyền: người dùng phải là chủ sở hữu hoặc admin
+  // 2. Logic kiểm tra quyền (Business Logic)
   const isOwner = notification.userId?.toString() === user._id?.toString();
   const isAdmin = user.role === "admin";
 
   if (!isOwner && !isAdmin) {
-    throw new Error("Forbidden"); // Controller sẽ xử lý việc ném lỗi 403
+    throw new Error("Forbidden"); // Controller sẽ xử lý 403
   }
 
+  // 3. Cập nhật trạng thái
   if (notification.status !== "read") {
     notification.status = "read";
-    await notification.save();
+    // Gọi repo để lưu thay đổi
+    await notificationRepository.save(notification);
   }
+
   return notification;
 };
 
 export const markAllNotificationsAsReadService = async (userId: string) => {
-  const result = await NotificationModel.updateMany(
-    { userId, status: { $ne: "read" } },
-    { $set: { status: "read" } }
-  );
+  const result = await notificationRepository.markAllAsRead(userId);
   return result.modifiedCount;
+};
+
+// --- Tạo và Gửi thông báo (Phối hợp Repo & SSE) ---
+
+export const createNotificationService = async (
+  data: CreateNotificationInput
+) => {
+  // Gọi repository để tạo
+  return notificationRepository.create(data);
 };
 
 export const createAndSendNotification = async (
   data: CreateNotificationInput
 ) => {
-  // 1. Gọi hàm service cũ để lưu vào DB
+  // 1. Lưu vào DB
   const notification = await createNotificationService(data);
 
-  // 2. Gửi sự kiện real-time qua SSE Manager
+  // 2. Gửi sự kiện real-time
   try {
     sendEventToUser(data.userId, "NEW_NOTIFICATION", notification);
   } catch (sseError) {
     console.error("Lỗi khi gửi thông báo SSE:", sseError);
-    // Việc gửi SSE thất bại không nên làm hỏng logic chính
   }
 
   return notification;
 };
 
-export const createNotificationService = async (
-  data: CreateNotificationInput
-) => {
-  const { userId, title, message, link } = data;
-
-  // 1. Chỉ lưu thông báo vào cơ sở dữ liệu
-  const notification = await notificationModel.create({
-    userId,
-    title,
-    message,
-    link,
-  });
-
-  // 2. Việc gửi SSE đã được chuyển cho Controller xử lý
-  return notification;
-};
-
-// --- Phần công việc chạy nền (Cron Job) ---
+// --- Cron Job (Logic chạy nền) ---
 
 const deleteOldNotifications = async () => {
   try {
+    // Logic tính toán ngày tháng nằm ở Service
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const result = await NotificationModel.deleteMany({
-      status: "read",
-      createdAt: { $lt: sixMonthsAgo },
-    });
+    // Gọi repository để thực hiện xóa
+    const result = await notificationRepository.deleteOldReadNotifications(
+      sixMonthsAgo
+    );
+
     if (result.deletedCount > 0) {
       console.log(
         `Cron job: Deleted ${result.deletedCount} old read notifications.`

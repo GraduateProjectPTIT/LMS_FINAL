@@ -1,28 +1,15 @@
-// src/services/user.service.ts
-import userModel, { IUser, UserRole } from "../models/user.model";
-import ErrorHandler from "../utils/ErrorHandler";
-import cloudinary from "cloudinary";
-import { Request, Response } from "express";
-import { redis } from "../utils/redis";
-import {
-  IStudent,
-  ITutor,
-  IUpdateStudentInterestDto,
-  IUpdateTutorExpertiseDto,
-  IUpdateUserInfo,
-} from "../types/user.types";
-import { paginate, PaginationParams } from "../utils/pagination.helper"; // Import the helper
-import {
-  IUpdatePassword,
-  IUpdatePasswordParams,
-  IUserResponse,
-} from "../types/auth.types";
-import CategoryModel, { ICategory } from "../models/category.model";
-import { tutorModel } from "../models/tutor.model";
 import { Types } from "mongoose";
-import { studentModel } from "../models/student.model";
-import { _toUserResponse } from "./auth.service";
+import ErrorHandler from "../utils/ErrorHandler";
+import { IUpdateStudentInterestDto, IStudent } from "../types/user.types";
+import { IUserResponse } from "../types/auth.types";
+import { _toUserResponse } from "./auth.service"; // Hoặc import từ helper tương ứng
 
+// Import Repositories
+import { studentRepository } from "../repositories/student.repository";
+import { userRepository } from "../repositories/user.repository";
+import userModel from "../models/user.model";
+
+// Định nghĩa Type cho Response
 type IStudentDataObject = ReturnType<IStudent["toObject"]>;
 export type ICombinedStudentUserResponse = IStudentDataObject & IUserResponse;
 
@@ -32,45 +19,54 @@ export const updateStudentInterestService = async (
 ): Promise<ICombinedStudentUserResponse> => {
   const { interests } = data;
 
+  // 1. Validate Input cơ bản
   if (!interests) {
     throw new ErrorHandler("Interests field is required.", 400);
   }
 
-  // BƯỚC 1: Lấy user và student profile
+  // 2. Lấy dữ liệu từ 2 Repository song song
   const [user, studentProfile] = await Promise.all([
-    userModel.findById(userId),
-    studentModel.findOne({ userId }),
+    userRepository.findById(userId),
+    studentRepository.findByUserId(userId),
   ]);
 
+  // 3. Kiểm tra tồn tại
   if (!user || !studentProfile) {
     throw new ErrorHandler("User or Student profile not found.", 404);
   }
 
-  // (Optional but recommended) Xác thực các interest IDs
+  // 4. Validate Interest IDs (Logic nghiệp vụ: ID gửi lên phải tồn tại trong DB)
   if (interests.length > 0) {
-    const categoryCount = await CategoryModel.countDocuments({
-      _id: { $in: interests },
-    });
+    const categoryCount = await studentRepository.countValidCategories(
+      interests
+    );
     if (categoryCount !== interests.length) {
       throw new ErrorHandler("One or more interest IDs are invalid.", 400);
     }
   }
 
-  // BƯỚC 2: Cập nhật và lưu vào database
-  studentProfile.interests = interests as unknown as Types.ObjectId[];
+  // 5. Cập nhật trạng thái User (Survey Completed)
+  // Nếu user chưa hoàn thành survey thì cập nhật
   if (user.isSurveyCompleted === false) {
+    await userModel.findByIdAndUpdate(userId, { isSurveyCompleted: true });
+
+    // Cập nhật biến local để trả về response đúng ngay lập tức
     user.isSurveyCompleted = true;
   }
-  await Promise.all([studentProfile.save(), user.save()]);
 
-  // ✨ BẮT ĐẦU CHUẨN BỊ RESPONSE GIỐNG HỆT LOGIC TUTOR ✨
+  // 6. Cập nhật Student Profile (Interests)
+  // Ép kiểu sang ObjectId của Mongoose
+  const objectIdInterests = interests as unknown as Types.ObjectId[];
 
-  // 3. Populate trường 'interests' sau khi đã lưu
-  const populatedProfile = await studentProfile.populate<{
-    interests: ICategory[];
-  }>("interests");
+  const populatedProfile = await studentRepository.updateInterests(
+    studentProfile,
+    objectIdInterests
+  );
 
-  // 4. Map để lấy ra mảng các tên sở thích (string[])
+  // 7. Xử lý logic Transform dữ liệu (Mapping response)
+  // Logic này giữ nguyên như code cũ của bạn để đảm bảo Frontend không bị lỗi
+
+  // Lấy ra mảng các title của interests
   let interestTitles: string[] = [];
   if (populatedProfile && populatedProfile.interests) {
     interestTitles = (populatedProfile.interests as any[])
@@ -78,17 +74,18 @@ export const updateStudentInterestService = async (
       .map((category) => category.title);
   }
 
-  // 5. Chuẩn bị các phần của response
+  // Chuẩn bị User Response DTO
   const userResponse = _toUserResponse(user);
-  // Tách userId ra và lấy phần còn lại của student profile
+
+  // Chuẩn bị Student Response DTO (bỏ userId thừa vì đã có trong userResponse)
   const { userId: removedUserId, ...restOfProfile } =
     populatedProfile.toObject();
 
-  // 6. Kết hợp lại để có response cuối cùng
+  // Kết hợp lại
   const combinedResponse = {
     ...restOfProfile,
     ...userResponse,
-    interests: interestTitles, // Ghi đè trường interests bằng mảng các title
+    interests: interestTitles, // Ghi đè interests (ObjectId[]) bằng interests (string[])
   };
 
   return combinedResponse as ICombinedStudentUserResponse;
