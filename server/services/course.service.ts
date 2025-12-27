@@ -551,7 +551,10 @@ export const getCourseReviewsService = async (
       Array.isArray(result) && result.length > 0
         ? result[0]
         : { data: [], total: [] };
-    const data = bucket.data ?? [];
+    const data = (bucket.data ?? []).filter((r: any) => r.userId && r.userId._id).map((r: any) => ({
+      ...r,
+      replies: (r.replies || []).filter((sub: any) => sub.userId && sub.userId._id)
+    }));
     const totalItems =
       (bucket.total && bucket.total[0] && bucket.total[0].count) || 0;
 
@@ -1489,6 +1492,25 @@ export const enrollCourseService = async (
     let payloadCourse: any = course;
     if (shouldSanitize && course) payloadCourse = sanitizeCourseMedia(course);
 
+    if (payloadCourse && payloadCourse.reviews) {
+      payloadCourse.reviews = payloadCourse.reviews.filter((r: any) => r.userId);
+      payloadCourse.reviews.forEach((r: any) => {
+        if (r.replies) r.replies = r.replies.filter((rep: any) => rep.userId);
+      });
+    }
+
+    if (payloadCourse && payloadCourse.courseData) {
+      payloadCourse.courseData.forEach((section: any) => {
+        section.sectionContents.forEach((lecture: any) => {
+          if (lecture.lectureComments) {
+            lecture.lectureComments = lecture.lectureComments.filter(
+              (c: any) => c.userId
+            );
+          }
+        });
+      });
+    }
+
     res.status(200).json({
       success: true,
       course: payloadCourse,
@@ -1633,7 +1655,9 @@ export const getLectureCommentsService = async (
       return next(new ErrorHandler("Lecture not found", 404));
     }
 
-    const allComments: any[] = result[0]?.comments ?? [];
+    const allComments: any[] = (result[0]?.comments ?? []).filter(
+      (c: any) => c.userId && c.userId._id
+    );
     const topLevel = allComments
       .filter((c: any) => !c.parentId)
       .sort((a: any, b: any) =>

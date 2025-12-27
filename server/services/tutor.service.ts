@@ -79,9 +79,9 @@ export const updateTutorExpertiseService = async (
   // Sửa lỗi 'undefined': Thêm kiểm tra sự tồn tại của 'populatedProfile.expertise'
   if (populatedProfile && populatedProfile.expertise) {
     // Sửa lỗi 'title does not exist': Giờ đây TypeScript hiểu 'category' là ICategory
-    expertiseTitles = populatedProfile.expertise.map(
-      (category) => category.title
-    );
+    expertiseTitles = (populatedProfile.expertise as any[])
+      .filter((i) => i)
+      .map((category) => category.title);
   }
 
   const userResponse = _toUserResponse(user);
@@ -140,7 +140,7 @@ export const getTutorDashboardSummaryService = async (userId: string) => {
       myStudentsCount,
       myRevenue,
     },
-    recentEnrollments,
+    recentEnrollments: recentEnrollments.filter((e: any) => e.userId),
   };
 };
 

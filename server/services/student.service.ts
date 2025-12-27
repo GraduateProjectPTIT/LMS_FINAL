@@ -73,9 +73,9 @@ export const updateStudentInterestService = async (
   // 4. Map để lấy ra mảng các tên sở thích (string[])
   let interestTitles: string[] = [];
   if (populatedProfile && populatedProfile.interests) {
-    interestTitles = populatedProfile.interests.map(
-      (category) => category.title
-    );
+    interestTitles = (populatedProfile.interests as any[])
+      .filter((i) => i)
+      .map((category) => category.title);
   }
 
   // 5. Chuẩn bị các phần của response
