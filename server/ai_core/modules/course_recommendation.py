@@ -1,6 +1,6 @@
 import os
 import re
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 from dotenv import load_dotenv
 
 # Load môi trường để lấy chuỗi kết nối
@@ -55,6 +55,8 @@ def clean_mongo_doc(doc):
         "id": str(doc.get("_id", "")), 
         "name": doc.get("name", "Khóa học không tên"),
         "price": doc.get("price", "Liên hệ"),
+        "estimatedPrice": doc.get("estimatedPrice", 0),
+        "purchased": doc.get("purchased", 0),
         "tags": final_tags,
         "thumbnail": thumb_url
     }
@@ -69,6 +71,7 @@ def get_courses_from_db(keywords: list):
     
     raw_results = []
 
+    # BƯỚC 1: Tìm kiếm theo từ khóa (Keyword Matching)
     if keywords:
         try:
             # Tạo Regex list
@@ -80,7 +83,8 @@ def get_courses_from_db(keywords: list):
                     {"tags": {"$in": regex_list}}, # Tìm trong tags
                     {"name": {"$in": regex_list}}, # Tìm trong tên khóa học
                     {"description": {"$in": regex_list}} # Tìm trong mô tả khóa học
-                ]
+                ],
+                "status": "published" # Chỉ lấy khóa học đã public
             }
             
             cursor = courses_collection.find(query).limit(3)
@@ -88,6 +92,36 @@ def get_courses_from_db(keywords: list):
             print(f"[DB] Tìm thấy: {len(raw_results)} khóa học")
         except Exception as e:
             print(f"[DB] Lỗi truy vấn: {e}")
+
+    # BƯỚC 2: FALLBACK - TOP PURCHASED (Nếu Bước 1 rỗng)
+    if not raw_results:
+        print("[DB] Không khớp từ khóa -> Chạy Fallback: TOP PURCHASED")
+        try:
+            # 1. status: "published"
+            # 2. purchased: { $gt: 0 } (Chỉ lấy khóa đã có người mua)
+            # 3. sort: purchased giảm dần (-1)
+            
+            fallback_query = {
+                "status": "published",
+                "purchased": {"$gt": 0} 
+            }
+            
+            # Sort: Mua nhiều nhất lên đầu, nếu bằng nhau thì lấy mới nhất
+            cursor = courses_collection.find(fallback_query)\
+                .sort([("purchased", DESCENDING), ("createdAt", DESCENDING)])\
+                .limit(3)
+                
+            raw_results = list(cursor)
+            
+            # (Phòng hờ) Nếu website mới tinh chưa ai mua gì cả, thì lấy đại 3 khóa mới nhất
+            if not raw_results:
+                print("[DB] Chưa có lượt mua nào -> Lấy khóa học mới nhất")
+                cursor_backup = courses_collection.find({"status": "published"})\
+                    .sort("createdAt", DESCENDING).limit(3)
+                raw_results = list(cursor_backup)
+                
+        except Exception as e:
+            print(f"[DB] Lỗi Fallback: {e}")
 
     # 3. Clean Data
     clean_list = []

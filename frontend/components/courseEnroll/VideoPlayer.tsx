@@ -115,6 +115,9 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures, f
         }
     };
 
+    console.log('Rendering VideoPlayer for lecture:', lecture);
+
+
     if (!lecture) {
         return (
             <div className="flex flex-col h-full">

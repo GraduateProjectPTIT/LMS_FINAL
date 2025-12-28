@@ -127,7 +127,7 @@ const MyCoursesFilter = ({
                             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search courses or instructors..."
+                                placeholder="Search courses name"
                                 value={searchInput}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyPress}

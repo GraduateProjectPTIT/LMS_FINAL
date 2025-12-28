@@ -159,7 +159,7 @@ const ConsultMode = ({
                                         {style.backend_logic.technical_settings && (
                                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-600">
                                                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                    ✨ AI Enhancements:
+                                                    AI Enhancements:
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {/* Display active technical settings */}
