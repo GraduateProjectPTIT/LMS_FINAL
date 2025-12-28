@@ -467,21 +467,35 @@ const LectureQuestions = ({ courseId, contentId, focusQuestionId }: LectureQuest
                                     <div className="mt-4 ml-4 space-y-3 border-l-2 border-gray-200 dark:border-slate-700 pl-4">
                                         {comment.replies.map((reply) => (
                                             <div key={reply._id} className="flex items-start gap-3">
-                                                <img
-                                                    src={reply.userId.avatar.url}
-                                                    alt={reply.userId.name}
-                                                    className="w-8 h-8 rounded-full object-cover"
-                                                />
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                                                {/* Avatar */}
+                                                <div className='relative h-8 w-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0'>
+                                                    {
+                                                        reply.userId.avatar.url && isValidImageUrl(reply.userId.avatar.url) ? (
+                                                            <Image
+                                                                src={reply.userId.avatar.url}
+                                                                alt={reply.userId.name || 'User'}
+                                                                fill
+                                                                sizes="32px"
+                                                                style={{ objectFit: "cover" }}
+                                                                className="rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-full w-full flex items-center justify-center">
+                                                                <User size={20} className="text-indigo-600 dark:text-indigo-300" />
+                                                            </div>
+                                                        )
+                                                    }
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-semibold text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
                                                             {reply.userId.name}
                                                         </span>
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                                                             {formatDate(reply.createdAt)}
                                                         </span>
                                                     </div>
-                                                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                                                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300 break-words">
                                                         {reply.content}
                                                     </p>
                                                 </div>

@@ -19,6 +19,11 @@ const josefin = Josefin_Sans({
 export const metadata: Metadata = {
   title: "LMS",
   description: "LMS is a platform for student to learn and get help from teachers",
+  icons: {
+    icon: '/logo-lms.png',
+    shortcut: '/logo-lms.png',
+    apple: '/logo-lms.png',
+  },
 };
 
 export default function MainLayout({

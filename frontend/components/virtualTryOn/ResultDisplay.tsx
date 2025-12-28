@@ -74,6 +74,8 @@ const ResultDisplay = ({
         return date.toLocaleDateString();
     };
 
+    console.log("Current Result:", currentResult);
+
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
             {/* History Tabs */}
