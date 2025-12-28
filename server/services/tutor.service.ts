@@ -203,6 +203,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
     {
       $match: {
         creatorId: id,
+        deletedAt: { $exists: false },
       },
     },
     // Giai đoạn 2: Nhóm và tính toán
@@ -212,7 +213,7 @@ export const getTutorDetailsService = async (tutorId: string) => {
         totalStudents: { $sum: "$purchased" },
         totalCourses: { $sum: 1 },
         totalReviews: { $sum: { $size: "$reviews" } },
-        averageRating: { $avg: { $ifNull: ["$ratings", 0] } },
+        totalRawRating: { $sum: { $sum: "$reviews.rating" } },
       },
     },
     // Giai đoạn 3: Định dạng lại (loại bỏ _id, làm tròn rating)
@@ -222,7 +223,18 @@ export const getTutorDetailsService = async (tutorId: string) => {
         totalStudents: 1,
         totalCourses: 1,
         totalReviews: 1,
-        averageRating: { $round: ["$averageRating", 1] },
+        averageRating: {
+          $round: [
+            {
+              $cond: [
+                { $eq: ["$totalReviews", 0] },
+                0,
+                { $divide: ["$totalRawRating", "$totalReviews"] },
+              ],
+            },
+            1,
+          ],
+        },
       },
     },
   ]);
