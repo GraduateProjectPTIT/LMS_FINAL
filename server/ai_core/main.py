@@ -33,8 +33,15 @@ app = FastAPI(title="VTO Makeup API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 os.makedirs("uploads", exist_ok=True)
 
 def cleanup_files(paths: list):
@@ -142,4 +149,4 @@ async def handle_vto_generation(
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)

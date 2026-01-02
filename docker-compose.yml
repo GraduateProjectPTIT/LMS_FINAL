@@ -31,6 +31,17 @@ services:
     ports:
       - "8000:8000"
 
+  ai:
+    build:
+      context: ./server/ai_core
+      dockerfile: Dockerfile
+    container_name: lms_ai
+    restart: unless-stopped
+    env_file:
+      - server/ai_core/.env
+    ports:
+      - "8001:8001"
+
   frontend:
     build:
       context: ./frontend
