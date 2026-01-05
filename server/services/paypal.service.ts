@@ -6,7 +6,6 @@ import { createAndSendNotification } from "../services/notification.service";
 import paypalRepository from "../repositories/paypal.repository";
 
 class PaypalService {
-  // ---------------- Logic tạo Checkout Session ----------------
   async createCheckoutSession(userId: string, courseIdsInput: string[]) {
     // 1. Validate User
     const user = await paypalRepository.findUserById(userId);
@@ -115,7 +114,6 @@ class PaypalService {
     }
   }
 
-  // ---------------- Logic Xử lý Payment Success ----------------
   async processPaymentSuccess(
     userId: string,
     token: string,
@@ -204,7 +202,6 @@ class PaypalService {
     );
 
     // 8. Process Post-Purchase Actions (Enroll, Notify, Email)
-    // Only if we successfully set the notification flag (ensure atomic run once)
     const justSetFlag = await paypalRepository.markNotificationSent(
       consolidatedOrder._id.toString()
     );
@@ -236,14 +233,11 @@ class PaypalService {
     };
   }
 
-  // --- Helper Methods ---
-
   private async verifyPayPalOrderStatus(token: string) {
     const orderRequest = new paypal.orders.OrdersGetRequest(token);
     try {
       const orderResponse = await paypalClient.execute(orderRequest);
 
-      // SỬA: Chấp nhận cả APPROVED (mới duyệt) và COMPLETED (đã xong)
       const status = orderResponse.result.status;
       if (status !== "APPROVED" && status !== "COMPLETED") {
         throw new ErrorHandler(
@@ -252,10 +246,8 @@ class PaypalService {
         );
       }
     } catch (error: any) {
-      // Nếu là lỗi ErrorHandler mình tự ném ra thì throw tiếp
       if (error instanceof ErrorHandler) throw error;
 
-      // Còn lại là lỗi hệ thống
       throw new ErrorHandler("Invalid PayPal order token or System Error", 400);
     }
   }
@@ -267,7 +259,6 @@ class PaypalService {
       const capture =
         captureResult.result.purchase_units[0].payments.captures[0];
 
-      // SỬA: Chấp nhận cả 'succeeded' và 'COMPLETED'
       if (capture.status !== "succeeded" && capture.status !== "COMPLETED") {
         throw new ErrorHandler(
           `Payment not completed. Status: ${capture.status}`,
@@ -285,17 +276,11 @@ class PaypalService {
     } catch (error: any) {
       console.error("PayPal capture error details:", error);
 
-      // QUAN TRỌNG: Nếu lỗi là do mình throw (400) ở trên, phải ném nó ra lại
-      // Nếu không ném ra lại, nó sẽ chạy xuống dòng throw 500 bên dưới
       if (error instanceof ErrorHandler) {
         throw error;
       }
 
-      // Nếu PayPal báo Order đã được capture rồi (Status 422 - UNPROCESSABLE_ENTITY)
-      // Thì mình coi như thành công để không lỗi App
       if (error.statusCode === 422) {
-        // Trả về dữ liệu giả định hoặc gọi lại api get order để lấy thông tin
-        // Ở đây mình ném lỗi rõ ràng hơn để Frontend xử lý
         throw new ErrorHandler("Order already captured", 400);
       }
 
