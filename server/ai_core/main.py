@@ -10,6 +10,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import pathlib
+from modules.face_masking import create_makeup_mask
+from modules.style_analysis import consult_styles_with_gemini 
+from modules.image_generation import generate_inpainted_image
+from modules.course_recommendation import get_courses_from_db
 
 # --- CẤU HÌNH ---
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
@@ -23,11 +27,6 @@ if cred_filename:
     if full_key_path.exists():
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(full_key_path)
 
-# Import Modules
-from modules.face_masking import create_makeup_mask
-from modules.style_analysis import consult_styles_with_gemini 
-from modules.image_generation import generate_inpainted_image
-from modules.course_recommendation import get_courses_from_db
 
 app = FastAPI(title="VTO Makeup API")
 
@@ -36,6 +35,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://lms-final-m9qf.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,7 +63,6 @@ def resize_image_standard(image_path: str, target_size=(1024, 1024)):
 # --- API 1: TƯ VẤN (Consult) ---
 @app.post("/vto/consult-styles")
 async def consult_styles(user_request: str = Form(...)):
-    # Trả về JSON cấu trúc mới (ui_display + backend_logic)
     styles = await consult_styles_with_gemini(user_request)
     return JSONResponse(status_code=200, content={"styles": styles})
 
@@ -73,13 +72,12 @@ async def handle_vto_generation(
     background_tasks: BackgroundTasks,
     user_face: UploadFile = File(...),
     
-    # --- Input từ UI (Người dùng KHÔNG nhập tay, Frontend tự điền từ JSON style đã chọn) ---
-    prompt_override: str = Form(...),     # Lấy từ backend_logic.generation_prompt
-    technical_settings: str = Form(...),  # Lấy từ backend_logic.technical_settings (JSON String)
-    tutorial_override: str = Form(...),   # Lấy từ backend_logic.tutorial_steps (JSON String)
-    keywords_override: str = Form(...),   # Lấy từ backend_logic.search_keywords (JSON String)
+    prompt_override: str = Form(...),     
+    technical_settings: str = Form(...),  
+    tutorial_override: str = Form(...),   
+    keywords_override: str = Form(...),   
     
-    user_prompt: str = Form("")           # User có thể gõ thêm yêu cầu nhỏ (VD: "Thêm nốt ruồi")
+    user_prompt: str = Form("")         
 ):
     print("\n--- NHẬN YÊU CẦU GENERATE  ---")
     
@@ -93,7 +91,6 @@ async def handle_vto_generation(
     resize_image_standard(user_face_path)
 
     try:
-        # 1. Parse Settings
         settings_dict = {}
         try:
             settings_dict = json.loads(technical_settings)
@@ -101,14 +98,12 @@ async def handle_vto_generation(
         except:
             print("Settings parse error, using default.")
 
-        # 2. Tạo Mask Thông Minh (Dựa trên settings)
         mask_bytes = create_makeup_mask(
             image_path=user_face_path,
             settings=settings_dict
         )
 
         # 3. Tạo Prompt & Gọi AI
-        # Kết hợp Prompt kỹ thuật (ẩn) + Yêu cầu thêm của user (nếu có)
         full_prompt = prompt_override
         if user_prompt.strip():
             full_prompt += f", {user_prompt}"
@@ -120,7 +115,7 @@ async def handle_vto_generation(
             settings=settings_dict 
         )
 
-        # 4. Tìm khóa học (Dựa trên keywords ẩn)
+        # 4. Tìm khóa học (Dựa trên keywords)
         final_keywords = []
         try:
             final_keywords = json.loads(keywords_override)
@@ -128,7 +123,7 @@ async def handle_vto_generation(
         
         suggested_courses = get_courses_from_db(final_keywords)
         
-        # 5. Parse Tutorial để trả về
+        # 5. Trả về course và tutorial
         final_tutorial = []
         try:
             final_tutorial = json.loads(tutorial_override)

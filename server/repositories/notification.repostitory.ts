@@ -3,8 +3,6 @@ import NotificationModel, {
   INotification,
 } from "../models/notification.model";
 
-// --- QUERY METHODS ---
-
 const findAll = async (): Promise<INotification[]> => {
   return NotificationModel.find().sort({ createdAt: -1 });
 };
@@ -24,15 +22,10 @@ const countByUser = async (filter: any) => {
   return NotificationModel.countDocuments(filter);
 };
 
-// --- MUTATION METHODS ---
-
 const create = async (data: CreateNotificationInput) => {
   return NotificationModel.create(data);
 };
 
-/**
- * Hàm save để lưu document sau khi modify (thường dùng sau khi findById)
- */
 const save = async (notification: any) => {
   return notification.save();
 };

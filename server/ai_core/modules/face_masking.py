@@ -62,7 +62,7 @@ def create_makeup_mask(
 
         # 2. Má
         if settings.get("heavy_blush", False):
-            draw(LEFT_CHEEK, 220) # Má say rượu cần đậm
+            draw(LEFT_CHEEK, 220) # Má đậm
             draw(RIGHT_CHEEK, 220)
         else:
             draw(LEFT_CHEEK, blush_val)

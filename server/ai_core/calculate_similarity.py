@@ -1,4 +1,3 @@
-# calculate_similarity.py (Phiên bản dùng Enrolled Courses)
 import pandas as pd
 from pymongo import MongoClient
 from sklearn.metrics.pairwise import cosine_similarity
@@ -16,8 +15,6 @@ try:
     client = MongoClient(DB_URI)
     db = client[DB_NAME]
     
-    # THAY ĐỔI Ở ĐÂY: Dùng collection 'enrolled_courses' thay vì 'orders'
-    # Hãy kiểm tra kỹ tên collection trong MongoDB của bạn (có s hay không?)
     enrollments_collection = db["enrolledcourses"] 
     courses_collection = db["courses"]
     similarity_collection = db[NEW_COLLECTION_NAME]

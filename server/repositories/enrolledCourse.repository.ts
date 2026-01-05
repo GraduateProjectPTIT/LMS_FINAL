@@ -1,11 +1,8 @@
 import mongoose, { Types } from "mongoose";
 import enrolledCourseModel, {
   IEnrolledCourse,
-} from "../models/enrolledCourse.model"; // Tùy đường dẫn của bạn
+} from "../models/enrolledCourse.model";
 
-/**
- * Tìm một bản ghi ghi danh theo userId và courseId
- */
 const findByUserAndCourse = async (
   userId: Types.ObjectId,
   courseId: Types.ObjectId
@@ -13,9 +10,6 @@ const findByUserAndCourse = async (
   return enrolledCourseModel.findOne({ userId, courseId }).exec();
 };
 
-/**
- * Tạo một bản ghi ghi danh mới
- */
 const create = async (
   userId: Types.ObjectId,
   courseId: Types.ObjectId
@@ -23,12 +17,10 @@ const create = async (
   const newEnrollment = new enrolledCourseModel({
     userId,
     courseId,
-    // Các trường khác sẽ dùng giá trị default (progress: 0, completed: false, ...)
   });
   return newEnrollment.save();
 };
 
-// Hàm đếm từ lần trước (vẫn hữu ích)
 const countEnrolledCoursesByStudent = async (
   studentId: Types.ObjectId
 ): Promise<number> => {

@@ -67,7 +67,7 @@ async def consult_styles_with_gemini(user_request: str) -> list:
         print(f"Lỗi Gemini: {e}")
         return [_get_fallback_data()]
 
-# --- HELPER (Giữ nguyên) ---
+# --- HELPER ---
 def _parse_json_response(text_response: str):
     try:
         clean_text = text_response.strip()
@@ -84,7 +84,7 @@ def _get_fallback_data():
         "id": "fallback_1",
         "ui_display": {
             "style_name": "Natural Glow",
-            "description": "Lớp nền căng bóng tự nhiên.",
+            "description": "A naturally radiant and flawless base",
             "tags": ["Daily", "Korean", "Fresh"],
             "difficulty": "Easy"
         },
@@ -94,7 +94,7 @@ def _get_fallback_data():
                 "use_lens": False, "contour_nose": False, "contour_jaw": False, 
                 "heavy_blush": False, "skin_finish": "dewy", "makeup_intensity": "medium"
             },
-            "tutorial_steps": ["Dưỡng ẩm", "Che khuyết điểm", "Son bóng"],
+            "tutorial_steps": ["Moisturize", "Conceal blemishes", "Lip gloss"],
             "search_keywords": ["Natural Makeup", "Skincare"]
         }
     }

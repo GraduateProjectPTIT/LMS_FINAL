@@ -4,9 +4,9 @@ from vertexai.preview.vision_models import Image, ImageGenerationModel
 from google.oauth2 import service_account
 import base64
 
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "ai-makeup-479109")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "ai-makeup-479109-5ce495c923af.json")
 
 def clean_prompt_aggressively(text: str) -> str:
     """Loại bỏ các từ khóa nhạy cảm"""
@@ -46,8 +46,7 @@ def generate_inpainted_image(
         if "gloss" in lip_finish: texture_prompt += "high-shine lip gloss, "
         elif "matte" in lip_finish: texture_prompt += "velvet matte lipstick, "
 
-        # --- 2. XỬ LÝ CẤU TRÚC (THAY ĐỔI CHIẾN THUẬT) ---
-        # Thay vì cấm đoán cực đoan, hãy hướng dẫn AI hòa trộn
+        # --- 2. XỬ LÝ CẤU TRÚC ---
         structure_rule = (
             "Blend the makeup seamlessly onto the subject's existing facial features. "
             "Keep the identity recognizable but ensure the makeup colors are distinct and visible."

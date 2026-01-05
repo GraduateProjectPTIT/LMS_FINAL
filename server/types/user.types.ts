@@ -32,13 +32,11 @@ export interface INotificationSettingsData {
 export interface IStudent extends Document {
   userId: Types.ObjectId;
   interests?: Types.ObjectId[];
-  // Thêm các trường khác của student ở đây...
 }
 
 export interface ITutor extends Document {
   userId: Types.ObjectId;
   expertise?: Types.ObjectId[];
-  // Thêm các trường khác của tutor ở đây...
 }
 
 export interface IAdmin extends Document {

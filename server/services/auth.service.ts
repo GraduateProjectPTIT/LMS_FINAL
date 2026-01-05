@@ -1,4 +1,3 @@
-// src/services/auth.service.ts
 import { Response } from "express";
 import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
@@ -13,7 +12,7 @@ import {
   IRegistrationBody,
   ISocialAuthBody,
   IResendCodeRequest,
-  IUpdatePassword, // IUpdatePasswordService was renamed to IUpdatePassword
+  IUpdatePassword,
   ILoginRequest,
   IResetPasswordToken,
   IResetPasswordPayload,
@@ -56,7 +55,6 @@ const _createUserWithProfileInTransaction = async (
       break;
     }
     default:
-      // Lỗi này không nên xảy ra nếu đã validate role ở service
       throw new ErrorHandler("Invalid role during profile creation", 500);
   }
 
@@ -162,7 +160,7 @@ export const createResetPasswordToken = (user: IUser): IResetPasswordToken => {
     {
       id: user._id,
     },
-    process.env.RESET_PASSWORD_SECRET as Secret, // !! Dùng một SECRET KEY khác để tăng bảo mật
+    process.env.RESET_PASSWORD_SECRET as Secret,
     { expiresIn: "1h" } // Đặt thời gian hết hạn
   );
 
@@ -189,26 +187,23 @@ export const forgotPasswordService = async (email: string) => {
 
   // 3. Chuẩn bị dữ liệu cho email template
   const data = {
-    user: { name: user.name }, // Lấy tên user từ DB
+    user: { name: user.name },
     resetToken: resetToken,
   };
 
   const templatePath = path.join(__dirname, "../mails/reset-password-mail.ejs");
 
-  // 4. Render và gửi email (logic giống hệt của bạn)
-  // Bạn sẽ cần tạo một file template mới là `reset-password-mail.ejs`
   await ejs.renderFile(templatePath, data);
 
   try {
     await sendMail({
       email,
       subject: "Reset your password",
-      template: "reset-password-mail.ejs", // Dùng template mới
+      template: "reset-password-mail.ejs",
       data,
     });
 
     // 5. Trả về token và thông báo thành công
-    // Trả về token tương tự như luồng register
     return {
       success: true,
       message: `Please check your email: ${email} for your password reset code!`,
@@ -220,7 +215,7 @@ export const forgotPasswordService = async (email: string) => {
 };
 
 export const resetPasswordService = async (
-  resetToken: string, // Đây chính là JWT từ URL
+  resetToken: string,
   newPassword: string
 ): Promise<{ message: string }> => {
   try {
@@ -241,10 +236,6 @@ export const resetPasswordService = async (
     // Cập nhật mật khẩu mới
     user.password = newPassword;
     user.resetToken = undefined;
-
-    // Dòng `user.resetToken = undefined;` đã được XÓA BỎ
-    // vì chúng ta không lưu token trong user model nữa.
-
     await user.save();
 
     return { message: "Password has been reset successfully." };
@@ -282,18 +273,16 @@ export const registerUserService = async (body: IRegistrationBody) => {
     });
 
     // 4. Chuẩn bị payload cho user
-    // (Bao gồm cả activation data)
     const userPayload = {
       name,
       email,
-      password, // Mật khẩu sẽ được hash bởi pre-save hook
+      password,
       role,
       activationCode: activationTokenData.activationCode,
       activationToken: activationTokenData.token,
       isVerified: false,
     };
 
-    // *** THAY ĐỔI: Gọi hàm helper để tạo user và profile ***
     const newUser = await _createUserWithProfileInTransaction(
       userPayload,
       role,
@@ -321,7 +310,6 @@ export const registerUserService = async (body: IRegistrationBody) => {
       console.error("Failed to create registration notification:", error);
     }
 
-    // Render email template (không cần chờ)
     ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data);
 
     try {
@@ -340,7 +328,6 @@ export const registerUserService = async (body: IRegistrationBody) => {
     } catch (error: any) {
       // Nếu gửi mail lỗi, không cần throw lỗi hệ thống, chỉ cần log lại
       console.error("Failed to send activation email:", error);
-      // User vẫn được tạo thành công, có thể có chức năng "gửi lại email kích hoạt"
       return {
         success: true,
         message: `Account created, but failed to send activation email. Please try the 'resend activation' feature.`,
@@ -374,7 +361,6 @@ export const resendCodeService = async (body: IResendCodeRequest) => {
   }
 
   // 3. Tạo lại mã và token kích hoạt mới
-  // Giả sử hàm createActivationToken có thể hoạt động chỉ với name và email
   const activationTokenData = createActivationToken(user);
 
   // 4. Cập nhật mã và token mới vào bản ghi user
@@ -392,7 +378,7 @@ export const resendCodeService = async (body: IResendCodeRequest) => {
   try {
     await sendMail({
       email: user.email,
-      subject: "Activate your account - New Code", // Tiêu đề có thể khác để phân biệt
+      subject: "Activate your account - New Code",
       template: "activation-mail.ejs",
       data,
     });
@@ -442,8 +428,8 @@ export const activateUserService = async (body: IActivationRequest) => {
 
   // 3. Cập nhật trạng thái và xóa các trường kích hoạt
   user.isVerified = true;
-  user.activationCode = undefined; // Xóa mã sau khi đã sử dụng
-  user.activationToken = undefined; // Xóa token sau khi đã sử dụng
+  user.activationCode = undefined;
+  user.activationToken = undefined;
 
   await user.save();
 };
@@ -468,7 +454,6 @@ export const loginUserService = async (
     throw new ErrorHandler("Invalid email or password", 400);
   }
 
-  // Chỉ cần gọi hàm helper mới
   return await getPopulatedUserResponse(userFromDB);
 };
 
@@ -487,16 +472,11 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
       };
       await user.save();
     }
-
-    // *** THAY ĐỔI QUAN TRỌNG ***
-    // 1. Không tạo token ở đây
-    // 2. Gọi hàm helper để lấy đầy đủ thông tin (interests/expertise)
     const populatedUser = await getPopulatedUserResponse(user);
 
     return {
-      status: "success", // Tín hiệu: Đăng nhập thành công
-      userResponse: populatedUser, // Trả về user đã populate đầy đủ
-      // KHÔNG CÓ TOKEN Ở ĐÂY
+      status: "success",
+      userResponse: populatedUser,
     };
   } else {
     // --- Kịch bản 2: Người dùng mới (Cần đăng ký) ---
@@ -507,20 +487,14 @@ export const socialAuthService = async (body: ISocialAuthBody) => {
   }
 };
 
-// API MỚI: Dành cho trang đăng ký hoàn tất
-// (Ví dụ: POST /api/v1/auth/complete-register)
-// --- NGHIỆP VỤ HOÀN TẤT ĐĂNG KÝ MẠNG XÃ HỘI (ĐÃ CẬP NHẬT) ---
-
-// Giả định rằng hàm 'getPopulatedUserResponse' ta đã tạo ở lần trước
-// đã có sẵn trong file này hoặc đã được import
-// const getPopulatedUserResponse = async (user: IUser): Promise<IUserResponse> => { ... }
+// --- ĐĂNG KÝ MẠNG XÃ HỘI  ---
 
 export const completeSocialRegisterService = async (
   body: ISocialAuthBody
 ): Promise<IUserResponse> => {
   const { email, name, avatar, role } = body;
 
-  // 1. & 2. Validation (Giữ nguyên)
+  // 1. Validation
   if (!role) {
     throw new ErrorHandler("Role is required for registration", 400);
   }
@@ -529,7 +503,7 @@ export const completeSocialRegisterService = async (
     throw new ErrorHandler(`Role: "${role}" is invalid`, 400);
   }
 
-  // 3. Kiểm tra email (Giữ nguyên)
+  // 3. Kiểm tra email
   const existingUser = await userModel.findOne({ email });
   if (existingUser) {
     throw new ErrorHandler("This email is already registered", 409);
@@ -540,19 +514,17 @@ export const completeSocialRegisterService = async (
   session.startTransaction();
 
   try {
-    // *** THAY ĐỔI: Chuẩn bị payload ***
     const newUserPayload = {
       email,
       name,
       avatar: { public_id: "social_login", url: avatar },
       role: role,
-      isVerified: true, // Social register tự động verify
+      isVerified: true,
     };
 
-    // *** THAY ĐỔI: Gọi hàm helper ***
     const newUser = await _createUserWithProfileInTransaction(
       newUserPayload,
-      role as UserRole, // Đã validate ở trên
+      role as UserRole,
       session
     );
 

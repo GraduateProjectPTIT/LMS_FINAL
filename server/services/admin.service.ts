@@ -1,9 +1,7 @@
-// src/services/user.service.ts
 import userModel, { IUser, UserRole } from "../models/user.model";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Request, Response } from "express";
-// import { redis } from "../utils/redis";
 import { userRepository } from "../repositories/user.repository";
 import { orderRepository } from "../repositories/order.repository";
 import { enrolledCourseRepository } from "../repositories/enrolledCourse.repository";
@@ -19,7 +17,7 @@ import {
   paginate,
   PaginationParams,
   UserQueryParams,
-} from "../utils/pagination.helper"; // Import the helper
+} from "../utils/pagination.helper";
 import {
   IUpdatePassword,
   IUpdatePasswordParams,
@@ -147,8 +145,7 @@ export const getAdminRevenueChartService = async (range: string = "30d") => {
   return { range, series: data };
 };
 
-// --- LẤY TẤT CẢ USERS (đã có) ---
-// Đảm bảo bạn import SortOptions từ file helper
+// --- LẤY TẤT CẢ USERS ---
 
 export const getAllUsersService = async (queryParams: UserQueryParams) => {
   const {
@@ -162,8 +159,7 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
     sortOrder = "desc",
   } = queryParams;
 
-  // ... (toàn bộ phần validation của bạn giữ nguyên) ...
-
+  // 1. VALIDATE sortBy
   const allowedSortFields = ["createdAt", "name"];
   if (!allowedSortFields.includes(sortBy)) {
     throw new ErrorHandler(
@@ -172,7 +168,7 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
     );
   }
 
-  // --- Phần build filter của bạn ---
+  // ---  build filter ---
   const baseFilter: { [key: string]: any } = {};
   if (role) {
     baseFilter.role = role;
@@ -187,13 +183,10 @@ export const getAllUsersService = async (queryParams: UserQueryParams) => {
   const keywordFilter = createKeywordSearchFilter(keyword, ["name", "email"]);
   const finalFilter = { ...baseFilter, ...keywordFilter };
 
-  // 3. TẠO ĐỐI TƯỢNG sort CHO MONGOOSE VỚI CHÚ THÍCH KIỂU
   const sortOptions: SortOptions = {
-    // <--- ĐÂY LÀ DÒNG ĐÃ SỬA
     [sortBy]: sortOrder === "asc" ? 1 : -1,
   };
 
-  // 4. TRUYỀN TÙY CHỌN SẮP XẾP VÀO HÀM `paginate`
   const paginatedResult = await paginate(
     userModel,
     { page, limit },

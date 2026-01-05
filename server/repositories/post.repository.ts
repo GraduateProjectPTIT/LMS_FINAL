@@ -2,8 +2,6 @@ import mongoose, { FilterQuery, SortOrder } from "mongoose";
 import PostModel, { IPost } from "../models/post.model"; // Import IPost
 import CategoryModel from "../models/category.model";
 
-// --- QUERY METHODS ---
-
 const findById = async (id: string) => {
   return PostModel.findById(id).populate("authorId", "name avatar").exec();
 };
@@ -27,11 +25,8 @@ const countDocuments = async (filter: FilterQuery<any>) => {
 };
 
 const getDistinctTags = async () => {
-  // distinct trả về mảng giá trị, không phải document nên không lỗi
   return PostModel.distinct("tags", { status: "published" }).exec();
 };
-
-// --- MUTATION METHODS ---
 
 const create = async (data: any) => {
   return PostModel.create(data);
@@ -44,8 +39,6 @@ const save = async (doc: any) => {
 const deletePost = async (id: string) => {
   return PostModel.deleteOne({ _id: id }).exec();
 };
-
-// --- HELPER CHO CATEGORY ---
 
 const findCategoriesByIds = async (ids: string[]) => {
   return CategoryModel.find({ _id: { $in: ids } })

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Load môi trường để lấy chuỗi kết nối
 load_dotenv()
 
-# --- CẤU HÌNH DATABASE (Private trong module này) ---
+# --- CẤU HÌNH DATABASE ---
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME")
 
@@ -37,7 +37,7 @@ def clean_mongo_doc(doc):
     elif isinstance(raw_tags, list):
         final_tags = raw_tags
 
-    # 1. Lấy object thumbnail ra, nếu không có thì trả về dict rỗng {}
+    # 1. Lấy object thumbnail ra, nếu không có thì trả về rỗng {}
     thumb_data = doc.get("thumbnail", {})
 
     # 2. Lấy đường dẫn url bên trong. Nếu thumb_data là dict thì mới get tiếp
@@ -46,10 +46,6 @@ def clean_mongo_doc(doc):
         thumb_url = thumb_data.get("url", "")
     elif isinstance(thumb_data, str): # Phòng trường hợp dữ liệu cũ lưu dạng string
         thumb_url = thumb_data
-
-    # Nếu không có ảnh, dùng ảnh mặc định (Placeholder)
-    if not thumb_url:
-        thumb_url = "https://via.placeholder.com/300x200?text=No+Image"
     
     return {
         "id": str(doc.get("_id", "")), 
@@ -113,7 +109,7 @@ def get_courses_from_db(keywords: list):
                 
             raw_results = list(cursor)
             
-            # (Phòng hờ) Nếu website mới tinh chưa ai mua gì cả, thì lấy đại 3 khóa mới nhất
+            # Nếu website chưa ai mua gì cả, thì lấy 3 khóa mới nhất
             if not raw_results:
                 print("[DB] Chưa có lượt mua nào -> Lấy khóa học mới nhất")
                 cursor_backup = courses_collection.find({"status": "published"})\

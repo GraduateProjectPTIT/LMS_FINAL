@@ -1,20 +1,17 @@
-// src/controllers/notification.controller.ts
-
 import { NextFunction, Request, Response } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import * as NotificationService from "../services/notification.service";
-import { addClient, removeClient, sendEventToUser } from "../utils/sseManager"; // Import các hàm từ sseManager
+import { addClient, removeClient, sendEventToUser } from "../utils/sseManager";
 
 export const notificationStreamController = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    // req.user được gán từ middleware isAuthenticated
     const userId = req.user?._id;
     if (!userId) {
       res
         .status(401)
         .json({ success: false, message: "User not authenticated" });
-      return; // Dừng hàm
+      return;
     }
 
     const origin = req.headers.origin || "http://localhost:3000";
@@ -27,26 +24,19 @@ export const notificationStreamController = CatchAsyncError(
 
     const userIdString = userId.toString();
 
-    // Thêm client này vào trình quản lý SSE
     addClient(userIdString, res);
 
-    // Gửi sự kiện xác nhận kết nối qua hàm quản lý tập trung
     sendEventToUser(userIdString, "connection_established", {
       message: "SSE connection successful",
     });
 
-    // Xử lý khi client ngắt kết nối
     req.on("close", () => {
-      // Truyền cả userId và đối tượng `res` cụ thể
       removeClient(userIdString, res);
       res.end();
     });
   }
 );
 
-/**
- * [ADMIN] Lấy tất cả thông báo.
- */
 export const getAllNotifications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const notifications =
@@ -58,9 +48,6 @@ export const getAllNotifications = CatchAsyncError(
   }
 );
 
-/**
- * Lấy các thông báo của người dùng đang đăng nhập.
- */
 export const getMyNotifications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id;
@@ -97,9 +84,6 @@ export const getMyNotifications = CatchAsyncError(
   }
 );
 
-/**
- * Đánh dấu một thông báo của tôi là đã đọc.
- */
 export const markMyNotificationRead = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const notifId = req.params.id;
@@ -123,9 +107,6 @@ export const markMyNotificationRead = CatchAsyncError(
   }
 );
 
-/**
- * Đánh dấu tất cả thông báo của tôi là đã đọc.
- */
 export const markAllMyNotificationsRead = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id;
@@ -140,9 +121,6 @@ export const markAllMyNotificationsRead = CatchAsyncError(
   }
 );
 
-/**
- * Controller để tạo thông báo mới
- */
 export const createNotification = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -153,7 +131,6 @@ export const createNotification = CatchAsyncError(
         );
       }
 
-      // <<< BƯỚC 3: Dùng hàm 2-trong-1 mới
       const notification = await NotificationService.createAndSendNotification({
         userId,
         title,

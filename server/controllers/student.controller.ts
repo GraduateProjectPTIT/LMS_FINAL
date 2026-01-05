@@ -1,10 +1,8 @@
-// src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
 import { updateStudentInterestService } from "../services/student.service";
 
-// register setup profile cho student
 export const setupStudentProfile = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id.toString();
@@ -13,7 +11,6 @@ export const setupStudentProfile = CatchAsyncError(
     }
     const { interests } = req.body;
 
-    // 3. Gọi service với tên mới
     const updatedStudentProfile = await updateStudentInterestService(userId, {
       interests,
     });

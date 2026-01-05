@@ -1,4 +1,3 @@
-// src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import {
@@ -12,7 +11,7 @@ import {
 } from "../services/user.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdatePassword } from "../types/auth.types";
-import { paginate } from "../utils/pagination.helper"; // Import our new helper
+import { paginate } from "../utils/pagination.helper";
 import userModel from "../models/user.model";
 import { INotificationSettingsData } from "../types/user.types";
 
@@ -26,7 +25,6 @@ export const updatePassword = CatchAsyncError(
       return next(new ErrorHandler("Authentication required", 401));
     }
 
-    // Gọi service với các tham số đã được xác thực
     await updatePasswordService({
       userId: userId.toString(),
       oldPassword,
@@ -60,7 +58,6 @@ export const updateNotificationSettings = CatchAsyncError(
       const data: INotificationSettingsData = req.body;
       const userId = req.user?._id;
 
-      // 2. Gọi service mới
       if (!userId) {
         return next(new ErrorHandler("Authentication required", 401));
       }
@@ -72,7 +69,7 @@ export const updateNotificationSettings = CatchAsyncError(
 
       res.status(200).json({
         success: true,
-        settings, // 3. Trả về cài đặt đã cập nhật
+        settings,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -85,7 +82,6 @@ export const updateUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?._id;
 
-    // ✅ Bắt buộc phải có bước kiểm tra này
     if (!userId) {
       return next(new ErrorHandler("Authentication required", 401));
     }
@@ -99,7 +95,7 @@ export const updateUserInfo = CatchAsyncError(
 export const updateAvatar = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { avatar } = req.body; // 'avatar' here is the base64 string
+      const { avatar } = req.body;
       const userId = req.user?._id.toString();
 
       // --- VALIDATION ---
@@ -112,8 +108,6 @@ export const updateAvatar = CatchAsyncError(
         return next(new ErrorHandler("User not found, please log in.", 401));
       }
 
-      // --- CALL SERVICE ---
-      // Pass the base64 string to the service
       updateAvatarService(userId, avatar, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
@@ -131,10 +125,8 @@ export const deleteMyAccount = CatchAsyncError(
       return next(new ErrorHandler("Authentication required", 401));
     }
 
-    // Gọi service để xử lý logic xóa
     await deleteMyAccountService(userId);
 
-    // Xóa cookie token để đăng xuất người dùng sau khi xóa tài khoản
     res.cookie("access_token", "", { maxAge: 1 });
     res.cookie("refresh_token", "", { maxAge: 1 });
 

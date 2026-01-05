@@ -1,4 +1,3 @@
-// src/services/user.service.ts
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import { Response } from "express";
@@ -8,11 +7,10 @@ import {
 } from "../types/user.types";
 import { IUpdatePasswordParams } from "../types/auth.types";
 import { UserRole } from "../models/user.model";
-import { userRepository } from "../repositories/user.repository"; // Import Repository
+import { userRepository } from "../repositories/user.repository";
 
 // --- LẤY USER BẰNG ID ---
 export const getUserById = async (id: string) => {
-  // Sử dụng repo thay vì userModel.findById
   const user = await userRepository.findById(id);
   return user;
 };
@@ -39,11 +37,9 @@ export const updateUserInfoService = async (
   }
 
   if (data.socials) {
-    // Vì user lấy từ findById là Mongoose Document, ta vẫn dùng được cú pháp này
     Object.assign(user.socials, data.socials);
   }
 
-  // Gọi save() trên document instance để kích hoạt các pre-save hooks (nếu có)
   await user.save();
   return user;
 };
@@ -53,20 +49,16 @@ export const updateNotificationSettingsService = async (
   userId: string,
   data: INotificationSettingsData
 ) => {
-  // 1. Tạo object $set logic vẫn giữ ở service vì đây là xử lý input data
   const updateFields: any = {};
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
       updateFields[`notificationSettings.${key}`] = value;
     }
   }
-
-  // 2. Kiểm tra nếu không có gì để cập nhật
   if (Object.keys(updateFields).length === 0) {
     return { success: true, message: "No settings to update." };
   }
 
-  // 3. Gọi Repository để update
   const user = await userRepository.updateNotificationSettings(
     userId,
     updateFields
@@ -86,13 +78,11 @@ export const updateAvatarService = async (
   res: Response
 ) => {
   try {
-    // 1. --- FIND USER ---
     const user = await userRepository.findById(userId);
     if (!user) {
       throw new ErrorHandler("User not found", 404);
     }
 
-    // 2. --- DELETE OLD AVATAR IF IT EXISTS ---
     if (user.avatar && user.avatar.public_id) {
       try {
         await cloudinary.v2.uploader.destroy(user.avatar.public_id);
@@ -101,7 +91,6 @@ export const updateAvatarService = async (
       }
     }
 
-    // 3. --- UPLOAD NEW AVATAR ---
     const myCloud = await cloudinary.v2.uploader.upload(avatarString, {
       folder: "avatars",
       width: 150,
@@ -109,7 +98,6 @@ export const updateAvatarService = async (
       crop: "fill",
     });
 
-    // 4. --- UPDATE USER RECORD ---
     user.avatar = {
       public_id: myCloud.public_id,
       url: myCloud.secure_url,
@@ -117,7 +105,6 @@ export const updateAvatarService = async (
 
     await user.save();
 
-    // 5. --- SEND RESPONSE ---
     res.status(200).json({
       success: true,
       message: "Avatar updated successfully",
@@ -141,7 +128,6 @@ export const updateUserRoleService = async (id: string, role: string) => {
 export const updatePasswordService = async (data: IUpdatePasswordParams) => {
   const { userId, oldPassword, newPassword } = data;
 
-  // Dùng hàm riêng của repo để lấy password field
   const user = await userRepository.findUserWithPassword(userId);
   if (!user) {
     throw new ErrorHandler("User not found", 404);
@@ -156,7 +142,6 @@ export const updatePasswordService = async (data: IUpdatePasswordParams) => {
   await user.save();
 };
 
-// --- NGHIỆP VỤ TỰ XÓA TÀI KHOẢN ---
 export const deleteMyAccountService = async (id: string) => {
   const user = await userRepository.findById(id);
 
@@ -164,7 +149,7 @@ export const deleteMyAccountService = async (id: string) => {
     throw new ErrorHandler("User not found", 404);
   }
 
-  // 1. Xóa profile tương ứng thông qua Repository helper
+  // 1. Xóa profile tương ứng
   let profileIdToDelete: string | undefined;
 
   switch (user.role) {
@@ -183,7 +168,7 @@ export const deleteMyAccountService = async (id: string) => {
     await userRepository.deleteRelatedProfile(user.role, profileIdToDelete);
   }
 
-  // 2. Xóa avatar trên Cloudinary nếu có (giữ nguyên logic service)
+  // 2. Xóa avatar trên Cloudinary
   if (user.avatar?.public_id) {
     await cloudinary.v2.uploader.destroy(user.avatar.public_id);
   }

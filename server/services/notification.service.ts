@@ -25,7 +25,6 @@ export const getUserNotificationsService = async (options: {
   const findFilter = { userId, ...filter };
   const skip = (page - 1) * limit;
 
-  // Gọi repository song song
   const [notifications, total] = await Promise.all([
     notificationRepository.findByUser(findFilter, skip, limit),
     notificationRepository.countByUser(findFilter),
@@ -51,7 +50,7 @@ export const markNotificationAsReadService = async (
   const notification = await notificationRepository.findById(notificationId);
 
   if (!notification) {
-    return null; // Controller sẽ xử lý 404
+    return null;
   }
 
   // 2. Logic kiểm tra quyền (Business Logic)
@@ -59,13 +58,12 @@ export const markNotificationAsReadService = async (
   const isAdmin = user.role === "admin";
 
   if (!isOwner && !isAdmin) {
-    throw new Error("Forbidden"); // Controller sẽ xử lý 403
+    throw new Error("Forbidden");
   }
 
   // 3. Cập nhật trạng thái
   if (notification.status !== "read") {
     notification.status = "read";
-    // Gọi repo để lưu thay đổi
     await notificationRepository.save(notification);
   }
 
@@ -125,7 +123,7 @@ const deleteOldNotifications = async () => {
   }
 };
 
-// Lên lịch chạy vào lúc nửa đêm mỗi ngày.
+// Lên lịch chạy xóa mỗi ngày lúc 12h đêm với notification có date quá 6 tháng
 cron.schedule("0 0 0 * * *", deleteOldNotifications, {
   timezone: "Asia/Ho_Chi_Minh",
 });

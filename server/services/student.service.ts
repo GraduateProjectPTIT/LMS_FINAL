@@ -2,14 +2,11 @@ import { Types } from "mongoose";
 import ErrorHandler from "../utils/ErrorHandler";
 import { IUpdateStudentInterestDto, IStudent } from "../types/user.types";
 import { IUserResponse } from "../types/auth.types";
-import { _toUserResponse } from "./auth.service"; // Hoặc import từ helper tương ứng
-
-// Import Repositories
+import { _toUserResponse } from "./auth.service";
 import { studentRepository } from "../repositories/student.repository";
 import { userRepository } from "../repositories/user.repository";
 import userModel from "../models/user.model";
 
-// Định nghĩa Type cho Response
 type IStudentDataObject = ReturnType<IStudent["toObject"]>;
 export type ICombinedStudentUserResponse = IStudentDataObject & IUserResponse;
 
@@ -64,8 +61,6 @@ export const updateStudentInterestService = async (
   );
 
   // 7. Xử lý logic Transform dữ liệu (Mapping response)
-  // Logic này giữ nguyên như code cũ của bạn để đảm bảo Frontend không bị lỗi
-
   // Lấy ra mảng các title của interests
   let interestTitles: string[] = [];
   if (populatedProfile && populatedProfile.interests) {
@@ -77,7 +72,7 @@ export const updateStudentInterestService = async (
   // Chuẩn bị User Response DTO
   const userResponse = _toUserResponse(user);
 
-  // Chuẩn bị Student Response DTO (bỏ userId thừa vì đã có trong userResponse)
+  // Chuẩn bị Student Response DTO
   const { userId: removedUserId, ...restOfProfile } =
     populatedProfile.toObject();
 

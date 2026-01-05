@@ -17,7 +17,7 @@ userRouter.put("/user/update_user_info", isAuthenticated, updateUserInfo);
 userRouter.put(
   "/user/update_notification_settings",
   isAuthenticated,
-  updateNotificationSettings // 2. Thêm route mới
+  updateNotificationSettings
 );
 userRouter.put("/user/update_avatar", isAuthenticated, updateAvatar);
 userRouter.put("/user/update_password", isAuthenticated, updatePassword);

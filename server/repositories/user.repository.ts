@@ -47,17 +47,9 @@ const updateNotificationSettings = async (
 // --- DELETE METHODS ---
 
 const deleteUser = async (userId: string) => {
-  // Vì trong service dùng user.deleteOne() để kích hoạt middleware (nếu có)
-  // Nhưng nếu muốn xóa nhanh thì dùng deleteOne({_id: userId}).
-  // Để tương thích với logic cũ (lấy user instance rồi xóa), ta có thể tìm rồi xóa,
-  // hoặc dùng findByIdAndDelete. Ở đây dùng findByIdAndDelete cho gọn.
   return userModel.findByIdAndDelete(userId);
 };
 
-/**
- * Helper để xóa các profile liên quan (Student/Tutor/Admin)
- * Việc này giúp Service không phải import các Model con.
- */
 const deleteRelatedProfile = async (
   role: string,
   profileId: string | Types.ObjectId
@@ -74,19 +66,11 @@ const deleteRelatedProfile = async (
   }
 };
 
-// --- QUERY PHỨC TẠP (Logic cũ của bạn giữ nguyên) ---
-
-/**
- * Lấy danh sách các khóa học đã mua của người dùng từ 'orderModel'.
- * Hàm này xử lý cả hai trường hợp: order có 'courseId' (mua lẻ)
- * và order có 'items' (mua qua giỏ hàng).
- */
 const findUserPurchases = async (
   userId: mongoose.Types.ObjectId
 ): Promise<{ purchasedCourses: mongoose.Types.ObjectId[] } | null> => {
   const userIdString = userId.toString();
 
-  // 1. Lấy các order mua lẻ (dùng courseId)
   const singleCourseOrders = await orderModel
     .find({
       userId: userIdString,
@@ -95,30 +79,25 @@ const findUserPurchases = async (
     .select("courseId")
     .lean();
 
-  // 2. Lấy các order mua qua giỏ hàng (dùng items)
   const cartOrders = await orderModel
     .find({
       userId: userIdString,
       items: { $exists: true, $ne: [] },
     })
-    .select("items.courseId") // Giả định IOrderItem có trường courseId
+    .select("items.courseId")
     .lean();
 
   const purchasedSet = new Set<string>();
 
-  // Thêm từ order lẻ
   singleCourseOrders.forEach((order) => {
     if (order.courseId) {
       purchasedSet.add(order.courseId.toString());
     }
   });
 
-  // Thêm từ order giỏ hàng
   cartOrders.forEach((order) => {
-    // Đảm bảo order.items là một mảng trước khi lặp
     if (Array.isArray(order.items)) {
       order.items.forEach((item: IOrderItem) => {
-        // Giả định kiểu IOrderItem
         if (item.courseId) {
           purchasedSet.add(item.courseId.toString());
         }
@@ -126,7 +105,6 @@ const findUserPurchases = async (
     }
   });
 
-  // 3. Chuyển Set (chuỗi) thành mảng các ObjectId
   const purchasedCourses = Array.from(purchasedSet).map(
     (id) => new mongoose.Types.ObjectId(id)
   );
@@ -134,7 +112,6 @@ const findUserPurchases = async (
   return { purchasedCourses };
 };
 
-// Export repository object
 export const userRepository = {
   findById,
   findUserDetailById,
