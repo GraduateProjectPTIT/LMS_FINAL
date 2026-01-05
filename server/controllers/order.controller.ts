@@ -143,7 +143,7 @@ export const createOrder = CatchAsyncError(
             userId: userId.toString(),
             title: "Order Confirmation",
             message: `You have successfully enrolled in ${course.name}`,
-            link: `/order-detail?focusOrder=${data.courseId}`, 
+            link: `/order-detail/${data.courseId}`, 
           });
         }
       }
@@ -476,7 +476,7 @@ export const handleSuccessfulPayment = async (session: any) => {
             userId: userId.toString(),
             title: "Order Confirmation - Stripe",
             message: `You have successfully purchased ${course.name} via Stripe`,
-            link: `/order-detail?focusOrder=${consolidatedOrder._id}`,
+            link: `/order-detail/${consolidatedOrder._id}`,
           });
         }
 

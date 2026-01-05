@@ -313,7 +313,7 @@ class PaypalService {
             userId: user._id.toString(),
             title: "Order Confirmation - PayPal",
             message: `You have successfully purchased ${c.name} via PayPal`,
-            link: `/order-detail?focusOrder=${order._id}`,
+            link: `/order-detail/${order._id}`,
           });
         }
 
