@@ -29,7 +29,6 @@ class PaypalRepository {
   }
 
   async updateOrderUser(orderId: string, userId: string) {
-    // Ép kiểu userId về ObjectId để mongoose hiểu
     return await OrderModel.updateOne(
       { _id: orderId },
       { $set: { userId: new mongoose.Types.ObjectId(userId) } }
