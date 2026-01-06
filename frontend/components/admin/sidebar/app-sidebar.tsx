@@ -36,11 +36,6 @@ const sectionData = {
                     url: "/admin/data/orders",
                     value: "orders_data",
                 },
-                {
-                    title: "Assessments",
-                    url: "/admin/assessments",
-                    value: "assessments_data",
-                },
             ],
         },
         // Manage system layout

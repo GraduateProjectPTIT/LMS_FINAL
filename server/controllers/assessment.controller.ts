@@ -3,7 +3,8 @@ import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 import cloudinary from "cloudinary";
-
+import puppeteer from "puppeteer";
+import CourseModel from "../models/course.model";
 
 // Submit Assessment (Student uploads image)
 export const submitAssessment = CatchAsyncError(
@@ -122,6 +123,8 @@ export const getAssessments = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status } = req.query;
+
+      const user = req.user as any;
       
       const filter: any = {
         "assessment.status": { $in: ["submitted", "graded"] }
@@ -131,6 +134,15 @@ export const getAssessments = CatchAsyncError(
         filter["assessment.status"] = status;
       }
 
+      // Nếu là tutor, chỉ lấy assessment của các khóa học do tutor tạo
+      if (user?.role === "tutor") {
+        // Lấy danh sách courseId mà tutor này tạo
+        const tutorCourses = await CourseModel.find({ creatorId: user._id }, { _id: 1 });
+        const tutorCourseIds = tutorCourses.map((c: any) => c._id);
+        filter["courseId"] = { $in: tutorCourseIds };
+      }
+
+      // Admin thì lấy tất cả
       const assessments = await EnrolledCourseModel.find(filter)
         .populate("userId", "name email")
         .populate("courseId", "name")
@@ -147,8 +159,6 @@ export const getAssessments = CatchAsyncError(
 );
 
 // Generate Certificate (Puppeteer)
-import puppeteer from "puppeteer";
-
 export const getCertificate = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -78,6 +78,7 @@ const CourseActions = ({
     };
 
     const isPublished = course.status === "published";
+    const showRestore = course.status === "archived" || course.status === "retired";
 
     return (
         <DropdownMenu>
@@ -114,7 +115,7 @@ const CourseActions = ({
                     </DropdownMenuItem>
                 </Link>
 
-                {isPublished ? (
+                {!showRestore ? (
                     <DropdownMenuItem
                         onClick={handleDelete}
                         className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"

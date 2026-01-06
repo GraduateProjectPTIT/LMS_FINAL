@@ -2,17 +2,17 @@ import { useCallback, useMemo, useRef } from "react";
 import Fuse from "fuse.js";
 import { IBaseCategory } from "@/type";
 
-/** Các từ dừng (stop words) cần loại bỏ trong quá trình xử lý văn bản */
+// Các từ dừng (stop words) cần loại bỏ trong quá trình xử lý văn bản 
 const STOP_WORDS = new Set([
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
     'of', 'with', 'by', 'is', 'are', 'was', 'were', 'this', 'that', 'these', 'those'
 ]);
 
-/** normalize: chuyển về chữ thường + loại bỏ ký tự đặc biệt + gộp nhiều khoảng trắng */
+// Chuyển về chữ thường + loại bỏ ký tự đặc biệt + gộp nhiều khoảng trắng 
 const normalize = (s: string) =>
     s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 
-/** Tiền xử lý văn bản nâng cao với việc loại bỏ từ dừng */
+// Tiền xử lý văn bản nâng cao với việc loại bỏ từ dừng 
 const preprocessText = (text: string) => {
     const normalized = normalize(text);
     const tokens = normalized.split(" ")
@@ -20,7 +20,7 @@ const preprocessText = (text: string) => {
     return tokens;
 };
 
-/** Tạo n-grams (2–3 từ) để bắt được cụm từ như "bridal looks", "skin prep" */
+// Tạo n-grams (2–3 từ) để bắt được cụm từ như "bridal looks", "skin prep" 
 const buildNGrams = (tokens: string[], min = 2, max = 3) => {
     const grams: string[] = [];
     for (let n = min; n <= max; n++) {
@@ -31,7 +31,7 @@ const buildNGrams = (tokens: string[], min = 2, max = 3) => {
     return grams;
 };
 
-/** Trích xuất keywords + n-grams từ description với mức ưu tiên nâng cao */
+// Trích xuất keywords + n-grams từ description với mức ưu tiên nâng cao 
 const buildQueriesFromDescription = (description: string) => {
     const tokens = preprocessText(description);
 
@@ -47,7 +47,7 @@ const buildQueriesFromDescription = (description: string) => {
     return [...new Set(queries)]; // Remove duplicates
 };
 
-/** Kết quả gợi ý kèm theo độ tin cậy và loại khớp */
+// Kết quả gợi ý kèm theo độ tin cậy và loại khớp 
 interface SuggestionResult {
     id: string;
     confidence: number; // 0-1 scale
@@ -59,7 +59,7 @@ export function useCategoryAutofill(allCategories: IBaseCategory[]) {
     const fuse = useMemo(() => {
         return new Fuse(allCategories, {
             keys: ["title"],
-            threshold: 0.3,      // chặt chẽ hơn một chút để tăng độ chính xác
+            threshold: 0.3,      // chặt chẽ hơn để tăng độ chính xác
             distance: 80,        // giảm để chỉ tập trung vào các kết quả gần
             includeScore: true,  // kèm theo điểm số để xếp hạng
             minMatchCharLength: 2, // bỏ qua các khớp quá ngắn
@@ -71,7 +71,7 @@ export function useCategoryAutofill(allCategories: IBaseCategory[]) {
     const queryCache = useMemo(() => new Map<string, string[]>(), []);
     const debounceRef = useRef<number | null>(null);
 
-    /** Hàm gợi ý nâng cao với cách tính điểm có trọng số */
+    // Hàm gợi ý nâng cao với cách tính điểm có trọng số 
     const suggest = useCallback(
         (description: string, perQueryLimit = 3, maxSuggestions = 10) => {
             if (!description.trim()) return [];
@@ -126,7 +126,7 @@ export function useCategoryAutofill(allCategories: IBaseCategory[]) {
         [fuse, queryCache]
     );
 
-    /** Gợi ý kèm theo độ tin cậy và loại khớp */
+    // Gợi ý kèm theo độ tin cậy và loại khớp 
     const suggestWithConfidence = useCallback(
         (description: string, perQueryLimit = 3, maxSuggestions = 10): SuggestionResult[] => {
             if (!description.trim()) return [];
@@ -183,7 +183,7 @@ export function useCategoryAutofill(allCategories: IBaseCategory[]) {
         [fuse]
     );
 
-    /** Tự động điền category: gộp với các category đã có, giới hạn số lượng */
+    // Tự động điền category: gộp với các category đã có, giới hạn số lượng 
     const autoFill = useCallback(
         (description: string, currentIds: string[], max = 5) => {
             const suggested = suggest(description);
@@ -193,7 +193,7 @@ export function useCategoryAutofill(allCategories: IBaseCategory[]) {
         [suggest]
     );
 
-    /** Xoá cache thủ công khi cần */
+    // Xoá cache thủ công khi cần 
     const clearCache = useCallback(() => {
         queryCache.clear();
     }, [queryCache]);

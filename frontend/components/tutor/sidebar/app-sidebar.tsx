@@ -32,8 +32,8 @@ const sectionData = {
                     value: "orders_data",
                 },
                 {
-                    title: "Assessments",
-                    url: "/tutor/assessments",
+                    title: "Assessments Data",
+                    url: "/tutor/data/assessments",
                     value: "assessments_data",
                 },
             ],

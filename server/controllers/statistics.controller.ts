@@ -8,13 +8,10 @@ import { generateLast12MonthsDate } from "../utils/analytics.generator";
 import ErrorHandler from "../utils/ErrorHandler";
 import EnrolledCourseModel from "../models/enrolledCourse.model";
 
-// Controller Ä‘á»ƒ láº¥y dá»¯ liá»‡u biá»ƒu Ä‘á»“ tÄƒng trÆ°á»Ÿng user
 export const getUserGrowthChart = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    // Láº¥y cÃ¡c query params, cÃ³ thá»ƒ lÃ  undefined
     const { granularity, days: daysStr } = req.query;
 
-    // Chuyá»ƒn Ä‘á»•i vÃ  validation Ä‘áº§u vÃ o
     let validatedGranularity: "daily" | "monthly" = "daily";
 
     if (granularity === "monthly") {

@@ -240,7 +240,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
             {isLoading ? (
                 <Loader />
             ) : course ? (
-                <div className="flex flex-col h-screen bg-white dark:bg-[#272a31]">
+                <div className="flex flex-col h-screen">
                     <CourseHeader
                         name={course.name}
                         level={course.level}
@@ -296,6 +296,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                             setIsSidebarOpen(false);
                                         }
                                     }}
+                                    isAssessmentAccessible={completedLectures.length === getAllLecturesInOrder().length}
                                 />
                             )}
                         </div>
@@ -316,6 +317,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                     setViewMode('assessment');
                                     setIsSidebarOpen(false);
                                 }}
+                                isAssessmentAccessible={completedLectures.length === getAllLecturesInOrder().length}
                             />
                         </div>
 

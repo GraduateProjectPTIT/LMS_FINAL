@@ -13,6 +13,7 @@ interface CourseSidebarProps {
     course: any; // Course data để check creator
     isAssessmentSelected?: boolean;
     onAssessmentSelect?: () => void;
+    isAssessmentAccessible: boolean
 }
 
 interface RootState {
@@ -21,7 +22,7 @@ interface RootState {
     };
 }
 
-const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course, isAssessmentSelected, onAssessmentSelect }: CourseSidebarProps) => {
+const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course, isAssessmentSelected, onAssessmentSelect, isAssessmentAccessible }: CourseSidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -135,11 +136,11 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                             style={{ width: `${progressPercentage}%` }}
                         ></div>
                     </div>
-                    {progressPercentage === 100 && (
+                    {/* {progressPercentage === 100 && (
                         <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                            🎉 Course completed!
+                            Course completed!
                         </p>
-                    )}
+                    )} */}
                 </div>
             </div>
 
@@ -228,33 +229,33 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                         )}
                     </div>
                 ))}
-                
-                 {/* Final Assessment Section */}
-                 <div className="border-b border-gray-300 dark:border-slate-700">
+
+                {/* Final Assessment Section */}
+                <div className="border-b border-gray-300 dark:border-slate-700">
                     <button
-                        className={`w-full px-4 py-3 flex gap-3 items-center focus:outline-none transition-colors duration-150 ${
-                             isAssessmentSelected 
-                             ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-l-indigo-500' 
-                             : 'hover:bg-gray-50 dark:hover:bg-black/20'
-                        }`}
-                         onClick={onAssessmentSelect}
+                        className={`w-full px-4 py-3 flex gap-3 items-center focus:outline-none transition-colors duration-150 ${isAssessmentSelected
+                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-l-indigo-500'
+                            : 'hover:bg-gray-50 dark:hover:bg-black/20'
+                            }`}
+                        onClick={isAssessmentAccessible ? onAssessmentSelect : undefined}
+                        disabled={!isAssessmentAccessible}
                     >
-                         {progressPercentage < 100 && !canBypass ? (
-                             <FaLock className="text-sm text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                         ) : (
-                             <FaCheckCircle className={`text-sm flex-shrink-0 ${course.assessment?.passed ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
-                         )}
-                         
-                         <div className="flex flex-col text-left">
-                             <span className={`font-semibold text-sm md:text-base ${isAssessmentSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
-                                 Final Assessment
-                             </span>
-                             {progressPercentage < 100 && !canBypass && (
-                                  <span className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                                     Complete all lectures to unlock
-                                  </span>
-                             )}
-                         </div>
+                        {progressPercentage < 100 && !canBypass ? (
+                            <FaLock className="text-sm text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                        ) : (
+                            <FaCheckCircle className={`text-sm flex-shrink-0 ${course.assessment?.passed ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
+                        )}
+
+                        <div className="flex flex-col text-left">
+                            <span className={`font-semibold text-sm md:text-base ${!isAssessmentAccessible ? 'opacity-50 cursor-not-allowed' : ''} ${isAssessmentSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+                                Final Assessment
+                            </span>
+                            {progressPercentage < 100 && !canBypass && (
+                                <span className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                    Complete all lectures to unlock
+                                </span>
+                            )}
+                        </div>
                     </button>
                 </div>
 

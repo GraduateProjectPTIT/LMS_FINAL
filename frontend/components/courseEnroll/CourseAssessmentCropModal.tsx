@@ -4,19 +4,17 @@ import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, Check, RotateCw } from 'lucide-react';
 
-interface ImageCropModalProps {
+interface CourseAssessmentCropModalProps {
     image: string;
     onCropComplete: (croppedImage: File) => void;
     onCancel: () => void;
-    aspectRatio?: number;
 }
 
-const ImageCropModal = ({
+const CourseAssessmentCropModal = ({
     image,
     onCropComplete,
-    onCancel,
-    aspectRatio = 1
-}: ImageCropModalProps) => {
+    onCancel
+}: CourseAssessmentCropModalProps) => {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
@@ -65,7 +63,7 @@ const ImageCropModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                        Crop Your Image
+                        Crop Your Assessment Photo
                     </h2>
                     <button
                         onClick={onCancel}
@@ -82,7 +80,7 @@ const ImageCropModal = ({
                         crop={crop}
                         zoom={zoom}
                         rotation={rotation}
-                        aspect={aspectRatio}
+                        aspect={1}
                         onCropChange={onCropChange}
                         onZoomChange={onZoomChange}
                         onCropComplete={onCropCompleteHandler}
@@ -166,34 +164,37 @@ async function getCroppedImg(
         throw new Error('No 2d context');
     }
 
-    // Set canvas size to 1024x1024
-    canvas.width = 1024;
-    canvas.height = 1024;
+    const maxSize = Math.max(image.width, image.height);
+    const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
 
-    // Handle rotation if needed
-    if (rotation !== 0) {
-        ctx.translate(512, 512);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.translate(-512, -512);
-    }
+    canvas.width = safeArea;
+    canvas.height = safeArea;
 
-    // Draw the cropped area directly to 1024x1024 canvas
+    ctx.translate(safeArea / 2, safeArea / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.translate(-safeArea / 2, -safeArea / 2);
+
     ctx.drawImage(
         image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        1024,
-        1024
+        safeArea / 2 - image.width * 0.5,
+        safeArea / 2 - image.height * 0.5
+    );
+
+    const data = ctx.getImageData(0, 0, safeArea, safeArea);
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.putImageData(
+        data,
+        Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
+        Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
     );
 
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
             if (blob) {
-                const file = new File([blob], 'cropped-image.png', {
+                const file = new File([blob], 'assessment-photo.png', {
                     type: 'image/png'
                 });
                 resolve(file);
@@ -202,4 +203,4 @@ async function getCroppedImg(
     });
 }
 
-export default ImageCropModal;
+export default CourseAssessmentCropModal;
