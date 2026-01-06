@@ -7,6 +7,18 @@ export interface IEnrolledCourse extends Document {
   completed?: boolean;
   enrolledAt?: Date;
   completedLectures: mongoose.Types.ObjectId[];
+  assessment?: {
+    status: "pending" | "submitted" | "graded";
+    submissionImage?: {
+        public_id: string;
+        url: string;
+    };
+    score?: number;
+    feedback?: string;
+    passed?: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const enrolledCourseSchema = new Schema<IEnrolledCourse>(
@@ -42,6 +54,20 @@ const enrolledCourseSchema = new Schema<IEnrolledCourse>(
         type: Schema.Types.ObjectId,
       },
     ],
+    assessment: {
+      status: {
+        type: String,
+        enum: ["pending", "submitted", "graded"],
+        default: "pending",
+      },
+      submissionImage: {
+          public_id: { type: String },
+          url: { type: String }
+      },
+      score: { type: Number },
+      feedback: { type: String },
+      passed: { type: Boolean, default: false },
+    },
   },
   { timestamps: true }
 );

@@ -21,6 +21,7 @@ import tutorRouter from "./routes/tutor.route";
 import studentRouter from "./routes/student.route";
 import postRouter from "./routes/post.route";
 import recommendationRouter from "./routes/recommendation.route";
+import assessmentRouter from "./routes/assessment.route";
 
 app.post(
   "/api/stripe/webhook",
@@ -66,7 +67,8 @@ app.use(
   categoryRouter,
   cartRouter,
   postRouter,
-  recommendationRouter
+  recommendationRouter,
+  assessmentRouter
 );
 
 app.use("/api/stripe", stripeRouter);

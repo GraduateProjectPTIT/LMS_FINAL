@@ -1472,7 +1472,7 @@ export const enrollCourseService = async (
     const userEnrollment = await EnrolledCourseModel.findOne({
       userId: userId?._id,
       courseId,
-    }).select("completedLectures");
+    }).select("completedLectures assessment");
 
     const levelRaw = String((course as any)?.level || "").toLowerCase();
     const levelEnumValue =
@@ -1515,6 +1515,7 @@ export const enrollCourseService = async (
       success: true,
       course: payloadCourse,
       completedLectures: userEnrollment?.completedLectures || [],
+      assessment: userEnrollment?.assessment,
     });
   } catch (error: any) {
     return next(new ErrorHandler(error.message, 500));

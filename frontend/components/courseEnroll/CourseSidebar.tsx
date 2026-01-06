@@ -11,6 +11,8 @@ interface CourseSidebarProps {
     selectedVideoId: string | undefined;
     completedLectures: string[]; // Array of completed lecture IDs
     course: any; // Course data để check creator
+    isAssessmentSelected?: boolean;
+    onAssessmentSelect?: () => void;
 }
 
 interface RootState {
@@ -19,7 +21,7 @@ interface RootState {
     };
 }
 
-const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course }: CourseSidebarProps) => {
+const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course, isAssessmentSelected, onAssessmentSelect }: CourseSidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -226,6 +228,36 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                         )}
                     </div>
                 ))}
+                
+                 {/* Final Assessment Section */}
+                 <div className="border-b border-gray-300 dark:border-slate-700">
+                    <button
+                        className={`w-full px-4 py-3 flex gap-3 items-center focus:outline-none transition-colors duration-150 ${
+                             isAssessmentSelected 
+                             ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-l-indigo-500' 
+                             : 'hover:bg-gray-50 dark:hover:bg-black/20'
+                        }`}
+                         onClick={onAssessmentSelect}
+                    >
+                         {progressPercentage < 100 && !canBypass ? (
+                             <FaLock className="text-sm text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                         ) : (
+                             <FaCheckCircle className={`text-sm flex-shrink-0 ${course.assessment?.passed ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
+                         )}
+                         
+                         <div className="flex flex-col text-left">
+                             <span className={`font-semibold text-sm md:text-base ${isAssessmentSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+                                 Final Assessment
+                             </span>
+                             {progressPercentage < 100 && !canBypass && (
+                                  <span className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                     Complete all lectures to unlock
+                                  </span>
+                             )}
+                         </div>
+                    </button>
+                </div>
+
             </div>
         </div>
     );

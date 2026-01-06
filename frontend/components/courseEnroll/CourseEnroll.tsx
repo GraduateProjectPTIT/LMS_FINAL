@@ -8,7 +8,8 @@ import Loader from '@/components/Loader';
 import CourseHeader from './CourseHeader';
 import VideoPlayer from './VideoPlayer';
 import CourseSidebar from './CourseSidebar';
-import { CourseEnrollResponse, SectionLecture } from "@/type";
+import { CourseEnrollResponse, SectionLecture, Assessment } from "@/type";
+import CourseAssessment from '@/components/courseEnroll/CourseAssessment';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const CourseEnroll = ({ courseId }: { courseId: string }) => {
@@ -22,6 +23,8 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     const [selectedLecture, setSelectedLecture] = useState<SectionLecture | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [completedLectures, setCompletedLectures] = useState<string[]>([]);
+    const [viewMode, setViewMode] = useState<'video' | 'assessment'>('video');
+    const [assessment, setAssessment] = useState<Assessment | undefined>(undefined);
 
     const { currentUser } = useSelector((state: RootState) => state.user);
     const router = useRouter();
@@ -83,6 +86,9 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                 setCompletedLectures(data.completedLectures);
             } else {
                 setCompletedLectures([]);
+            }
+            if (data.assessment) {
+                setAssessment(data.assessment);
             }
 
             // Tìm lecture đầu tiên chưa hoàn thành hoặc lecture cuối cùng nếu tất cả đã hoàn thành
@@ -193,6 +199,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         }
 
         setSelectedLecture(lecture);
+        setViewMode('video');
         // Close sidebar on mobile after selecting video
         if (window.innerWidth < 768) {
             setIsSidebarOpen(false);
@@ -244,19 +251,31 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Main content area */}
                         <div
-                            className={`transition-all duration-300 p-4 ${isSidebarOpen
+                            className={`transition-all duration-300 p-4 h-full overflow-y-auto ${isSidebarOpen
                                 ? 'w-full md:w-[calc(100%-24rem)]' // 24rem = 384px = w-96
                                 : 'w-full'
                                 }`}
                             style={{ maxWidth: isSidebarOpen ? '100%' : '100%' }}
                         >
-                            <VideoPlayer
-                                lecture={selectedLecture}
-                                course={course}
-                                onLectureCompleted={handleLectureCompleted}
-                                completedLectures={completedLectures}
-                                focusQuestionId={focusQuestionId}
-                            />
+                             {viewMode === 'video' ? (
+                                <VideoPlayer
+                                    lecture={selectedLecture}
+                                    course={course}
+                                    onLectureCompleted={handleLectureCompleted}
+                                    completedLectures={completedLectures}
+                                    focusQuestionId={focusQuestionId}
+                                />
+                             ) : (
+                                <CourseAssessment
+                                    courseId={courseId}
+                                    assessment={assessment}
+                                    isCourseCompleted={completedLectures.length === getAllLecturesInOrder().length}
+                                    onAssessmentUpdate={(newAssessment) => setAssessment(newAssessment)}
+                                    courseName={course.name}
+                                    tutorName={course.creatorId?.name || "Instructor"}
+                                    studentName={currentUser?.name || "Student"}
+                                />
+                             )}
                         </div>
 
                         {/* Desktop sidebar - with transition */}
@@ -267,9 +286,16 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                 <CourseSidebar
                                     courseData={course.courseData}
                                     setSelectedVideo={setSelectedVideo}
-                                    selectedVideoId={selectedLecture?._id}
+                                    selectedVideoId={viewMode === 'video' ? selectedLecture?._id : undefined}
                                     completedLectures={completedLectures}
                                     course={course}
+                                    isAssessmentSelected={viewMode === 'assessment'}
+                                    onAssessmentSelect={() => {
+                                        setViewMode('assessment');
+                                        if (window.innerWidth < 768) {
+                                            setIsSidebarOpen(false);
+                                        }
+                                    }}
                                 />
                             )}
                         </div>
@@ -282,9 +308,14 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                             <CourseSidebar
                                 courseData={course.courseData}
                                 setSelectedVideo={setSelectedVideo}
-                                selectedVideoId={selectedLecture?._id}
+                                selectedVideoId={viewMode === 'video' ? selectedLecture?._id : undefined}
                                 completedLectures={completedLectures}
                                 course={course}
+                                isAssessmentSelected={viewMode === 'assessment'}
+                                onAssessmentSelect={() => {
+                                    setViewMode('assessment');
+                                    setIsSidebarOpen(false);
+                                }}
                             />
                         </div>
 

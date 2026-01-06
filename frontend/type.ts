@@ -306,3 +306,14 @@ export interface Notification {
     createdAt: string;
     link?: string;
 }
+
+export interface Assessment {
+    status: "pending" | "submitted" | "graded";
+    submissionImage?: {
+        public_id: string;
+        url: string;
+    };
+    score?: number;
+    feedback?: string;
+    passed?: boolean;
+}

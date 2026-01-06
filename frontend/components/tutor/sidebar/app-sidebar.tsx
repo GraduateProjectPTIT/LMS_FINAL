@@ -31,6 +31,11 @@ const sectionData = {
                     url: "/tutor/data/orders",
                     value: "orders_data",
                 },
+                {
+                    title: "Assessments",
+                    url: "/tutor/assessments",
+                    value: "assessments_data",
+                },
             ],
         },
         // Manage course for tutor
