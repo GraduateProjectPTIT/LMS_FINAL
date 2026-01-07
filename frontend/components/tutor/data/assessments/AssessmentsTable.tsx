@@ -32,10 +32,6 @@ interface IAssessment {
     status: string;
     passed?: boolean;
     feedback?: string;
-    submissionImage?: {
-        public_id: string;
-        url: string;
-    };
 }
 
 interface IAssessmentData {

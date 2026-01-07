@@ -42,10 +42,6 @@ interface IAssessment {
     status: string;
     passed?: boolean;
     feedback?: string;
-    submissionImage?: {
-        public_id: string;
-        url: string;
-    };
     initialImage?: {
         public_id: string;
         url: string;
@@ -235,9 +231,9 @@ const AssessmentsData = () => {
                                     <div>
                                         <Label>After (Makeup)</Label>
                                         <div className="mt-2 relative h-48 w-full rounded-md overflow-hidden border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
-                                            {(selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage?.url) ? (
+                                            {selectedAssessment.assessment.makeupImage?.url ? (
                                                 <Image
-                                                    src={selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage!.url}
+                                                    src={selectedAssessment.assessment.makeupImage.url}
                                                     alt="Makeup Submission"
                                                     fill
                                                     className="object-contain"
@@ -248,10 +244,10 @@ const AssessmentsData = () => {
                                                 </div>
                                             )}
                                         </div>
-                                         {(selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage?.url) && (
+                                         {selectedAssessment.assessment.makeupImage?.url && (
                                             <div className="mt-1 text-right">
                                                 <a
-                                                    href={selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage!.url}
+                                                    href={selectedAssessment.assessment.makeupImage.url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-xs text-blue-500 hover:underline"

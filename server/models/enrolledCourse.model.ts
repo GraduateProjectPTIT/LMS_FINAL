@@ -9,10 +9,6 @@ export interface IEnrolledCourse extends Document {
   completedLectures: mongoose.Types.ObjectId[];
   assessment?: {
     status: "pending" | "submitted" | "graded";
-    submissionImage?: {
-        public_id: string;
-        url: string;
-    };
     initialImage?: {
         public_id: string;
         url: string;
@@ -68,10 +64,6 @@ const enrolledCourseSchema = new Schema<IEnrolledCourse>(
         enum: ["pending", "submitted", "graded"],
         default: "pending",
       },
-        submissionImage: {
-          public_id: { type: String },
-          url: { type: String }
-        },
         initialImage: {
           public_id: { type: String },
           url: { type: String }

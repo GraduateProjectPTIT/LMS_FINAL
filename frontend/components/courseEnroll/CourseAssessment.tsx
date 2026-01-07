@@ -118,7 +118,7 @@ const CourseAssessment = ({
 
     const handleUpload = async () => {
         if (!initialPreviewUrl && !makeupPreviewUrl) {
-           toast.error("Please upload at least one image.");
+           toast.error("Please upload both images.");
            return;
         }
 
@@ -313,12 +313,12 @@ const CourseAssessment = ({
                                     </div>
                                 )}
                                 
-                                {(assessment?.makeupImage?.url || assessment?.submissionImage?.url) && (
+                                {assessment?.makeupImage?.url && (
                                     <div className="flex-1 max-w-2xl">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">After</h4>
                                         <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
                                             <Image
-                                                src={assessment.makeupImage?.url || assessment.submissionImage!.url}
+                                                src={assessment.makeupImage.url}
                                                 alt="Makeup Submission"
                                                 fill
                                                 className="object-cover"
@@ -365,12 +365,12 @@ const CourseAssessment = ({
                                         </div>
                                     </div>
                                 )}
-                                {(assessment?.makeupImage?.url || assessment?.submissionImage?.url) && (
+                                {(assessment?.makeupImage?.url) && (
                                     <div className="flex-1">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">After</h4>
                                         <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
                                             <Image
-                                                src={assessment.makeupImage?.url || assessment.submissionImage!.url}
+                                                src={assessment.makeupImage!.url}
                                                 alt="Makeup Submission"
                                                 fill
                                                 className="object-cover"

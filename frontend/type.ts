@@ -309,10 +309,6 @@ export interface Notification {
 
 export interface Assessment {
     status: "pending" | "submitted" | "graded";
-    submissionImage?: {
-        public_id: string;
-        url: string;
-    };
     initialImage?: {
         public_id: string;
         url: string;
