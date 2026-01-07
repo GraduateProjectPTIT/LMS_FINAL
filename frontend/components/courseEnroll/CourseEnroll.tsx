@@ -257,7 +257,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                 }`}
                             style={{ maxWidth: isSidebarOpen ? '100%' : '100%' }}
                         >
-                             {viewMode === 'video' ? (
+                            {viewMode === 'video' ? (
                                 <VideoPlayer
                                     lecture={selectedLecture}
                                     course={course}
@@ -265,7 +265,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                     completedLectures={completedLectures}
                                     focusQuestionId={focusQuestionId}
                                 />
-                             ) : (
+                            ) : (
                                 <CourseAssessment
                                     courseId={courseId}
                                     assessment={assessment}
@@ -275,7 +275,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                     tutorName={course.creatorId?.name || "Instructor"}
                                     studentName={currentUser?.name || "Student"}
                                 />
-                             )}
+                            )}
                         </div>
 
                         {/* Desktop sidebar - with transition */}
@@ -297,6 +297,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                         }
                                     }}
                                     isAssessmentAccessible={completedLectures.length === getAllLecturesInOrder().length}
+                                    assessment={assessment}
                                 />
                             )}
                         </div>
@@ -318,6 +319,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
                                     setIsSidebarOpen(false);
                                 }}
                                 isAssessmentAccessible={completedLectures.length === getAllLecturesInOrder().length}
+                                assessment={assessment}
                             />
                         </div>
 

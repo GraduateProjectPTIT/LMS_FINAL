@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { FaRegPlayCircle, FaCheckCircle, FaLock } from "react-icons/fa";
 import { RiArrowDropDownLine } from "react-icons/ri";
-import { CourseSection, SectionLecture } from "@/type";
+import { Assessment, CourseSection, SectionLecture } from "@/type";
 import { formatDuration } from '@/utils/convertToMinutes';
 
 interface CourseSidebarProps {
@@ -13,7 +13,8 @@ interface CourseSidebarProps {
     course: any; // Course data để check creator
     isAssessmentSelected?: boolean;
     onAssessmentSelect?: () => void;
-    isAssessmentAccessible: boolean
+    isAssessmentAccessible: boolean;
+    assessment?: Assessment;
 }
 
 interface RootState {
@@ -22,7 +23,7 @@ interface RootState {
     };
 }
 
-const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course, isAssessmentSelected, onAssessmentSelect, isAssessmentAccessible }: CourseSidebarProps) => {
+const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, completedLectures, course, isAssessmentSelected, onAssessmentSelect, isAssessmentAccessible, assessment }: CourseSidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
     const { currentUser } = useSelector((state: RootState) => state.user);
@@ -243,7 +244,7 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                         {progressPercentage < 100 && !canBypass ? (
                             <FaLock className="text-sm text-gray-400 dark:text-gray-500 flex-shrink-0" />
                         ) : (
-                            <FaCheckCircle className={`text-sm flex-shrink-0 ${course.assessment?.passed ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
+                            <FaCheckCircle className={`text-sm flex-shrink-0 ${assessment?.passed ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
                         )}
 
                         <div className="flex flex-col text-left">
@@ -258,7 +259,6 @@ const CourseSidebar = ({ courseData, setSelectedVideo, selectedVideoId, complete
                         </div>
                     </button>
                 </div>
-
             </div>
         </div>
     );

@@ -115,7 +115,7 @@ const VideoPlayer = ({ lecture, course, onLectureCompleted, completedLectures, f
         }
     };
 
-    console.log('Rendering VideoPlayer for lecture:', lecture);
+    // console.log('Rendering VideoPlayer for lecture:', lecture);
 
 
     if (!lecture) {

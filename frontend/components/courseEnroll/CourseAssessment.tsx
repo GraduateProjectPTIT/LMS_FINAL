@@ -241,7 +241,7 @@ const CourseAssessment = ({
                             </h2>
                             <p className="text-gray-600 dark:text-gray-300">
                                 Please upload two photos: one <strong>Before</strong> (Initial) and one <strong>After</strong> (Makeup) demonstrating the skills you have learned in this course.
-                                Our instructors will review your submission to determine if it meets the requirements to receive your certificate.
+                                Tutor will review your submission to determine if it meets the requirements to receive your certificate.
                             </p>
                         </div>
 
