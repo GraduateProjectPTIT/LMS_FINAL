@@ -395,7 +395,7 @@ const CourseAssessment = ({
                         {/* Certificate Section or Retry Button */}
                         {assessment?.passed ? (
                             <div className="w-full flex flex-col items-center gap-6 mt-8">
-                                <div className="hidden">
+                                <div className="w-full overflow-x-auto flex justify-center mb-6">
                                     <Certificate
                                         studentName={studentName}
                                         courseName={courseName}
