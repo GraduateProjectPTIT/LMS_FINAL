@@ -6,11 +6,10 @@ import cloudinary from "cloudinary";
 import puppeteer from "puppeteer";
 import CourseModel from "../models/course.model";
 
-// Submit Assessment (Student uploads image)
 export const submitAssessment = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId, submissionUrl, submissionImage } = req.body;
+      const { courseId, submissionUrl, submissionImage, initialImage, makeupImage } = req.body;
       const userId = req.user?._id;
 
       const enrolledCourse = await EnrolledCourseModel.findOne({
@@ -29,30 +28,54 @@ export const submitAssessment = CatchAsyncError(
       }
 
       let finalSubmissionImage = undefined;
+      let finalInitialImage = undefined;
+      let finalMakeupImage = undefined;
 
-      if (submissionImage) {
+      const imageToProcess = makeupImage || submissionImage;
+
+      if (imageToProcess) {
         try {
-            const myCloud = await cloudinary.v2.uploader.upload(submissionImage, {
+            const myCloud = await cloudinary.v2.uploader.upload(imageToProcess, {
                 folder: "assessments",
                 width: 750,
             });
-            finalSubmissionImage = {
+            finalMakeupImage = {
+                public_id: myCloud.public_id,
+                url: myCloud.secure_url
+            };
+            finalSubmissionImage = finalMakeupImage;
+        } catch (error: any) {
+            return next(new ErrorHandler("Makeup image upload failed: " + error.message, 500));
+        }
+      }
+
+      if (initialImage) {
+        try {
+            const myCloud = await cloudinary.v2.uploader.upload(initialImage, {
+                folder: "assessments",
+                width: 750,
+            });
+            finalInitialImage = {
                 public_id: myCloud.public_id,
                 url: myCloud.secure_url
             };
         } catch (error: any) {
-            return next(new ErrorHandler("Image upload failed: " + error.message, 500));
+            return next(new ErrorHandler("Initial image upload failed: " + error.message, 500));
         }
       }
 
-      if (!finalSubmissionImage) {
-         return next(new ErrorHandler("Please provide a submission image", 400));
+      if (!finalMakeupImage) {
+         return next(new ErrorHandler("Please provide a makeup image", 400));
       }
+       if (!finalInitialImage) {
+           return next(new ErrorHandler("Please provide an initial (before) image", 400));
+       }
 
       enrolledCourse.assessment = {
         ...enrolledCourse.assessment,
         status: "submitted",
-        submissionImage: finalSubmissionImage,
+        submissionImage: finalSubmissionImage, 
+        makeupImage: finalMakeupImage,
         score: undefined,
         feedback: undefined,
         passed: false,
@@ -95,7 +118,9 @@ export const gradeAssessment = CatchAsyncError(
           status: "graded",
           passed: isPassed,
           feedback,
-          submissionImage: undefined
+          submissionImage: undefined,
+          initialImage: undefined,
+          makeupImage: undefined
         };
       } else {
         enrolledCourse.assessment.status = "graded";

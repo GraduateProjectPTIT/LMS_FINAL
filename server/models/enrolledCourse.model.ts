@@ -13,6 +13,14 @@ export interface IEnrolledCourse extends Document {
         public_id: string;
         url: string;
     };
+    initialImage?: {
+        public_id: string;
+        url: string;
+    };
+    makeupImage?: {
+        public_id: string;
+        url: string;
+    };
     score?: number;
     feedback?: string;
     passed?: boolean;
@@ -60,10 +68,18 @@ const enrolledCourseSchema = new Schema<IEnrolledCourse>(
         enum: ["pending", "submitted", "graded"],
         default: "pending",
       },
-      submissionImage: {
+        submissionImage: {
           public_id: { type: String },
           url: { type: String }
-      },
+        },
+        initialImage: {
+          public_id: { type: String },
+          url: { type: String }
+        },
+        makeupImage: {
+          public_id: { type: String },
+          url: { type: String }
+        },
       score: { type: Number },
       feedback: { type: String },
       passed: { type: Boolean, default: false },

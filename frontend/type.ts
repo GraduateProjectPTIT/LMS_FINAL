@@ -313,6 +313,14 @@ export interface Assessment {
         public_id: string;
         url: string;
     };
+    initialImage?: {
+        public_id: string;
+        url: string;
+    };
+    makeupImage?: {
+        public_id: string;
+        url: string;
+    };
     score?: number;
     feedback?: string;
     passed?: boolean;

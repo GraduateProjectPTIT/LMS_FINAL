@@ -46,6 +46,14 @@ interface IAssessment {
         public_id: string;
         url: string;
     };
+    initialImage?: {
+        public_id: string;
+        url: string;
+    };
+    makeupImage?: {
+        public_id: string;
+        url: string;
+    };
 }
 
 interface IAssessmentData {
@@ -192,35 +200,67 @@ const AssessmentsData = () => {
                     {selectedAssessment && (
                         <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Left side - Submission Image */}
-                                <div>
-                                    <Label>Submission Image</Label>
-                                    <div className="mt-2 relative h-64 w-full rounded-md overflow-hidden border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
-                                        {selectedAssessment.assessment.submissionImage?.url ? (
-                                            <Image
-                                                src={selectedAssessment.assessment.submissionImage.url}
-                                                alt="Submission"
-                                                fill
-                                                className="object-contain"
-                                            />
-                                        ) : (
-                                            <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-600">
-                                                No Image
+                                {/* Left side - Submission Images */}
+                                <div className="space-y-4">
+                                     <div>
+                                        <Label>Before (Initial)</Label>
+                                        <div className="mt-2 relative h-48 w-full rounded-md overflow-hidden border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
+                                            {selectedAssessment.assessment.initialImage?.url ? (
+                                                <Image
+                                                    src={selectedAssessment.assessment.initialImage.url}
+                                                    alt="Initial Submission"
+                                                    fill
+                                                    className="object-contain"
+                                                />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-600">
+                                                    No Initial Image
+                                                </div>
+                                            )}
+                                        </div>
+                                         {selectedAssessment.assessment.initialImage?.url && (
+                                            <div className="mt-1 text-right">
+                                                <a
+                                                    href={selectedAssessment.assessment.initialImage.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-blue-500 hover:underline"
+                                                >
+                                                    View Full Size
+                                                </a>
                                             </div>
                                         )}
                                     </div>
-                                    {selectedAssessment.assessment.submissionImage?.url && (
-                                        <div className="mt-2 text-right">
-                                            <a
-                                                href={selectedAssessment.assessment.submissionImage.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-blue-500 hover:underline"
-                                            >
-                                                Open original
-                                            </a>
+
+                                    <div>
+                                        <Label>After (Makeup)</Label>
+                                        <div className="mt-2 relative h-48 w-full rounded-md overflow-hidden border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
+                                            {(selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage?.url) ? (
+                                                <Image
+                                                    src={selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage!.url}
+                                                    alt="Makeup Submission"
+                                                    fill
+                                                    className="object-contain"
+                                                />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-600">
+                                                    No Makeup Image
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                         {(selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage?.url) && (
+                                            <div className="mt-1 text-right">
+                                                <a
+                                                    href={selectedAssessment.assessment.makeupImage?.url || selectedAssessment.assessment.submissionImage!.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-blue-500 hover:underline"
+                                                >
+                                                    View Full Size
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Right side - Grade Form */}

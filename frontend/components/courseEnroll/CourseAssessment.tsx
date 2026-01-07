@@ -29,11 +29,17 @@ const CourseAssessment = ({
     tutorName,
     studentName
 }: CourseAssessmentProps) => {
-    const [image, setImage] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [initialImage, setInitialImage] = useState<File | null>(null);
+    const [initialPreviewUrl, setInitialPreviewUrl] = useState<string | null>(null);
+    
+    const [makeupImage, setMakeupImage] = useState<File | null>(null);
+    const [makeupPreviewUrl, setMakeupPreviewUrl] = useState<string | null>(null);
+
     const [isLoading, setIsLoading] = useState(false);
+    
     const [showCropModal, setShowCropModal] = useState(false);
     const [tempImage, setTempImage] = useState('');
+    const [currentCropType, setCurrentCropType] = useState<'initial' | 'makeup' | null>(null);
 
     const status = assessment?.status || 'pending';
 
@@ -53,10 +59,9 @@ const CourseAssessment = ({
         );
     }
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'initial' | 'makeup') => {
         const file = e.target.files?.[0];
         if (file) {
-
             const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
             const maxSize = 10 * 1024 * 1024; // 10MB
 
@@ -72,6 +77,7 @@ const CourseAssessment = ({
             const reader = new FileReader();
             reader.onloadend = () => {
                 setTempImage(reader.result as string);
+                setCurrentCropType(type);
                 setShowCropModal(true);
             };
             reader.readAsDataURL(file);
@@ -79,29 +85,51 @@ const CourseAssessment = ({
     };
 
     const handleCropComplete = (croppedFile: File) => {
-        setImage(croppedFile);
         const reader = new FileReader();
         reader.onloadend = () => {
-            setPreviewUrl(reader.result as string);
+            if (currentCropType === 'initial') {
+                setInitialImage(croppedFile);
+                setInitialPreviewUrl(reader.result as string);
+            } else if (currentCropType === 'makeup') {
+                setMakeupImage(croppedFile);
+                setMakeupPreviewUrl(reader.result as string);
+            }
         };
         reader.readAsDataURL(croppedFile);
         setShowCropModal(false);
+        setCurrentCropType(null);
     };
 
     const handleCropCancel = () => {
         setShowCropModal(false);
         setTempImage('');
+        setCurrentCropType(null);
     };
 
-    const handleRemoveImage = () => {
-        setImage(null);
-        setPreviewUrl(null);
+    const handleRemoveImage = (type: 'initial' | 'makeup') => {
+        if (type === 'initial') {
+            setInitialImage(null);
+            setInitialPreviewUrl(null);
+        } else {
+            setMakeupImage(null);
+            setMakeupPreviewUrl(null);
+        }
     };
 
     const handleUpload = async () => {
-        if (!image || !previewUrl) {
-            toast.error("Please select an image");
+        if (!initialPreviewUrl && !makeupPreviewUrl) {
+           toast.error("Please upload at least one image.");
+           return;
+        }
+
+        if (!initialPreviewUrl) {
+            toast.error("Please upload the 'Before' (Initial) image.");
             return;
+        }
+
+        if (!makeupPreviewUrl) {
+             toast.error("Please upload the 'After' (Makeup) image.");
+             return;
         }
 
         setIsLoading(true);
@@ -114,7 +142,8 @@ const CourseAssessment = ({
                 credentials: "include",
                 body: JSON.stringify({
                     courseId,
-                    submissionImage: previewUrl
+                    initialImage: initialPreviewUrl,
+                    makeupImage: makeupPreviewUrl
                 }),
             });
 
@@ -132,6 +161,68 @@ const CourseAssessment = ({
         }
     };
 
+    const UploadSection = ({ type, title, previewUrl, onRemove }: { type: 'initial' | 'makeup', title: string, previewUrl: string | null, onRemove: () => void }) => (
+        <div className="flex-1">
+             <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">{title}</h3>
+            {!previewUrl ? (
+                <label className="block cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, type)}
+                        className="hidden"
+                    />
+                    <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors h-64 flex flex-col justify-center items-center">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="p-4 bg-gray-100 dark:bg-slate-700 rounded-full">
+                                <ImageIcon className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+                            </div>
+                            <div>
+                                <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Upload Photo
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    PNG, JPG, Webp
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            ) : (
+                <div className="space-y-4">
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+                        <div className="relative h-64 w-full bg-gray-100 dark:bg-slate-900">
+                            <Image
+                                src={previewUrl}
+                                alt={`${title} Preview`}
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                        <button
+                            onClick={onRemove}
+                            className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <label className="block cursor-pointer">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, type)}
+                            className="hidden"
+                        />
+                        <div className="w-full h-[40px] flex justify-center items-center border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors text-center">
+                            Change Photo
+                        </div>
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="w-full max-w-6xl mx-auto p-6">
             <div className="mb-8">
@@ -148,88 +239,45 @@ const CourseAssessment = ({
                                 Instructions
                             </h2>
                             <p className="text-gray-600 dark:text-gray-300">
-                                Please upload a makeup photo demonstrating the skills you have learned in this course.
+                                Please upload two photos: one <strong>Before</strong> (Initial) and one <strong>After</strong> (Makeup) demonstrating the skills you have learned in this course.
                                 Our instructors will review your submission to determine if it meets the requirements to receive your certificate.
                             </p>
                         </div>
 
                         {/* Upload Area */}
-                        <div className="space-y-4">
-                            {!previewUrl ? (
-                                <label className="block cursor-pointer">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleImageUpload}
-                                        className="hidden"
-                                    />
-                                    <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-12 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="p-4 bg-gray-100 dark:bg-slate-700 rounded-full">
-                                                <ImageIcon className="w-8 h-8 text-gray-500 dark:text-gray-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    Click to upload your makeup photo
-                                                </p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                    PNG, JPG, Webp up to 10MB
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </label>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
-                                        <div className="relative h-96 w-full bg-gray-100 dark:bg-slate-900">
-                                            <Image
-                                                src={previewUrl}
-                                                alt="Preview"
-                                                fill
-                                                className="object-contain"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleRemoveImage}
-                                            className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
-                                        >
-                                            <X className="w-5 h-5" />
-                                        </button>
-                                    </div>
+                        <div className="flex flex-col md:flex-row gap-6 mb-8">
+                            <UploadSection 
+                                type="initial" 
+                                title="Before (Initial)" 
+                                previewUrl={initialPreviewUrl} 
+                                onRemove={() => handleRemoveImage('initial')} 
+                            />
+                            <UploadSection 
+                                type="makeup" 
+                                title="After (Makeup)" 
+                                previewUrl={makeupPreviewUrl} 
+                                onRemove={() => handleRemoveImage('makeup')} 
+                            />
+                        </div>
 
-                                    <div className="flex gap-3">
-                                        <label className="flex-1 cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageUpload}
-                                                className="hidden"
-                                            />
-                                            <div className="w-full h-[40px] flex justify-center items-center border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors text-center">
-                                                Change Photo
-                                            </div>
-                                        </label>
-                                        <button
-                                            onClick={handleUpload}
-                                            disabled={isLoading}
-                                            className="flex-1 bg-blue-500 hover:bg-blue-600 w-full h-[40px] flex justify-center items-center text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                        >
-                                            {isLoading ? (
-                                                <>
-                                                    <span className="animate-spin mr-2">⏳</span>
-                                                    Uploading...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Upload className="w-4 h-4 mr-2" />
-                                                    Submit Assessment
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                        <div className="flex justify-center">
+                             <button
+                                onClick={handleUpload}
+                                disabled={isLoading}
+                                className="bg-blue-500 hover:bg-blue-600 px-8 py-3 flex justify-center items-center text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <span className="animate-spin mr-2">⏳</span>
+                                        Uploading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        Submit Assessment
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 )}
@@ -250,16 +298,35 @@ const CourseAssessment = ({
                                 Check back later for your results.
                             </p>
 
-                            {assessment?.submissionImage?.url && (
-                                <div className="mt-4 relative h-80 w-full max-w-md rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
-                                    <Image
-                                        src={assessment.submissionImage.url}
-                                        alt="Submission"
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                            )}
+                            <div className="flex flex-col md:flex-row gap-6 w-full mt-4 justify-center">
+                                 {assessment?.initialImage?.url && (
+                                    <div className="flex-1 max-w-2xl">
+                                        <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Before</h4>
+                                        <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
+                                            <Image
+                                                src={assessment.initialImage.url}
+                                                alt="Initial Submission"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {(assessment?.makeupImage?.url || assessment?.submissionImage?.url) && (
+                                    <div className="flex-1 max-w-2xl">
+                                        <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">After</h4>
+                                        <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
+                                            <Image
+                                                src={assessment.makeupImage?.url || assessment.submissionImage!.url}
+                                                alt="Makeup Submission"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -283,21 +350,36 @@ const CourseAssessment = ({
                             </h3>
                         </div>
 
-                        {/* Two Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            {/* Left Column - Submission Image */}
-                            {assessment?.submissionImage?.url && (
-                                <div className="relative h-80 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
-                                    <Image
-                                        src={assessment.submissionImage.url}
-                                        alt="Submission"
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                            )}
+                         <div className="grid grid-cols-1 gap-6 mb-6">
+                             <div className="flex flex-col md:flex-row gap-6 w-full justify-center">
+                                {assessment?.initialImage?.url && (
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">Before</h4>
+                                        <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
+                                            <Image
+                                                src={assessment.initialImage.url}
+                                                alt="Initial Submission"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {(assessment?.makeupImage?.url || assessment?.submissionImage?.url) && (
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">After</h4>
+                                        <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
+                                            <Image
+                                                src={assessment.makeupImage?.url || assessment.submissionImage!.url}
+                                                alt="Makeup Submission"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                            {/* Right Column - Feedback */}
                             <div className="flex flex-col">
                                 <div className="bg-gray-50 dark:bg-slate-900/50 p-6 rounded-xl border border-gray-200 dark:border-slate-700 h-full flex flex-col">
                                     <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
@@ -313,7 +395,7 @@ const CourseAssessment = ({
                         {/* Certificate Section or Retry Button */}
                         {assessment?.passed ? (
                             <div className="w-full flex flex-col items-center gap-6 mt-8">
-                                <div className="w-full">
+                                <div className="hidden">
                                     <Certificate
                                         studentName={studentName}
                                         courseName={courseName}
