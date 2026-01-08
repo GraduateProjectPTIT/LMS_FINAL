@@ -40,6 +40,7 @@ const CourseAssessment = ({
     const [showCropModal, setShowCropModal] = useState(false);
     const [tempImage, setTempImage] = useState('');
     const [currentCropType, setCurrentCropType] = useState<'initial' | 'makeup' | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const status = assessment?.status || 'pending';
 
@@ -413,6 +414,7 @@ const CourseAssessment = ({
 
                                 <Button
                                     onClick={async () => {
+                                        setIsDownloading(true);
                                         try {
                                             const response = await fetch(
                                                 `${process.env.NEXT_PUBLIC_BACKEND_BASEURL}/api/certificate/${courseId}`,
@@ -423,6 +425,12 @@ const CourseAssessment = ({
                                                     credentials: "include"
                                                 }
                                             );
+                                            
+                                            if (!response.ok) {
+                                                const errorData = await response.json();
+                                                throw new Error(errorData.message || "Failed to download certificate");
+                                            }
+
                                             const blob = await response.blob();
                                             const url = window.URL.createObjectURL(blob);
                                             const a = document.createElement('a');
@@ -432,14 +440,25 @@ const CourseAssessment = ({
                                             a.click();
                                             window.URL.revokeObjectURL(url);
                                             document.body.removeChild(a);
-                                        } catch (error) {
+                                            toast.success("Certificate downloaded successfully");
+                                        } catch (error: any) {
                                             console.error(error);
-                                            toast.error("Failed to download certificate");
+                                            toast.error(error.message || "Failed to download certificate");
+                                        } finally {
+                                            setIsDownloading(false);
                                         }
                                     }}
+                                    disabled={isDownloading}
                                     className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white border-0 px-8 py-3"
                                 >
-                                    Download Certificate
+                                    {isDownloading ? (
+                                        <>
+                                            <span className="animate-spin mr-2">⏳</span>
+                                            Downloading...
+                                        </>
+                                    ) : (
+                                        "Download Certificate"
+                                    )}
                                 </Button>
                             </div>
                         ) : (
