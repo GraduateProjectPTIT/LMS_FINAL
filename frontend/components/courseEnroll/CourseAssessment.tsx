@@ -31,12 +31,12 @@ const CourseAssessment = ({
 }: CourseAssessmentProps) => {
     const [initialImage, setInitialImage] = useState<File | null>(null);
     const [initialPreviewUrl, setInitialPreviewUrl] = useState<string | null>(null);
-    
+
     const [makeupImage, setMakeupImage] = useState<File | null>(null);
     const [makeupPreviewUrl, setMakeupPreviewUrl] = useState<string | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
-    
+
     const [showCropModal, setShowCropModal] = useState(false);
     const [tempImage, setTempImage] = useState('');
     const [currentCropType, setCurrentCropType] = useState<'initial' | 'makeup' | null>(null);
@@ -118,8 +118,8 @@ const CourseAssessment = ({
 
     const handleUpload = async () => {
         if (!initialPreviewUrl && !makeupPreviewUrl) {
-           toast.error("Please upload both images.");
-           return;
+            toast.error("Please upload both images.");
+            return;
         }
 
         if (!initialPreviewUrl) {
@@ -128,8 +128,8 @@ const CourseAssessment = ({
         }
 
         if (!makeupPreviewUrl) {
-             toast.error("Please upload the 'After' (Makeup) image.");
-             return;
+            toast.error("Please upload the 'After' (Makeup) image.");
+            return;
         }
 
         setIsLoading(true);
@@ -161,9 +161,10 @@ const CourseAssessment = ({
         }
     };
 
+    // phần upload ảnh
     const UploadSection = ({ type, title, previewUrl, onRemove }: { type: 'initial' | 'makeup', title: string, previewUrl: string | null, onRemove: () => void }) => (
         <div className="flex-1">
-             <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">{title}</h3>
+            <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">{title}</h3>
             {!previewUrl ? (
                 <label className="block cursor-pointer">
                     <input
@@ -246,22 +247,22 @@ const CourseAssessment = ({
 
                         {/* Upload Area */}
                         <div className="flex flex-col md:flex-row gap-6 mb-8">
-                            <UploadSection 
-                                type="initial" 
-                                title="Before (Initial)" 
-                                previewUrl={initialPreviewUrl} 
-                                onRemove={() => handleRemoveImage('initial')} 
+                            <UploadSection
+                                type="initial"
+                                title="Before (Initial)"
+                                previewUrl={initialPreviewUrl}
+                                onRemove={() => handleRemoveImage('initial')}
                             />
-                            <UploadSection 
-                                type="makeup" 
-                                title="After (Makeup)" 
-                                previewUrl={makeupPreviewUrl} 
-                                onRemove={() => handleRemoveImage('makeup')} 
+                            <UploadSection
+                                type="makeup"
+                                title="After (Makeup)"
+                                previewUrl={makeupPreviewUrl}
+                                onRemove={() => handleRemoveImage('makeup')}
                             />
                         </div>
 
                         <div className="flex justify-center">
-                             <button
+                            <button
                                 onClick={handleUpload}
                                 disabled={isLoading}
                                 className="bg-blue-500 hover:bg-blue-600 px-8 py-3 flex justify-center items-center text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
@@ -299,7 +300,7 @@ const CourseAssessment = ({
                             </p>
 
                             <div className="flex flex-col md:flex-row gap-6 w-full mt-4 justify-center">
-                                 {assessment?.initialImage?.url && (
+                                {assessment?.initialImage?.url && (
                                     <div className="flex-1 max-w-2xl">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Before</h4>
                                         <div className="relative h-[500px] w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-md">
@@ -312,7 +313,7 @@ const CourseAssessment = ({
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {assessment?.makeupImage?.url && (
                                     <div className="flex-1 max-w-2xl">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">After</h4>
@@ -350,8 +351,9 @@ const CourseAssessment = ({
                             </h3>
                         </div>
 
-                         <div className="grid grid-cols-1 gap-6 mb-6">
-                             <div className="flex flex-col md:flex-row gap-6 w-full justify-center">
+                        <div className="grid grid-cols-1 gap-6 mb-6">
+                            <div className="flex flex-col md:flex-row gap-6 w-full justify-center">
+                                {/* ảnh gốc */}
                                 {assessment?.initialImage?.url && (
                                     <div className="flex-1">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">Before</h4>
@@ -365,6 +367,7 @@ const CourseAssessment = ({
                                         </div>
                                     </div>
                                 )}
+                                {/* ảnh makeup */}
                                 {(assessment?.makeupImage?.url) && (
                                     <div className="flex-1">
                                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">After</h4>

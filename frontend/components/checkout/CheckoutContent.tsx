@@ -29,7 +29,7 @@ const CheckoutContent = () => {
         totalPrice: 0
     });
 
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'paypal' | 'stripe' | 'zalopay'>('paypal');
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'paypal' | 'stripe'>('paypal');
 
     const handleGetUserCart = useCallback(async () => {
         try {

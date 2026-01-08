@@ -37,26 +37,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
-    useEffect(() => {
-        // Nếu chưa có course hoặc không có focusLectureId thì bỏ qua
-        if (!course || !focusLectureId) return;
-
-        const allLectures: SectionLecture[] = [];
-
-        course.courseData.forEach(section => {
-            section.sectionContents.forEach(lecture => {
-                allLectures.push(lecture);
-            });
-        });
-
-        const targetLecture = allLectures.find(l => l._id === focusLectureId);
-
-        if (targetLecture) {
-            setSelectedLecture(targetLecture);
-        }
-    }, [course, focusLectureId]);
-
-    // Helper function to get all lectures from course data
+    // Hàm lấy tất cả các lecture từ course data (không sắp xếp)
     const getAllLecturesFromCourse = useCallback((courseData: CourseEnrollResponse) => {
         const allLectures: SectionLecture[] = [];
         courseData.courseData.forEach(section => {
@@ -66,6 +47,47 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         });
         return allLectures;
     }, []);
+
+    // Tạo một flat array tất cả các lecture với thứ tự
+    const getAllLecturesInOrder = useCallback(() => {
+        if (!course) return [];
+
+        const allLectures: (SectionLecture & { order: number })[] = [];
+        let order = 0;
+
+        course.courseData.forEach(section => {
+            section.sectionContents.forEach(lecture => {
+                allLectures.push({ ...lecture, order });
+                order++;
+            });
+        });
+
+        return allLectures;
+    }, [course]);
+
+    // Kiểm tra xem một lecture có thể truy cập được không
+    const isLectureAccessible = useCallback((lecture: SectionLecture) => {
+        if (canBypass) return true;
+
+        // Nếu lecture này đã hoàn thành rồi, cho phép xem lại
+        if (completedLectures.includes(lecture._id)) {
+            return true;
+        }
+
+        const allLectures = getAllLecturesInOrder();
+        const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
+
+        if (currentLectureIndex === 0) return true; // First lecture is always accessible
+
+        // Check if all previous lectures are completed
+        for (let i = 0; i < currentLectureIndex; i++) {
+            if (!completedLectures.includes(allLectures[i]._id)) {
+                return false;
+            }
+        }
+
+        return true;
+    }, [canBypass, completedLectures, getAllLecturesInOrder]);
 
     const handleEnrollCourse = useCallback(async () => {
         setIsLoading(true);
@@ -125,47 +147,50 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         }
     }, [courseId, getAllLecturesFromCourse]);
 
-    // Tạo một flat array tất cả các lecture với thứ tự
-    const getAllLecturesInOrder = useCallback(() => {
-        if (!course) return [];
+    const setSelectedVideo = (lecture: SectionLecture) => {
+        // Only allow selection of accessible lectures
+        if (!isLectureAccessible(lecture)) {
+            return;
+        }
 
-        const allLectures: (SectionLecture & { order: number })[] = [];
-        let order = 0;
+        setSelectedLecture(lecture);
+        setViewMode('video');
+        // Close sidebar on mobile after selecting video
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
+    };
+
+    // Xử lý khi hoàn thành lecture
+    const handleLectureCompleted = (lectureId: string) => {
+        setCompletedLectures(prev => {
+            if (!prev.includes(lectureId)) {
+                return [...prev, lectureId];
+            }
+            return prev;
+        });
+    };
+
+    // auto-focus vào lecture
+    useEffect(() => {
+        if (!course || !focusLectureId) return;
+
+        const allLectures: SectionLecture[] = [];
 
         course.courseData.forEach(section => {
             section.sectionContents.forEach(lecture => {
-                allLectures.push({ ...lecture, order });
-                order++;
+                allLectures.push(lecture);
             });
         });
 
-        return allLectures;
-    }, [course]);
+        const targetLecture = allLectures.find(l => l._id === focusLectureId);
 
-    // Kiểm tra xem một lecture có thể truy cập được không
-    const isLectureAccessible = useCallback((lecture: SectionLecture) => {
-        if (canBypass) return true;
-
-        // Nếu lecture này đã hoàn thành rồi, cho phép xem lại
-        if (completedLectures.includes(lecture._id)) {
-            return true;
+        if (targetLecture) {
+            setSelectedLecture(targetLecture);
         }
-
-        const allLectures = getAllLecturesInOrder();
-        const currentLectureIndex = allLectures.findIndex(l => l._id === lecture._id);
-
-        if (currentLectureIndex === 0) return true; // First lecture is always accessible
-
-        // Check if all previous lectures are completed
-        for (let i = 0; i < currentLectureIndex; i++) {
-            if (!completedLectures.includes(allLectures[i]._id)) {
-                return false;
-            }
-        }
-
-        return true;
-    }, [canBypass, completedLectures, getAllLecturesInOrder]);
-
+    }, [course, focusLectureId]);
+    
+    // kiểm tra quyền truy cập rồi mới fetch dữ liệu khóa học
     useEffect(() => {
         const checkAndFetch = async () => {
             if (!courseId) return;
@@ -192,31 +217,7 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
         checkAndFetch();
     }, [courseId, handleEnrollCourse, router]);
 
-    const setSelectedVideo = (lecture: SectionLecture) => {
-        // Only allow selection of accessible lectures
-        if (!isLectureAccessible(lecture)) {
-            return;
-        }
-
-        setSelectedLecture(lecture);
-        setViewMode('video');
-        // Close sidebar on mobile after selecting video
-        if (window.innerWidth < 768) {
-            setIsSidebarOpen(false);
-        }
-    };
-
-    // Handle when a lecture is marked as completed
-    const handleLectureCompleted = (lectureId: string) => {
-        setCompletedLectures(prev => {
-            if (!prev.includes(lectureId)) {
-                return [...prev, lectureId];
-            }
-            return prev;
-        });
-    };
-
-    // Auto-select next accessible lecture when current one is completed
+    // Auto-select lecture tiếp theo khi hoàn thành lecture hiện tại
     useEffect(() => {
         if (selectedLecture && completedLectures.includes(selectedLecture._id)) {
             const allLectures = getAllLecturesInOrder();
@@ -234,6 +235,13 @@ const CourseEnroll = ({ courseId }: { courseId: string }) => {
     }, [completedLectures, selectedLecture, getAllLecturesInOrder, isLectureAccessible]);
 
     const courseCategories = course?.categories.map(cat => cat.title).join(', ') || '';
+
+    useEffect(() => {
+        // Tự động chuyển sang assessment view khi có assessment mới
+        if (assessment && (assessment.status === 'submitted' || assessment.status === 'graded')) {
+            setViewMode('assessment');
+        }
+    }, [assessment?.status]);
 
     return (
         <>
